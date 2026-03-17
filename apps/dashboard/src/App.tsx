@@ -1,0 +1,91 @@
+import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+declare const __APP_VERSION__: string;
+import { Layout } from './components/Layout.js';
+import { HomePage } from './pages/HomePage.js';
+import { StatsPage, PlanStatsPage } from './pages/StatsPage.js';
+import { SettingsPage } from './pages/SettingsPage.js';
+import { PlansPage } from './pages/PlansPage.js';
+import { SetupPage } from './pages/SetupPage.js';
+import { UpgradePage } from './pages/UpgradePage.js';
+import { api } from './api/client.js';
+import { UpdateChecker } from './components/UpdateChecker.js';
+
+type AppState = 'loading' | 'setup' | 'upgrade' | 'ready';
+
+export function App() {
+  const [state, setState] = useState<AppState>('loading');
+  const [upgradeFrom, setUpgradeFrom] = useState<string>('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // 1. Check if setup is needed
+        const status = await api.getSetupStatus();
+        if (!status.allReady) {
+          setState('setup');
+          return;
+        }
+
+        // 2. Check if upgrade is needed
+        const upgrade = await api.checkUpgrade();
+        if (upgrade.needsUpgrade) {
+          setUpgradeFrom(upgrade.fromVersion || '?');
+          setState('upgrade');
+          return;
+        }
+
+        // 3. First install — save version (no upgrade screen needed)
+        if (upgrade.isFirstInstall) {
+          // Version will be saved by setup/complete hook
+        }
+
+        setState('ready');
+      } catch {
+        setState('setup');
+      }
+    })();
+  }, []);
+
+  // Loading
+  if (state === 'loading') {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        height: '100vh', background: 'var(--bg-main)', color: 'var(--text-secondary)',
+        flexDirection: 'column', gap: 8,
+      }}>
+        <div style={{ fontSize: 36 }}>🧠</div>
+        <span>Loading...</span>
+        <span style={{ fontSize: 10, opacity: 0.5 }}>v{__APP_VERSION__}</span>
+      </div>
+    );
+  }
+
+  // Setup wizard (first install)
+  if (state === 'setup') {
+    return <SetupPage onComplete={() => setState('ready')} />;
+  }
+
+  // Upgrade screen (version changed)
+  if (state === 'upgrade') {
+    return <UpgradePage fromVersion={upgradeFrom} onComplete={() => setState('ready')} />;
+  }
+
+  // Normal dashboard
+  return (
+    <BrowserRouter>
+      <UpdateChecker />
+      <Layout>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/plans" element={<PlansPage />} />
+          <Route path="/stats" element={<StatsPage />} />
+          <Route path="/stats/plans" element={<PlanStatsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Routes>
+      </Layout>
+    </BrowserRouter>
+  );
+}

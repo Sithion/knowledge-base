@@ -1,0 +1,224 @@
+name: Publish
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - '.github/workflows/**'
+      - 'pnpm-lock.yaml'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ── MCP Server → npm ──────────────────────────────────────────
+  publish-mcp:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+
+      - name: Validate MCP server package
+        run: cd apps/mcp-server && npm publish --dry-run --access public 2>&1
+
+      - name: Check if version exists
+        id: version-check
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./apps/mcp-server/package.json').version")
+          if npm view @cognistore/mcp-server@$PACKAGE_VERSION version 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish to npm
+        if: steps.version-check.outputs.exists == 'false'
+        run: cd apps/mcp-server && npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ── Create GitHub Release (single job to avoid race condition) ──
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.create.outputs.release_id }}
+      version: ${{ steps.pkg-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Get version
+        id: pkg-version
+        run: echo "version=$(node -p "require('./apps/dashboard/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        id: create
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.pkg-version.outputs.version }}"
+          TAG="v${VERSION}"
+
+          # Check if release already exists
+          if gh release view "$TAG" &>/dev/null; then
+            RELEASE_ID=$(gh api repos/${{ github.repository }}/releases/tags/$TAG --jq '.id')
+            echo "Release $TAG already exists (id: $RELEASE_ID)"
+          else
+            RELEASE_ID=$(gh api repos/${{ github.repository }}/releases \
+              -f tag_name="$TAG" \
+              -f name="CogniStore $TAG" \
+              -f body="## CogniStore $TAG
+
+          Desktop app for managing your AI knowledge base with semantic search.
+          Download the installer for your platform below.
+
+          ### Downloads
+
+          | Platform | File | Architecture |
+          |----------|------|-------------|
+          | macOS (Apple Silicon) | \`.dmg\` | arm64 (M1/M2/M3/M4) |
+          | macOS (Intel) | \`.dmg\` | x86_64 |
+          | Linux | \`.AppImage\` | x86_64 |
+          | Linux (Debian/Ubuntu) | \`.deb\` | x86_64 |
+
+          ### macOS: \"App is damaged\" warning
+
+          This app is not yet signed with an Apple Developer certificate. macOS Gatekeeper will block it by default.
+
+          **To fix**, open Terminal and run:
+          \`\`\`bash
+          xattr -cr \"/Applications/CogniStore.app\"
+          \`\`\`
+          Or go to **System Settings > Privacy & Security** and click **Open Anyway**.
+
+          ### What's included
+
+          - Setup wizard (auto-installs Ollama, creates SQLite database)
+          - Dashboard with semantic search, stats, and contribution heatmap
+          - MCP server configuration for Claude Code and GitHub Copilot
+          - One-click uninstall (removes all data and configurations)" \
+              -F draft=false \
+              -F prerelease=false \
+              --jq '.id')
+            echo "Created release $TAG (id: $RELEASE_ID)"
+          fi
+
+          echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
+
+  # ── Build web assets (runs once, platform-independent) ─────────
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build web assets
+        working-directory: apps/dashboard
+        run: node scripts/bundle-sidecar.mjs --phase=web
+
+      - name: Upload sidecar web assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: sidecar-web
+          retention-days: 1
+          path: apps/dashboard/sidecar-bundle
+
+  # ── Tauri Desktop App → GitHub Releases ────────────────────────
+  publish-tauri:
+    needs: [create-release, build-web]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: macos-14
+            target: x86_64-apple-darwin
+          - platform: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+
+    runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Linux deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/dashboard/src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Download web assets
+        uses: actions/download-artifact@v8
+        with:
+          name: sidecar-web
+          path: apps/dashboard/sidecar-bundle
+
+      - name: Bundle native modules
+        working-directory: apps/dashboard
+        run: node scripts/bundle-sidecar.mjs --phase=native
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/dashboard
+          tagName: v${{ needs.create-release.outputs.version }}
+          releaseName: 'CogniStore v${{ needs.create-release.outputs.version }}'
+          releaseId: ${{ needs.create-release.outputs.release_id }}
+          releaseDraft: false
+          prerelease: false
+          updaterJsonKeepUniversal: true
+
+  # NOTE: latest.json is automatically generated by tauri-action with updaterJsonKeepUniversal: true
+  # The generate-updater job was removed in v0.9.0 as it was redundant and could cause overwrites.

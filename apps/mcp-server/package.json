@@ -1,0 +1,42 @@
+{
+  "name": "@cognistore/mcp-server",
+  "version": "1.0.0",
+  "private": false,
+  "type": "module",
+  "description": "MCP server for CogniStore — integrates with Claude Code and GitHub Copilot",
+  "license": "BUSL-1.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Sithion/cognistore",
+    "directory": "apps/mcp-server"
+  },
+  "main": "./dist/index.js",
+  "bin": {
+    "cognistore-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "pnpm build:deps && tsup",
+    "build:deps": "pnpm --filter @cognistore/shared build && pnpm --filter @cognistore/core build && pnpm --filter @cognistore/embeddings build && pnpm --filter @cognistore/sdk build",
+    "dev": "tsx src/index.ts",
+    "clean": "rm -rf dist",
+    "test": "if find . -name '*.test.ts' -o -name '*.spec.ts' | grep -q .; then npx playwright test; else echo 'No tests found, skipping'; fi"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "better-sqlite3": "^12.8.0",
+    "drizzle-orm": "^0.38.0",
+    "sqlite-vec": "^0.1.7",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@cognistore/sdk": "workspace:*",
+    "@cognistore/shared": "workspace:*",
+    "@playwright/test": "^1.50.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0"
+  }
+}
