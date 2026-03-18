@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api, type SetupStatus } from '../api/client.js';
 
+declare const __APP_VERSION__: string;
+
 type StepStatus = 'pending' | 'running' | 'done' | 'error';
 
 interface Step {
@@ -132,7 +134,8 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 8 }}>🧠</div>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>AI Knowledge Base</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 4 }}>Setting up your environment...</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 11, marginTop: 4, opacity: 0.6 }}>v{__APP_VERSION__}</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginTop: 8 }}>Setting up your environment...</p>
       </div>
 
       <div style={{

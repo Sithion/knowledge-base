@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+declare const __APP_VERSION__: string;
 import { Layout } from './components/Layout.js';
 import { HomePage } from './pages/HomePage.js';
 import { StatsPage } from './pages/StatsPage.js';
@@ -22,8 +24,11 @@ export function App() {
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         height: '100vh', background: 'var(--bg-main)', color: 'var(--text-secondary)',
+        flexDirection: 'column', gap: 8,
       }}>
-        Loading...
+        <div style={{ fontSize: 36 }}>🧠</div>
+        <span>Loading...</span>
+        <span style={{ fontSize: 10, opacity: 0.5 }}>v{__APP_VERSION__}</span>
       </div>
     );
   }
