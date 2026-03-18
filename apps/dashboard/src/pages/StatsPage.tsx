@@ -172,14 +172,19 @@ export function StatsPage() {
   const [tags, setTags] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api.getStats().then(data => setStats(data as Stats)).catch(err => setError(err.message));
+  const loadData = () => {
+    setError(null);
+    api.getStats().then(data => setStats(data as Stats)).catch(err => {
+      // Retry after 3s if service unavailable (SDK initializing)
+      setTimeout(loadData, 3000);
+    });
     api.getMetrics().then(data => setMetrics(data)).catch(console.error);
     api.listTags().then(data => setTags(data)).catch(console.error);
-  }, []);
+  };
 
-  if (error) return <p style={{ color: 'var(--error)', padding: 20 }}>Service unavailable — backend is not running</p>;
-  if (!stats) return <p style={{ color: 'var(--text-secondary)' }}>Loading...</p>;
+  useEffect(() => { loadData(); }, []);
+
+  if (!stats) return <p style={{ color: 'var(--text-secondary)', padding: 20 }}>Loading statistics...</p>;
 
   return (
     <div>

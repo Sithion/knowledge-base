@@ -157,8 +157,9 @@ export function InfrastructurePage() {
                   } catch {
                     // Server shuts down during uninstall — expected
                   }
-                  // Try to close the Tauri window after uninstall
+                  // Show goodbye message and try to close
                   setTimeout(() => {
+                    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#0a0a1a;color:#22c55e;font-family:sans-serif"><h2>Uninstall complete</h2><p style="color:#6b7280">You can close this window.</p></div>';
                     try { window.close(); } catch { /* ignore */ }
                   }, 2000);
                 }}
