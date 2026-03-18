@@ -11,7 +11,11 @@ Semantic knowledge management system for AI agents. Desktop app with native Olla
 
 1. Download the app from [GitHub Releases](https://github.com/Sithion/knowledge-base/releases)
 2. Open the `.dmg` (macOS) or `.AppImage` (Linux) and install
-3. The setup wizard will automatically:
+3. **macOS only:** The app is not yet code-signed. If you see "app is damaged", run:
+   ```bash
+   xattr -cr "/Applications/AI Knowledge Base.app"
+   ```
+4. The setup wizard will automatically:
    - Install Ollama (via Homebrew on macOS)
    - Create the SQLite database (`~/.ai-knowledge/knowledge.db`)
    - Pull the embedding model (`all-minilm`)

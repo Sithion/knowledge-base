@@ -116,12 +116,35 @@ jobs:
           tagName: v${{ steps.pkg-version.outputs.version }}
           releaseName: 'AI Knowledge Base v${{ steps.pkg-version.outputs.version }}'
           releaseBody: |
-            ## AI Knowledge Base Dashboard
+            ## AI Knowledge Base v${{ steps.pkg-version.outputs.version }}
 
-            Desktop app for managing your AI knowledge base.
+            Desktop app for managing your AI knowledge base with semantic search.
             Download the installer for your platform below.
 
-            **macOS:** `.dmg` file (arm64 for Apple Silicon, x64 for Intel)
-            **Linux:** `.AppImage` or `.deb` file
+            ### Downloads
+
+            | Platform | File | Architecture |
+            |----------|------|-------------|
+            | macOS (Apple Silicon) | `.dmg` | arm64 (M1/M2/M3/M4) |
+            | macOS (Intel) | `.dmg` | x86_64 |
+            | Linux | `.AppImage` | x86_64 |
+            | Linux (Debian/Ubuntu) | `.deb` | x86_64 |
+
+            ### macOS: "App is damaged" warning
+
+            This app is not yet signed with an Apple Developer certificate. macOS Gatekeeper will block it by default.
+
+            **To fix**, open Terminal and run:
+            ```bash
+            xattr -cr "/Applications/AI Knowledge Base.app"
+            ```
+            Or go to **System Settings > Privacy & Security** and click **Open Anyway**.
+
+            ### What's included
+
+            - Setup wizard (auto-installs Ollama, creates SQLite database)
+            - Dashboard with semantic search, stats, and contribution heatmap
+            - MCP server configuration for Claude Code and GitHub Copilot
+            - One-click uninstall (removes all data and configurations)
           releaseDraft: false
           prerelease: false
