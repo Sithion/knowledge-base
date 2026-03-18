@@ -80,6 +80,14 @@ async function start() {
 
   // ─── Setup endpoints ───────────────────────────────────────────
 
+  // Ensure common binary paths are available (Tauri sidecar may not inherit full shell PATH)
+  const extraPaths = ['/opt/homebrew/bin', '/usr/local/bin', resolve(homedir(), '.ollama-bin')];
+  for (const p of extraPaths) {
+    if (existsSync(p) && !process.env.PATH?.includes(p)) {
+      process.env.PATH = `${p}:${process.env.PATH}`;
+    }
+  }
+
   app.get('/api/setup/status', async () => {
     const ollamaInstalled = (() => {
       try { execSync('which ollama', { stdio: 'pipe' }); return true; } catch { return false; }
@@ -134,19 +142,50 @@ async function start() {
 
       const platform = process.platform;
       if (platform === 'darwin') {
-        // Try brew first
-        try { execSync('brew --version', { stdio: 'pipe' }); } catch {
-          // No brew — use curl
-          execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'pipe', timeout: 120000 });
-          return { success: true, message: 'Installed via curl' };
+        // macOS: use brew (no sudo needed). Curl installer requires sudo which doesn't work in app context.
+        // Ensure brew paths are in PATH (Tauri sidecar may not inherit full shell PATH)
+        const brewPaths = ['/opt/homebrew/bin', '/usr/local/bin'];
+        for (const p of brewPaths) {
+          if (existsSync(resolve(p, 'brew')) && !process.env.PATH?.includes(p)) {
+            process.env.PATH = `${p}:${process.env.PATH}`;
+          }
         }
-        execSync('brew install ollama', { stdio: 'pipe', timeout: 120000 });
-        return { success: true, message: 'Installed via Homebrew' };
+        let hasBrew = false;
+        try { execSync('brew --version', { stdio: 'pipe' }); hasBrew = true; } catch { /* no brew */ }
+
+        if (hasBrew) {
+          execSync('brew install ollama', { stdio: 'pipe', timeout: 180000 });
+          return { success: true, message: 'Installed via Homebrew' };
+        }
+
+        // No brew: try downloading the macOS zip directly
+        const ollamaDir = resolve(homedir(), '.ollama-bin');
+        mkdirSync(ollamaDir, { recursive: true });
+        try {
+          execSync(`curl -fsSL -o "${ollamaDir}/ollama" "https://ollama.com/download/ollama-darwin"`, { stdio: 'pipe', timeout: 120000 });
+          execSync(`chmod +x "${ollamaDir}/ollama"`, { stdio: 'pipe' });
+          // Add to PATH for this session
+          process.env.PATH = `${ollamaDir}:${process.env.PATH}`;
+          return { success: true, message: 'Installed to ~/.ollama-bin/' };
+        } catch {
+          return { success: false, message: 'Could not install Ollama. Please install Homebrew (brew.sh) or download Ollama from ollama.com/download' };
+        }
       } else if (platform === 'linux') {
-        execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'pipe', timeout: 120000 });
-        return { success: true, message: 'Installed via curl' };
+        // Linux: curl installer usually works (many distros don't need sudo for /usr/local/bin)
+        try {
+          execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'pipe', timeout: 180000 });
+          return { success: true, message: 'Installed via curl' };
+        } catch {
+          // Fallback: download binary directly
+          const ollamaDir = resolve(homedir(), '.ollama-bin');
+          mkdirSync(ollamaDir, { recursive: true });
+          execSync(`curl -fsSL -o "${ollamaDir}/ollama" "https://ollama.com/download/ollama-linux-amd64"`, { stdio: 'pipe', timeout: 120000 });
+          execSync(`chmod +x "${ollamaDir}/ollama"`, { stdio: 'pipe' });
+          process.env.PATH = `${ollamaDir}:${process.env.PATH}`;
+          return { success: true, message: 'Installed to ~/.ollama-bin/' };
+        }
       }
-      return { success: false, message: 'Unsupported platform' };
+      return { success: false, message: 'Unsupported platform. Download Ollama from ollama.com/download' };
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error) };
     }
@@ -160,8 +199,13 @@ async function start() {
         if (res.ok) return { success: true, message: 'Already running' };
       } catch { /* not running */ }
 
+      // Find ollama binary
+      let ollamaBin = 'ollama';
+      const ollamaLocalBin = resolve(homedir(), '.ollama-bin', 'ollama');
+      if (existsSync(ollamaLocalBin)) ollamaBin = ollamaLocalBin;
+
       // Start ollama serve in background
-      const child = spawn('ollama', ['serve'], { detached: true, stdio: 'ignore' });
+      const child = spawn(ollamaBin, ['serve'], { detached: true, stdio: 'ignore' });
       child.unref();
 
       // Wait up to 15s for it to be ready
