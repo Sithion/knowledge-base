@@ -13,6 +13,7 @@ export function InfrastructurePage() {
   const { t } = useTranslation();
   const [health, setHealth] = useState<Health | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [uninstallStep, setUninstallStep] = useState(0); // 0=hidden, 1=first confirm, 2=final confirm, 3=running
 
   const fetchHealth = useCallback(() => {
     api.getHealth().then(data => setHealth(data as Health)).catch(console.error);
@@ -100,28 +101,80 @@ export function InfrastructurePage() {
         <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: 'var(--error)', textTransform: 'uppercase', letterSpacing: 1 }}>
           Danger Zone
         </h3>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
-          This will remove all data, configurations, Ollama, and the app itself. This action cannot be undone.
-        </p>
-        <button
-          onClick={async () => {
-            if (!confirm('This will remove ALL data, configurations, and the app. Continue?')) return;
-            if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
-            setActionMessage({ type: 'success', text: 'Uninstalling... The app will close shortly.' });
-            try {
-              await api.uninstallAll();
-            } catch {
-              // Server will shut down during uninstall
-            }
-          }}
-          style={{
-            padding: '10px 20px', borderRadius: 8,
-            border: '1px solid var(--error)', backgroundColor: 'transparent',
-            color: 'var(--error)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          Uninstall Everything
-        </button>
+
+        {uninstallStep === 0 && (
+          <>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
+              Remove all data, configurations, Ollama, and the app itself.
+            </p>
+            <button
+              onClick={() => setUninstallStep(1)}
+              style={{
+                padding: '10px 20px', borderRadius: 8,
+                border: '1px solid var(--error)', backgroundColor: 'transparent',
+                color: 'var(--error)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              Uninstall Everything
+            </button>
+          </>
+        )}
+
+        {uninstallStep === 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ fontSize: 13, color: 'var(--error)', fontWeight: 600 }}>
+              This will remove ALL data, configurations, and the app. Continue?
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setUninstallStep(2)}
+                style={{ padding: '8px 16px', borderRadius: 6, border: 'none', backgroundColor: 'var(--error)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Yes, continue
+              </button>
+              <button
+                onClick={() => setUninstallStep(0)}
+                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {uninstallStep === 2 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ fontSize: 13, color: 'var(--error)', fontWeight: 600 }}>
+              Are you absolutely sure? This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={async () => {
+                  setUninstallStep(3);
+                  setActionMessage({ type: 'success', text: 'Uninstalling... The app will close shortly.' });
+                  try {
+                    await api.uninstallAll();
+                  } catch {
+                    // Server shuts down during uninstall — expected
+                  }
+                }}
+                style={{ padding: '8px 16px', borderRadius: 6, border: 'none', backgroundColor: 'var(--error)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+              >
+                Yes, uninstall everything
+              </button>
+              <button
+                onClick={() => setUninstallStep(0)}
+                style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {uninstallStep === 3 && (
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Uninstalling... The app will close shortly.</p>
+        )}
       </div>
     </div>
   );
