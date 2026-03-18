@@ -502,11 +502,11 @@ async function start() {
     const err = ensureReady(reply);
     if (err) return err;
 
+    try {
     const dbPath = resolve(INSTALL_DIR, 'knowledge.db');
     let dbSizeBytes = 0;
     try { dbSizeBytes = statSync(dbPath).size; } catch { /* ignore */ }
 
-    // Get entries grouped by date (last 30 days)
     const stats = await sdk.getStats();
 
     // Query recent entries for activity data
@@ -575,6 +575,10 @@ async function start() {
       heatmap,
       typeDistribution,
     };
+    } catch (error) {
+      reply.code(500);
+      return { error: 'Failed to load metrics', message: error instanceof Error ? error.message : String(error) };
+    }
   });
 
   app.get('/api/tags', async (_request, reply) => {

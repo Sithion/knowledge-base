@@ -157,6 +157,10 @@ export function InfrastructurePage() {
                   } catch {
                     // Server shuts down during uninstall — expected
                   }
+                  // Try to close the Tauri window after uninstall
+                  setTimeout(() => {
+                    try { window.close(); } catch { /* ignore */ }
+                  }, 2000);
                 }}
                 style={{ padding: '8px 16px', borderRadius: 6, border: 'none', backgroundColor: 'var(--error)', color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
               >
