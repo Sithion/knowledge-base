@@ -481,9 +481,9 @@ async function start() {
       return (now.getTime() - created.getTime()) < 30 * 24 * 60 * 60 * 1000;
     }).length;
 
-    // Activity by day (last 14 days)
+    // Activity by day (last 15 days) for area chart
     const activityByDay: { date: string; count: number }[] = [];
-    for (let i = 13; i >= 0; i--) {
+    for (let i = 14; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
@@ -492,6 +492,19 @@ async function start() {
         return created === dateStr;
       }).length;
       activityByDay.push({ date: dateStr, count });
+    }
+
+    // Heatmap data (last 90 days) for contribution graph
+    const heatmap: { date: string; count: number }[] = [];
+    for (let i = 89; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const count = recent.filter((e: any) => {
+        const created = new Date(e.createdAt).toISOString().split('T')[0];
+        return created === dateStr;
+      }).length;
+      heatmap.push({ date: dateStr, count });
     }
 
     // Type distribution for pie chart
@@ -515,6 +528,7 @@ async function start() {
         total: stats.total,
       },
       activityByDay,
+      heatmap,
       typeDistribution,
     };
   });

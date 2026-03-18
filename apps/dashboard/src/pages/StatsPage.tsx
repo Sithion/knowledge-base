@@ -29,6 +29,129 @@ const TYPE_COLORS: Record<string, string> = {
 
 const PIE_COLORS = ['#8b5cf6', '#3b82f6', '#22c55e', '#f59e0b', '#ef4444'];
 
+function getHeatmapColor(count: number, maxCount: number): string {
+  if (count === 0) return 'var(--bg-input)';
+  const intensity = Math.min(count / Math.max(maxCount, 1), 1);
+  if (intensity <= 0.25) return '#1e1b4b';
+  if (intensity <= 0.5) return '#4c1d95';
+  if (intensity <= 0.75) return '#7c3aed';
+  return '#8b5cf6';
+}
+
+function ContributionHeatmap({ data }: { data: { date: string; count: number }[] }) {
+  const maxCount = Math.max(...data.map(d => d.count), 1);
+
+  // Organize into weeks (columns) with days (rows, Mon-Sun)
+  const weeks: { date: string; count: number; day: number }[][] = [];
+  let currentWeek: { date: string; count: number; day: number }[] = [];
+
+  for (const item of data) {
+    const d = new Date(item.date);
+    const day = d.getDay(); // 0=Sun, 6=Sat
+
+    if (day === 0 && currentWeek.length > 0) {
+      weeks.push(currentWeek);
+      currentWeek = [];
+    }
+    currentWeek.push({ ...item, day });
+  }
+  if (currentWeek.length > 0) weeks.push(currentWeek);
+
+  // Pad first week with empty cells
+  if (weeks.length > 0) {
+    const firstDay = weeks[0][0]?.day ?? 0;
+    for (let i = 0; i < firstDay; i++) {
+      weeks[0].unshift({ date: '', count: -1, day: i });
+    }
+  }
+
+  const cellSize = 12;
+  const gap = 3;
+  const dayLabels = ['Sun', '', 'Tue', '', 'Thu', '', 'Sat'];
+
+  // Month labels
+  const monthLabels: { label: string; col: number }[] = [];
+  let lastMonth = '';
+  for (let w = 0; w < weeks.length; w++) {
+    for (const cell of weeks[w]) {
+      if (cell.date) {
+        const month = cell.date.slice(0, 7);
+        if (month !== lastMonth) {
+          const d = new Date(cell.date);
+          monthLabels.push({ label: d.toLocaleString('en', { month: 'short' }), col: w });
+          lastMonth = month;
+        }
+        break;
+      }
+    }
+  }
+
+  return (
+    <div>
+      {/* Month labels */}
+      <div style={{ display: 'flex', marginLeft: 28, marginBottom: 4, gap: 0 }}>
+        {monthLabels.map((m, i) => (
+          <span
+            key={i}
+            style={{
+              fontSize: 10,
+              color: 'var(--text-secondary)',
+              position: 'relative',
+              left: m.col * (cellSize + gap),
+            }}
+          >
+            {m.label}
+          </span>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: 0 }}>
+        {/* Day labels */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap, marginRight: 4, width: 24 }}>
+          {dayLabels.map((label, i) => (
+            <div key={i} style={{ height: cellSize, fontSize: 9, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
+              {label}
+            </div>
+          ))}
+        </div>
+
+        {/* Grid */}
+        <div style={{ display: 'flex', gap }}>
+          {weeks.map((week, wi) => (
+            <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap }}>
+              {week.map((cell, di) => (
+                <div
+                  key={di}
+                  title={cell.count >= 0 ? `${cell.date}: ${cell.count} entries` : ''}
+                  style={{
+                    width: cellSize,
+                    height: cellSize,
+                    borderRadius: 2,
+                    backgroundColor: cell.count < 0 ? 'transparent' : getHeatmapColor(cell.count, maxCount),
+                    cursor: cell.count >= 0 ? 'pointer' : 'default',
+                  }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, marginLeft: 28 }}>
+        <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginRight: 4 }}>Less</span>
+        {[0, 0.25, 0.5, 0.75, 1].map((level, i) => (
+          <div key={i} style={{
+            width: cellSize, height: cellSize, borderRadius: 2,
+            backgroundColor: level === 0 ? 'var(--bg-input)' : getHeatmapColor(level * maxCount, maxCount),
+          }} />
+        ))}
+        <span style={{ fontSize: 10, color: 'var(--text-secondary)', marginLeft: 4 }}>More</span>
+      </div>
+    </div>
+  );
+}
+
 function MetricCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
   return (
     <div style={{
@@ -133,9 +256,9 @@ export function StatsPage() {
         </div>
       </div>
 
-      {/* Activity Chart (last 14 days) */}
+      {/* Activity Chart (last 15 days) */}
       <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)', padding: 20, marginBottom: 24 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Activity (Last 14 Days)</h3>
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Activity (Last 15 Days)</h3>
         {metrics && metrics.activityByDay.some(d => d.count > 0) ? (
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={metrics.activityByDay}>
@@ -159,8 +282,14 @@ export function StatsPage() {
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>No activity in the last 14 days</p>
+          <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>No activity in the last 15 days</p>
         )}
+      </div>
+
+      {/* Contribution Heatmap (last 90 days) */}
+      <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)', padding: 20, marginBottom: 24 }}>
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16 }}>Contributions (Last 90 Days)</h3>
+        {metrics ? <ContributionHeatmap data={metrics.heatmap} /> : <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Loading...</p>}
       </div>
 
       {/* Tag Cloud */}
