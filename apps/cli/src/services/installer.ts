@@ -2,9 +2,9 @@ import { execSync, exec as execCb } from 'node:child_process';
 import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import { homedir } from 'node:os';
-import { fileURLToPath } from 'node:url';
 import * as ui from '../ui/index.js';
 import { ConfigManager } from './config-manager.js';
+import { resolveTemplatesDir } from '../utils/resolve-root.js';
 
 const execPromise = promisify(execCb);
 
@@ -336,10 +336,10 @@ export class Installer {
 
     mkdirSync(this.installDir, { recursive: true });
 
-    // Resolve templates from package directory
+    // Resolve templates: repo uses docker/ dir, npx uses bundled templates/
     const templatesDir = this.projectRoot
       ? resolve(this.projectRoot, 'docker')  // repo-based install
-      : resolve(fileURLToPath(import.meta.url), '..', '..', '..', 'templates');  // npx install
+      : resolveTemplatesDir();  // npx install — from package templates/
 
     const composeDest = resolve(this.installDir, 'docker-compose.yml');
     const initDest = resolve(this.installDir, 'init');
@@ -369,9 +369,7 @@ export class Installer {
     const home = homedir();
 
     // Resolve skill templates from package or repo
-    const skillsDir = this.projectRoot
-      ? resolve(this.projectRoot, 'apps', 'cli', 'templates', 'skills')
-      : resolve(fileURLToPath(import.meta.url), '..', '..', '..', 'templates', 'skills');
+    const skillsDir = resolve(resolveTemplatesDir(this.projectRoot), 'skills');
 
     // Claude Code: ~/.claude/skills/<name>/SKILL.md
     const claudeSkillsDir = resolve(home, '.claude', 'skills');

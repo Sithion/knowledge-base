@@ -1,9 +1,6 @@
 import { Command } from 'commander';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Uninstaller } from '../services/uninstaller.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { resolveProjectRoot } from '../utils/resolve-root.js';
 
 export const uninstallCommand = new Command('uninstall')
   .description('Remove AI Knowledge Base and clean up all configurations')
@@ -11,8 +8,7 @@ export const uninstallCommand = new Command('uninstall')
   .option('--force', 'Skip confirmation prompts')
   .action(async (options) => {
     try {
-      // Resolve project root: from src/commands/ → src/ → apps/cli/ → apps/ → root
-      const projectRoot = resolve(__dirname, '..', '..', '..', '..');
+      const projectRoot = resolveProjectRoot();
 
       const uninstaller = new Uninstaller({
         projectRoot,

@@ -1,6 +1,6 @@
 {
   "name": "@ai-knowledge/cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": false,
   "type": "module",
   "description": "CLI tool for AI Knowledge Base — semantic knowledge management for AI agents",
@@ -22,7 +22,7 @@
     "build": "tsup",
     "dev": "tsx src/index.ts",
     "clean": "rm -rf dist",
-    "test": "if find . -name '*.test.ts' -o -name '*.spec.ts' | grep -q .; then npx playwright test; else echo 'No tests found, skipping'; fi"
+    "test": "vitest run"
   },
   "dependencies": {
     "@inquirer/prompts": "latest",
@@ -38,6 +38,7 @@
     "@playwright/test": "^1.50.0",
     "tsup": "^8.5.1",
     "tsx": "^4.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.0"
   }
 }
