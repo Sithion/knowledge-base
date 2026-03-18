@@ -10,6 +10,8 @@ Every change to the installation process (`apps/cli/src/services/installer.ts`) 
 
 - [ ] Every file/directory created by install has a corresponding removal in uninstall
 - [ ] Every config injection (markers, MCP entries, skills) has a corresponding cleanup
+- [ ] Every Docker resource (container, volume, network, image) is stopped/removed
+- [ ] The `composePath` in uninstaller matches the path used by the installer to start containers
 - [ ] New installer steps are reflected in the uninstaller's `TOTAL_STEPS` count
 - [ ] Backup files (`.bak.*`) created during install/uninstall are cleaned up
 
@@ -17,11 +19,10 @@ Every change to the installation process (`apps/cli/src/services/installer.ts`) 
 
 | Installer action | Uninstaller action |
 |---|---|
-| Create `~/.ai-knowledge/` directory | Remove directory recursively |
-| Create `~/.ai-knowledge/knowledge.db` (SQLite + schema) | Removed with directory (or preserved with `--keep-data`) |
-| Install Ollama via brew/curl (if missing) | Uninstall Ollama via `brew uninstall` or remove binary (prompted) |
-| Start `ollama serve` (if not running) | Stop `ollama serve` via pkill (during uninstall) |
-| Pull embedding model via Ollama API | Remove model via `ollama rm` (prompted) |
+| Create `~/.ai-knowledge/` (compose, .env, init/) | Remove directory recursively |
+| Start containers (kb-postgres, kb-ollama, kb-dashboard) | `docker compose down` with correct compose path |
+| Create volumes (kb_pgdata, kb_ollama) | Remove with `-v` flag (unless `--keep-data`) |
+| Pull/build Docker images | `docker rmi` images |
 | Inject `~/.claude/CLAUDE.md` markers | Remove markers via `configManager.removeConfig` |
 | Inject `~/.github/copilot-instructions.md` markers | Remove markers via `configManager.removeConfig` |
 | Inject `~/.copilot/copilot-instructions.md` markers | Remove markers via `configManager.removeConfig` |
@@ -30,14 +31,6 @@ Every change to the installation process (`apps/cli/src/services/installer.ts`) 
 | Add `ai-knowledge` to `~/.copilot/mcp-config.json` | Remove entry via `configManager.removeMcpEntry` |
 | Copy Claude skills to `~/.claude/skills/ai-knowledge-*/` | Remove skill directories |
 | Copy Copilot skills to `~/.copilot/skills/ai-knowledge-*.md` | Remove skill files |
-| Download + install Tauri .app to `/Applications/` + `xattr -cr` | Remove .app from `/Applications/` |
-
-## Architecture (v0.5.0 — Docker-free + Tauri Dashboard)
-
-- **Database**: SQLite + sqlite-vec (file at `~/.ai-knowledge/knowledge.db`)
-- **Embeddings**: Ollama native (auto-installed via brew/curl)
-- **Dashboard**: Tauri desktop app (webview + Fastify sidecar) or `kb dashboard` browser fallback
-- **No Docker dependency**
 
 ## Path Resolution (Key Architecture)
 

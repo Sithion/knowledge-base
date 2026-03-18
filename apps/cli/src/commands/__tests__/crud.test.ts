@@ -130,7 +130,7 @@ describe('search command', () => {
       'how to authenticate',
       expect.objectContaining({
         limit: 10,
-        threshold: 0.3,
+        threshold: 0.7,
       })
     );
   });

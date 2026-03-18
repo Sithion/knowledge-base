@@ -29,6 +29,11 @@ describe('install command', () => {
     expect(installCommand.name()).toBe('install');
   });
 
+  it('has --no-dashboard option', () => {
+    const opt = installCommand.options.find(o => o.long === '--no-dashboard');
+    expect(opt).toBeDefined();
+  });
+
   it('has --skip-config option', () => {
     const opt = installCommand.options.find(o => o.long === '--skip-config');
     expect(opt).toBeDefined();

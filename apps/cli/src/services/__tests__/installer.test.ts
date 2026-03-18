@@ -18,7 +18,6 @@ vi.mock('../../ui/index.js', () => ({
   warn: vi.fn(),
   info: vi.fn(),
   withSpinner: vi.fn().mockImplementation((_msg: string, fn: () => Promise<void>) => fn()),
-  showSuccessBanner: vi.fn(),
 }));
 
 vi.mock('../config-manager.js', () => ({
@@ -63,6 +62,11 @@ describe('Installer', () => {
   it('defaults skipConfig to false', () => {
     const installer = new Installer({});
     expect((installer as any).skipConfig).toBe(false);
+  });
+
+  it('defaults skipDashboard to false', () => {
+    const installer = new Installer({});
+    expect((installer as any).skipDashboard).toBe(false);
   });
 
   it('defaults verbose to false', () => {
