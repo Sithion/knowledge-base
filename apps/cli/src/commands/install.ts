@@ -1,9 +1,6 @@
 import { Command } from 'commander';
-import { resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Installer } from '../services/installer.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { resolveProjectRoot } from '../utils/resolve-root.js';
 
 export const installCommand = new Command('install')
   .description('Install AI Knowledge Base with interactive wizard')
@@ -12,8 +9,7 @@ export const installCommand = new Command('install')
   .option('--verbose', 'Show full Docker and command output')
   .action(async (options) => {
     try {
-      // Resolve project root: from src/commands/ → src/ → apps/cli/ → apps/ → root
-      const projectRoot = resolve(__dirname, '..', '..', '..', '..');
+      const projectRoot = resolveProjectRoot();
 
       const installer = new Installer({
         projectRoot,
