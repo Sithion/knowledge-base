@@ -65,7 +65,7 @@ export class Uninstaller {
       );
 
       const cleanOld = await ui.confirmAction(
-        "Clean up old 'knowledge' MCP server entries (from ai-config)?",
+        "Clean up old 'knowledge' MCP server entries?",
         true
       );
 

@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Sithion/knowledge-base",
+    "url": "https://github.com/<YOUR_USERNAME>/knowledge-base",
     "directory": "apps/cli"
   },
   "main": "./dist/index.js",

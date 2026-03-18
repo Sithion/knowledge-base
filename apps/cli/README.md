@@ -51,7 +51,7 @@ Tags are vectorized with a local Ollama model (`all-minilm`), stored in PostgreS
 
 ## Links
 
-- [GitHub Repository](https://github.com/Sithion/knowledge-base)
+- [GitHub Repository](https://github.com/<YOUR_USERNAME>/knowledge-base)
 
 ## License
 

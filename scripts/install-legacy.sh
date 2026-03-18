@@ -208,7 +208,7 @@ if [ ! -f "$CLAUDE_MCP" ] || ! grep -q "ai-knowledge" "$CLAUDE_MCP" 2>/dev/null;
         "${PROJECT_ROOT}/apps/mcp-server/dist/index.js"
       ],
       "env": {
-        "DATABASE_URL": "postgresql://knowledge:knowledge_secret@localhost:${POSTGRES_PORT:-5433}/knowledge_base",
+        "DATABASE_URL": "postgresql://${POSTGRES_USER:-knowledge}:${POSTGRES_PASSWORD:-knowledge_secret}@localhost:${POSTGRES_PORT:-5433}/${POSTGRES_DB:-knowledge_base}",
         "OLLAMA_HOST": "http://localhost:${OLLAMA_PORT:-11435}",
         "OLLAMA_MODEL": "${OLLAMA_MODEL:-all-minilm}",
         "EMBEDDING_DIMENSIONS": "${EMBEDDING_DIMENSIONS:-384}"

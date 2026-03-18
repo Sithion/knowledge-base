@@ -62,7 +62,7 @@ services:
       - kb-network
 
   dashboard:
-    image: ghcr.io/sithion/kb-dashboard:latest
+    image: ghcr.io/<YOUR_USERNAME>/kb-dashboard:latest
     container_name: kb-dashboard
     restart: unless-stopped
     profiles:

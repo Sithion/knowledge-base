@@ -30,7 +30,7 @@ export function resolvePackageRoot(startDir?: string): string {
 
   throw new Error(
     'Could not find @ai-knowledge/cli package root. ' +
-    'This is a bug — please report it at https://github.com/Sithion/knowledge-base/issues'
+    'This is a bug — please report it at https://github.com/<YOUR_USERNAME>/knowledge-base/issues'
   );
 }
 
