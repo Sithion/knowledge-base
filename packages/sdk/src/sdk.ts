@@ -171,6 +171,16 @@ export class KnowledgeSDK {
     }
   }
 
+  getOperationCounts() {
+    this.ensureInitialized();
+    return this.service!.getOperationCounts();
+  }
+
+  cleanupOldOperations() {
+    if (!this.initialized || !this.service) return 0;
+    return this.service!.cleanupOldOperations();
+  }
+
   async healthCheck(): Promise<HealthStatus> {
     const ollamaHealth = await checkOllamaHealth(this.ollamaClient);
 

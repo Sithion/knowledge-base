@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client.js';
+import { triggerUpdateCheck, onUpdateState } from '../components/UpdateChecker.js';
 
 interface Health {
   database: { connected: boolean; path?: string; error?: string };
@@ -9,11 +10,34 @@ interface Health {
 
 const POLL_INTERVAL = 5000;
 
-export function MonitoringPage() {
-  const { t } = useTranslation();
+const languages = [
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
+  { code: 'pt', label: 'Português (BR)' },
+];
+
+export function SettingsPage() {
+  const { t, i18n } = useTranslation();
   const [health, setHealth] = useState<Health | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [uninstallStep, setUninstallStep] = useState(0); // 0=hidden, 1=first confirm, 2=final confirm, 3=running
+  const [uninstallStep, setUninstallStep] = useState(0);
+  const [updateState, setUpdateState] = useState<string>('idle');
+  const [checkResult, setCheckResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    return onUpdateState((state) => {
+      setUpdateState(prev => {
+        if (state === 'idle' && prev === 'checking') {
+          setCheckResult('upToDate');
+          setTimeout(() => setCheckResult(null), 3000);
+        } else if (state === 'available') {
+          setCheckResult('available');
+          setTimeout(() => setCheckResult(null), 3000);
+        }
+        return state;
+      });
+    });
+  }, []);
 
   const fetchHealth = useCallback(() => {
     api.getHealth().then(data => setHealth(data as Health)).catch(console.error);
@@ -48,6 +72,11 @@ export function MonitoringPage() {
     <div>
       <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{t('monitoring.title')}</h1>
       <p style={{ color: 'var(--text-secondary)', fontSize: 13, marginBottom: 24 }}>{t('monitoring.subtitle')}</p>
+
+      {/* ── Infrastructure Monitoring Section ── */}
+      <h2 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-secondary)', marginBottom: 16 }}>
+        {t('monitoring.infraSection')}
+      </h2>
 
       {/* Service Status Cards */}
       {health ? (
@@ -92,16 +121,72 @@ export function MonitoringPage() {
         </div>
       )}
 
-      {/* Danger Zone */}
+      {/* ── Updates Section ── */}
+      <div style={{ borderTop: '1px solid var(--border)', marginTop: 32, paddingTop: 24 }}>
+        <h2 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-secondary)', marginBottom: 16 }}>
+          {t('update.section')}
+        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => { setCheckResult(null); triggerUpdateCheck(); }}
+            disabled={updateState === 'checking'}
+            style={{
+              padding: '8px 16px', borderRadius: 6,
+              border: '1px solid var(--border)', backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-primary)', fontSize: 13, fontWeight: 600,
+              cursor: updateState === 'checking' ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}
+          >
+            {updateState === 'checking' ? (
+              <>
+                <span style={{ width: 12, height: 12, border: '2px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                {t('update.checking')}
+              </>
+            ) : (
+              t('update.check')
+            )}
+          </button>
+          {checkResult === 'upToDate' && <span style={{ fontSize: 13, color: 'var(--success)' }}>{t('update.upToDate')}</span>}
+          {checkResult === 'available' && <span style={{ fontSize: 13, color: 'var(--accent)' }}>{t('update.available')}</span>}
+        </div>
+      </div>
+
+      {/* ── Language Section ── */}
+      <div style={{ borderTop: '1px solid var(--border)', marginTop: 32, paddingTop: 24 }}>
+        <h2 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-secondary)', marginBottom: 16 }}>
+          {t('settings.language')}
+        </h2>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {languages.map((lang) => (
+            <button
+              key={lang.code}
+              onClick={() => i18n.changeLanguage(lang.code)}
+              style={{
+                padding: '8px 16px', borderRadius: 6,
+                border: i18n.language === lang.code ? '1px solid var(--accent)' : '1px solid var(--border)',
+                backgroundColor: i18n.language === lang.code ? 'var(--accent)' : 'var(--bg-card)',
+                color: i18n.language === lang.code ? '#fff' : 'var(--text-primary)',
+                cursor: 'pointer', fontSize: 13, fontWeight: 500,
+              }}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Uninstall Section ── */}
+      <div style={{ borderTop: '1px solid var(--border)', marginTop: 32, paddingTop: 24 }}>
+      <h2 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--error)', marginBottom: 16 }}>
+        Danger Zone
+      </h2>
+
       <div style={{
         backgroundColor: 'var(--bg-card)', borderRadius: 10,
-        border: '1px solid var(--error)', padding: 20, marginTop: 24,
+        border: '1px solid var(--error)', padding: 20,
         opacity: 0.8,
       }}>
-        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, color: 'var(--error)', textTransform: 'uppercase', letterSpacing: 1 }}>
-          Danger Zone
-        </h3>
-
         {uninstallStep === 0 && (
           <>
             <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>
@@ -180,6 +265,7 @@ export function MonitoringPage() {
         {uninstallStep === 3 && (
           <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Uninstalling... The app will close shortly.</p>
         )}
+      </div>
       </div>
     </div>
   );

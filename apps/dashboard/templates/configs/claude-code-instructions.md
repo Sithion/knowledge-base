@@ -33,6 +33,10 @@
 
 5. **All knowledge entries MUST be in English** — regardless of conversation language.
 
+6. **Manage knowledge, don't duplicate** — if a query returns an existing entry and your work updates that topic, use `updateKnowledge(id, ...)` instead of creating a new entry. Only use `addKnowledge` for genuinely new knowledge.
+
+7. **Only store high-value knowledge** — capture hard-won insights, non-obvious gotchas, project-specific decisions, and architectural constraints. Do NOT store trivial fixes, standard API docs, or anything a web search answers in 30 seconds.
+
 ### Quick Reference
 
 | Tool | Required Params | When |
@@ -42,6 +46,7 @@
 | `updateKnowledge` | `id` + fields to update | When existing knowledge is stale |
 | `deleteKnowledge` | `id` | When knowledge is wrong or obsolete |
 | `listTags` | (none) | To discover existing tag taxonomy |
+| `healthCheck` | (none) | To verify database and Ollama connectivity |
 
 ### When to Capture
 
@@ -58,4 +63,10 @@
 1. **Knowledge base** (`getKnowledge`) — always first
 2. **Project codebase** — files, patterns, existing code
 3. **Web search** — only if knowledge base and codebase insufficient
+
+### Hooks (automatic enforcement)
+
+- **PreToolUse hook**: Fires before Edit, Write, Bash, MultiEdit, Agent, NotebookEdit — reminds you to query first
+- **Stop hook**: Fires at session end — reminds you to capture knowledge before finishing
+- These hooks are non-blocking reminders. If you already queried, proceed normally.
 <!-- AI-KNOWLEDGE:END -->

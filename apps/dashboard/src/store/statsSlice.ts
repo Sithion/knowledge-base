@@ -15,6 +15,7 @@ interface Metrics {
   activityByDay: { date: string; count: number }[];
   heatmap: { date: string; count: number }[];
   typeDistribution: { name: string; value: number }[];
+  operations: { readsLastHour: number; readsLastDay: number; writesLastHour: number; writesLastDay: number };
 }
 
 type LoadState = 'idle' | 'loading' | 'loaded' | 'empty' | 'error';

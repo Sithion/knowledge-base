@@ -61,5 +61,13 @@ function ensureSchema(sqlite: BetterSqlite3.Database): void {
     );
     CREATE INDEX IF NOT EXISTS idx_type ON knowledge_entries(type);
     CREATE INDEX IF NOT EXISTS idx_scope ON knowledge_entries(scope);
+
+    CREATE TABLE IF NOT EXISTS operations_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      operation TEXT NOT NULL CHECK(operation IN ('read', 'write')),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_ops_created_at ON operations_log(created_at);
+    CREATE INDEX IF NOT EXISTS idx_ops_operation ON operations_log(operation);
   `);
 }

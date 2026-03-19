@@ -34,6 +34,10 @@
 
 5. **All knowledge entries MUST be in English** — regardless of conversation language.
 
+6. **Manage knowledge, don't duplicate** — if a query returns an existing entry and your work updates that topic, use `updateKnowledge(id, ...)` instead of creating a new entry. Only use `addKnowledge` for genuinely new knowledge.
+
+7. **Only store high-value knowledge** — capture hard-won insights, non-obvious gotchas, project-specific decisions, and architectural constraints. Do NOT store trivial fixes, standard API docs, or anything a web search answers in 30 seconds.
+
 ### Quick Reference
 
 | Tool | Required Params | When |
@@ -43,6 +47,7 @@
 | `updateKnowledge` | `id` + fields to update | When existing knowledge is stale |
 | `deleteKnowledge` | `id` | When knowledge is wrong or obsolete |
 | `listTags` | (none) | To discover existing tag taxonomy |
+| `healthCheck` | (none) | To verify database and Ollama connectivity |
 
 ### When to Capture
 

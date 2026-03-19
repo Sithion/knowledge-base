@@ -153,10 +153,10 @@ function MetricCard({
 function getHeatmapColor(count: number, maxCount: number): string {
   if (count === 0) return 'var(--bg-input)';
   const intensity = Math.min(count / Math.max(maxCount, 1), 1);
-  if (intensity <= 0.25) return '#1e1b4b';
-  if (intensity <= 0.5) return '#4c1d95';
-  if (intensity <= 0.75) return '#7c3aed';
-  return '#8b5cf6';
+  if (intensity <= 0.25) return '#0e4429';
+  if (intensity <= 0.5) return '#006d32';
+  if (intensity <= 0.75) return '#26a641';
+  return '#39d353';
 }
 
 function ContributionHeatmap({ data }: { data: { date: string; count: number }[] }) {
@@ -313,7 +313,7 @@ function TypeDistribution({ data }: { data: { name: string; value: number }[] })
                   <Cell key={entry.name} fill={TYPE_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)' }} />
+              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} itemStyle={{ color: 'var(--text-primary)' }} labelStyle={{ color: 'var(--text-secondary)' }} />
             </PieChart>
           </ResponsiveContainer>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -364,7 +364,7 @@ function ScopeDistribution({ data }: { data: { scope: string; count: number }[] 
                   <Cell key={entry.name} fill={SCOPE_COLORS[i % SCOPE_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)' }} />
+              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} itemStyle={{ color: 'var(--text-primary)' }} labelStyle={{ color: 'var(--text-secondary)' }} />
             </PieChart>
           </ResponsiveContainer>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -410,7 +410,7 @@ function TopTagsChart({ data }: { data: { tag: string; count: number }[] }) {
           <BarChart data={data} layout="vertical" margin={{ left: 60 }}>
             <XAxis type="number" hide />
             <YAxis type="category" dataKey="tag" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} width={80} />
-            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)' }} />
+            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} itemStyle={{ color: 'var(--text-primary)' }} labelStyle={{ color: 'var(--text-secondary)' }} />
             <Bar dataKey="count" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={16} />
           </BarChart>
         </ResponsiveContainer>
@@ -452,7 +452,7 @@ export function StatsPage() {
 
   const [topTags, setTopTags] = useState<{ tag: string; count: number }[]>([]);
   const [cleaning, setCleaning] = useState(false);
-  const [cleanResult, setCleanResult] = useState<string | null>(null);
+
 
   const loadTopTags = useCallback(() => {
     api.getTopTags(10).then(setTopTags).catch(() => {});
@@ -586,30 +586,37 @@ export function StatsPage() {
           <button
             onClick={async () => {
               setCleaning(true);
-              setCleanResult(null);
               try {
-                const result = await api.cleanupDatabase();
-                setCleanResult(result.orphansRemoved > 0 ? `${result.orphansRemoved} cleaned` : t('stats.cacheClean'));
+                await api.cleanupDatabase();
                 refreshAll();
-              } catch { setCleanResult('Error'); }
+              } catch { /* silent */ }
               setCleaning(false);
-              setTimeout(() => setCleanResult(null), 3000);
             }}
             disabled={cleaning}
+            title={t('stats.cleanTooltip')}
             style={{
               position: 'absolute', top: 8, right: 8,
-              padding: '3px 8px', fontSize: 10, fontWeight: 600,
-              backgroundColor: cleanResult ? 'var(--success)' : 'var(--bg-input)',
-              color: cleanResult ? '#fff' : 'var(--text-secondary)',
-              border: '1px solid var(--border)', borderRadius: 4,
+              padding: '4px 6px', fontSize: 12,
+              backgroundColor: 'transparent',
+              color: 'var(--text-secondary)',
+              border: 'none', borderRadius: 4,
               cursor: cleaning ? 'not-allowed' : 'pointer',
-              opacity: cleaning ? 0.5 : 1,
+              opacity: cleaning ? 0.5 : 0.6,
               transition: 'all 0.2s',
+              lineHeight: 1,
             }}
           >
-            {cleaning ? '...' : cleanResult ?? t('stats.cleanCache')}
+            {cleaning ? <span style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid var(--text-secondary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} /> : '🗑'}
           </button>
         </div>
+      </div>
+
+      {/* ── Operations Row ── */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+        <MetricCard label={t('stats.reads1h')} value={metrics?.operations?.readsLastHour ?? 0} sub={t('stats.searches')} />
+        <MetricCard label={t('stats.reads24h')} value={metrics?.operations?.readsLastDay ?? 0} sub={t('stats.searches')} />
+        <MetricCard label={t('stats.writes1h')} value={metrics?.operations?.writesLastHour ?? 0} sub={t('stats.mutations')} />
+        <MetricCard label={t('stats.writes24h')} value={metrics?.operations?.writesLastDay ?? 0} sub={t('stats.mutations')} />
       </div>
 
       {/* ── Charts Row ── */}
@@ -657,8 +664,9 @@ export function StatsPage() {
                   border: '1px solid var(--border)',
                   borderRadius: 8,
                   fontSize: 12,
-                  color: 'var(--text-primary)',
                 }}
+                itemStyle={{ color: 'var(--text-primary)' }}
+                labelStyle={{ color: 'var(--text-secondary)' }}
                 labelFormatter={(v) => `Date: ${v}`}
               />
               <Area

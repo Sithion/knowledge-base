@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse hook: Reminds the agent to query the knowledge base before
-# performing write/execute actions. Non-blocking — only adds a systemMessage.
+# performing write/execute actions. Includes a lightweight health check.
+# Non-blocking — only adds a systemMessage.
 
 set -euo pipefail
 
@@ -16,10 +17,37 @@ case "$TOOL_NAME" in
     ;;
 esac
 
-# Remind the agent to query first
-cat <<'EOF'
+# Quick health check: verify MCP server is reachable
+# Try to connect to the knowledge DB — if it fails, warn instead of blocking
+SQLITE_PATH="${SQLITE_PATH:-$HOME/.ai-knowledge/knowledge.db}"
+if [ ! -f "$SQLITE_PATH" ]; then
+  cat <<'EOF'
 {
-  "systemMessage": "[AI Knowledge] MANDATORY: You must call mcp__ai-knowledge__getKnowledge() BEFORE making changes. Query the knowledge base first to check for existing patterns, decisions, and fixes. A single query costs ~30 tokens — a missed cache hit wastes thousands on redundant work."
+  "systemMessage": "[AI Knowledge] WARNING: Knowledge database not found. Run the setup wizard in the AI Knowledge Base app to initialize the database."
+}
+EOF
+  exit 0
+fi
+
+# Build contextual reminder based on the tool being used
+case "$TOOL_NAME" in
+  Edit|MultiEdit|Write|NotebookEdit)
+    ACTION="editing files"
+    ;;
+  Bash)
+    ACTION="running commands"
+    ;;
+  Agent)
+    ACTION="delegating to a sub-agent"
+    ;;
+  *)
+    ACTION="making changes"
+    ;;
+esac
+
+cat <<EOF
+{
+  "systemMessage": "[AI Knowledge] MANDATORY: You are about to start ${ACTION} (${TOOL_NAME}). Have you queried mcp__ai-knowledge__getKnowledge() first? Check for existing patterns, decisions, and fixes before proceeding. A single query costs ~30 tokens — a missed cache hit wastes thousands on redundant work."
 }
 EOF
 
