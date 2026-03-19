@@ -1,0 +1,137 @@
+# Setup Wizard & Uninstall
+
+## Setup Wizard
+
+### Overview
+
+The setup wizard runs on first launch and installs all dependencies automatically. It is implemented as a React page (`SetupPage`) that calls Fastify API endpoints sequentially.
+
+**Frontend:** `apps/dashboard/src/pages/SetupPage.tsx`
+**Backend:** `apps/dashboard/server/index.ts` (setup routes)
+
+### Steps
+
+| # | Step | API Endpoint | What It Does |
+|---|------|-------------|-------------|
+| 1 | Node.js | `POST /api/setup/node` | Detect or install Node.js v20 via nvm |
+| 2 | Ollama | `POST /api/setup/ollama` | Install Ollama via brew (macOS) or curl (Linux) |
+| 3 | Start Ollama | `POST /api/setup/ollama-start` | Spawn `ollama serve` as background daemon, wait 15s |
+| 4 | Database | `POST /api/setup/database` | Create `~/.ai-knowledge/knowledge.db` with schema + indices |
+| 5 | Model | `POST /api/setup/model` | Pull `all-minilm` embedding model via Ollama API |
+| 6 | Configure | `POST /api/setup/configure` | Inject MCP configs, instructions, and skills |
+| 7 | Complete | `POST /api/setup/complete` | Finalize setup, re-initialize SDK |
+
+### Status Check
+
+`GET /api/setup/status` returns the current state of each component:
+
+```json
+{
+  "node": true,
+  "ollama": true,
+  "database": true,
+  "model": true,
+  "mcpConfig": true,
+  "sdkReady": true
+}
+```
+
+The app checks this on every launch. If all components are ready, it skips the wizard and shows the dashboard directly.
+
+### Step UI States
+
+Each step displays one of four states:
+- Pending (not started)
+- Running (in progress, with spinner)
+- Done (green checkmark)
+- Error (red X with retry button)
+
+### Ollama Installation Details
+
+**macOS:**
+```bash
+brew install ollama
+```
+
+**Linux:**
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+**Fallback (both platforms):**
+If brew/curl fails, downloads the Ollama binary directly to `~/.ollama-bin/` and adds it to PATH.
+
+### Model Pull
+
+Uses Ollama's HTTP API with streaming progress:
+
+```
+POST http://localhost:11434/api/pull
+Body: { "name": "all-minilm", "stream": true }
+```
+
+The `all-minilm` model is ~23MB and takes 5-15 seconds to download.
+
+### Configure Step Details
+
+The configure step performs multiple actions:
+
+1. **Inject CLAUDE.md markers** — Adds knowledge-first protocol instructions
+2. **Inject copilot-instructions.md markers** — Same for Copilot
+3. **Add MCP entries** — Adds `ai-knowledge` to all client configs:
+   - `~/.claude/mcp-config.json`
+   - `~/.claude.json`
+   - `~/.copilot/mcp-config.json`
+   - `~/.config/opencode/opencode.json`
+4. **Copy skills** — Installs AI skills for Claude Code and Copilot
+
+---
+
+## Uninstall
+
+### Overview
+
+The uninstall feature is accessed via the Infrastructure page. It performs a complete teardown of all installed components, then self-deletes the application.
+
+**Endpoint:** `POST /api/uninstall`
+**Frontend:** `apps/dashboard/src/pages/InfrastructurePage.tsx` (Danger Zone section)
+
+### Safety: 3-Step Confirmation
+
+The uninstall button requires a 3-step confirmation to prevent accidental data loss:
+
+1. Click "Uninstall Everything" → shows confirmation dialog
+2. Type confirmation text → enables confirm button
+3. Click confirm → starts uninstall
+
+### Uninstall Steps
+
+| # | Action | Details |
+|---|--------|---------|
+| 1 | Remove instruction markers | Delete `AI-KNOWLEDGE:BEGIN/END` blocks from CLAUDE.md, copilot-instructions.md |
+| 2 | Remove MCP entries | Delete `ai-knowledge` from all `mcpServers`/`mcp` configs |
+| 3 | Remove skills | Delete `~/.claude/skills/ai-knowledge-*/` directories and `~/.copilot/skills/ai-knowledge-*.md` files |
+| 4 | Uninstall Ollama model | `ollama rm all-minilm` |
+| 5 | Uninstall Ollama binary | `brew uninstall ollama` (macOS) or remove binary (Linux) |
+| 6 | Close SDK | Gracefully close database connections |
+| 7 | Remove data directory | `rm -rf ~/.ai-knowledge/` (database + WAL files) |
+| 8 | Clean backup files | Remove `*.bak.*` files created during config injection |
+| 9 | Self-delete app | `setTimeout` → remove app from `/Applications/` (macOS) or `~/.local/bin/` (Linux) |
+
+### Setup/Uninstall Symmetry Rule
+
+Every resource created by setup **must** be removed by uninstall. This is a mandatory architectural constraint documented in `CLAUDE.md`:
+
+| Setup Creates | Uninstall Removes |
+|---------------|-------------------|
+| `~/.ai-knowledge/` directory | Remove recursively |
+| `knowledge.db` (SQLite) | Removed with directory |
+| Ollama via brew/curl | Uninstall via brew or remove binary |
+| `ollama serve` process | Stop via `pkill` |
+| `all-minilm` model | Remove via `ollama rm` |
+| CLAUDE.md markers | Remove via ConfigManager |
+| copilot-instructions.md markers | Remove via ConfigManager |
+| MCP config entries (4 files) | Remove via ConfigManager |
+| Claude skills directories | Remove directories |
+| Copilot skill files | Remove files |
+| App in /Applications/ | Self-delete via rmSync |

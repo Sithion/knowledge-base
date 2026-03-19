@@ -1,17 +1,13 @@
 {
   "name": "@ai-knowledge/mcp-server",
-
-  "version": "0.7.3",
-
-  "version": "0.7.3",
-
+  "version": "0.7.4",
   "private": false,
   "type": "module",
   "description": "MCP server for AI Knowledge Base — integrates with Claude Code and GitHub Copilot",
-  "license": "MIT",
+  "license": "BUSL-1.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Sithion/knowledge-base",
+    "url": "https://github.com/Sithion/ai-knowledge",
     "directory": "apps/mcp-server"
   },
   "main": "./dist/index.js",

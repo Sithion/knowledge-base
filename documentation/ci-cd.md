@@ -1,90 +1,131 @@
-# CI/CD and Publishing
+# CI/CD Pipeline
 
 ## Overview
 
-The project uses GitHub Actions for building, testing, and publishing. Two workflows:
+The project uses **GitHub Actions** with two workflows:
 
-1. **CI** (`ci.yml`) — Runs on pull requests to `main`
-2. **Publish** (`publish.yml`) — Runs on push to `main` (after merge)
+1. **CI** (`ci.yml`) — Validates pull requests
+2. **Publish** (`publish.yml`) — Releases to npm and GitHub Releases on merge to main
 
 ## CI Workflow
 
+**File:** `.github/workflows/ci.yml`
 **Trigger:** Pull requests to `main`
 
-**Steps:**
-1. Setup pnpm (version from `packageManager` field in `package.json`)
+```
+Steps:
+1. Setup pnpm (version from packageManager field)
 2. Setup Node.js 20
-3. `pnpm install --frozen-lockfile`
-4. `pnpm build` (all workspace packages via Turborepo)
-5. `pnpm test`
-6. Validate MCP server package (`npm publish --dry-run`)
+3. pnpm install --frozen-lockfile
+4. pnpm build (all workspace packages via Turborepo)
+5. pnpm test
+6. npm publish --dry-run (validate MCP server package)
+```
 
 ## Publish Workflow
 
+**File:** `.github/workflows/publish.yml`
 **Trigger:** Push to `main` affecting `apps/**`, `packages/**`, `.github/workflows/**`, or `pnpm-lock.yaml`. Also supports `workflow_dispatch` for manual runs.
 
-Two jobs run **in parallel**:
+Three jobs run in sequence:
 
 ### Job 1: publish-mcp
 
 Publishes `@ai-knowledge/mcp-server` to npm.
 
-**Steps:**
+```
+Steps:
 1. Build all packages
 2. Run tests
-3. Check if version already exists on npm
-4. If new version: `npm publish --provenance --access public`
+3. Check if version exists on npm (npm view)
+4. If new version → npm publish --provenance --access public
+```
 
-**Bundling:** The MCP server uses **tsup** to bundle all workspace packages (`@ai-knowledge/sdk`, `core`, `embeddings`, `shared`) inline. Only native dependencies (`better-sqlite3`, `sqlite-vec`, `drizzle-orm`) and npm packages (`@modelcontextprotocol/sdk`, `zod`) remain external.
+The `--provenance` flag enables npm provenance attestation, linking the published package to this GitHub repository.
 
-### Job 2: publish-tauri
+### Job 2: create-release
 
-Builds the Tauri desktop app for 3 platforms:
+Creates a GitHub Release with release notes.
+
+```
+Steps:
+1. Read version from apps/dashboard/package.json
+2. Check if release v{version} already exists
+3. If not → create release with:
+   - Download table (macOS arm64, macOS x64, Linux)
+   - macOS gatekeeper workaround instructions
+   - Feature highlights
+```
+
+### Job 3: publish-tauri
+
+Builds desktop binaries for 3 platform targets:
 
 | Platform | Runner | Target | Output |
 |----------|--------|--------|--------|
-| macOS (Apple Silicon) | `macos-latest` | `aarch64-apple-darwin` | `.dmg` |
-| macOS (Intel) | `macos-13` | `x86_64-apple-darwin` | `.dmg` |
+| macOS (Apple Silicon) | `macos-14` | `aarch64-apple-darwin` | `.dmg` |
+| macOS (Intel) | `macos-14` | `x86_64-apple-darwin` | `.dmg` |
 | Linux | `ubuntu-22.04` | `x86_64-unknown-linux-gnu` | `.AppImage`, `.deb` |
 
-**Steps:**
+```
+Steps per platform:
 1. Install system deps (Linux: webkit2gtk, appindicator, etc.)
-2. Install Rust stable
-3. Build monorepo (`pnpm turbo build --filter=@ai-knowledge/dashboard`)
-4. Bundle Fastify sidecar
-5. Build Tauri app → upload to GitHub Releases
+2. Install Rust stable toolchain
+3. Setup pnpm + Node.js 20
+4. pnpm install --frozen-lockfile
+5. pnpm turbo build --filter=@ai-knowledge/dashboard
+6. Bundle sidecar (node scripts/bundle-sidecar.mjs)
+7. tauri-action → build + upload to GitHub Release
+```
 
-The release tag is auto-generated from `apps/dashboard/package.json` version.
+Binaries are signed with `TAURI_SIGNING_PRIVATE_KEY` for auto-update verification.
+
+## Secrets
+
+| Secret | Used By | Purpose |
+|--------|---------|---------|
+| `NPM_TOKEN` | publish-mcp | npm publish authentication |
+| `GITHUB_TOKEN` | create-release, publish-tauri | Auto-provided, creates releases |
+| `TAURI_SIGNING_PRIVATE_KEY` | publish-tauri | Sign binaries for auto-update |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | publish-tauri | Key password (empty if unset) |
 
 ## Version Management
 
-**To release a new version:**
+### Bumping Versions
 
-1. Bump version in `apps/mcp-server/package.json` (for npm) and/or `apps/dashboard/package.json` (for app)
-2. Merge to `main`
-3. Publish workflow runs automatically
+Use the version bump script:
 
-The workflow checks npm registry before publishing — if version exists, publish is skipped (idempotent).
+```bash
+pnpm bump 0.8.0
+```
 
-## Authentication
+This updates:
+- All 8 `package.json` files (root + apps + packages)
+- `apps/dashboard/src-tauri/Cargo.toml`
+- `LICENSE` (Licensed Work version)
 
-- **NPM_TOKEN** — Required for npm publish. Set as GitHub Actions secret.
-- **GITHUB_TOKEN** — Auto-provided. Used by tauri-action to create releases.
+### Release Flow
 
-## Branch Protection
+```
+1. pnpm bump <version>
+2. Commit + push to feature branch
+3. Open PR → CI validates
+4. Merge to main → Publish workflow:
+   a. npm publish (if version is new)
+   b. Create GitHub Release
+   c. Build + upload binaries (macOS dmg, Linux AppImage/deb)
+```
 
-| Rule | Value |
-|------|-------|
-| CI required | `build-and-test` must pass |
-| Reviews required | 1 (code owner) |
-| Code owners | `@Sithion` (via `.github/CODEOWNERS`) |
-| Enforce admins | Yes |
-| Force push | Blocked |
+### Idempotent Publishing
+
+Both npm publish and GitHub Release creation check if the version already exists before attempting to create. Re-running the workflow on the same version is safe — it will skip already-published artifacts.
 
 ## Related Files
 
-- **CI:** `.github/workflows/ci.yml`
-- **Publish:** `.github/workflows/publish.yml`
-- **Code Owners:** `.github/CODEOWNERS`
-- **MCP Bundler:** `apps/mcp-server/tsup.config.ts`
-- **Sidecar Bundler:** `apps/dashboard/scripts/bundle-sidecar.mjs`
+| File | Purpose |
+|------|---------|
+| `.github/workflows/ci.yml` | PR validation |
+| `.github/workflows/publish.yml` | Release pipeline |
+| `apps/mcp-server/tsup.config.ts` | MCP server bundler config |
+| `apps/dashboard/scripts/bundle-sidecar.mjs` | Sidecar preparation for Tauri build |
+| `scripts/bump-version.sh` | Cross-package version bump |
