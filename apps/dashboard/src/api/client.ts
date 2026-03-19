@@ -88,6 +88,7 @@ export const api = {
     database: { sizeBytes: number; sizeFormatted: string; path: string };
     activity: { last24h: number; last7d: number; last30d: number; total: number };
     activityByDay: { date: string; count: number }[];
+    operationsByDay: { date: string; reads: number; writes: number }[];
     heatmap: { date: string; count: number }[];
     typeDistribution: { name: string; value: number }[];
     operations: { readsLastHour: number; readsLastDay: number; writesLastHour: number; writesLastDay: number };
@@ -96,6 +97,9 @@ export const api = {
   getHealth: () => request('/api/health'),
 
   // Plans
+  createPlan: (data: { title: string; content: string; tags?: string[]; scope?: string; source?: string; tasks?: { description: string; priority?: string }[] }) =>
+    request('/api/plans', { method: 'POST', body: JSON.stringify(data) }),
+
   listPlans: (limit = 20, status?: string) => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (status) params.set('status', status);
