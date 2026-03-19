@@ -68,6 +68,18 @@ mcp__ai-knowledge__addKnowledge({
 - **Be concise but complete** — full context without re-investigation needed
 - **All entries in English** — regardless of user language preference
 
+## What NOT to Capture
+
+Only store knowledge that **saves significant time in future sessions**. Do NOT capture:
+
+- **Publicly documented facts** — standard API docs, language syntax, framework basics
+- **Trivial fixes** — typos, missing imports, simple syntax errors
+- **Temporary state** — work-in-progress notes, current debugging status
+
+**DO capture**: hard-won insights, project-specific decisions, non-obvious gotchas, cross-session architectural context.
+
+**Rule of thumb**: If a web search answers it in 30 seconds, don't store it. If it took 5+ minutes of investigation, store it.
+
 ## Update Existing Knowledge, Don't Duplicate
 
 **CRITICAL**: Before calling `addKnowledge`, check if a related entry already exists from your initial query:
