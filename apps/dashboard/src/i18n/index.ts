@@ -107,7 +107,6 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
-// Persist language changes
 i18n.on('languageChanged', (lng) => {
   localStorage.setItem(LANG_KEY, lng);
 });
