@@ -82,6 +82,17 @@ mcp__ai-knowledge__addKnowledge({
 - **Be concise but complete** — one entry should give full context without re-investigation
 - **All entries in English** — regardless of user language preference
 
+## Update Existing Knowledge, Don't Duplicate
+
+**CRITICAL**: Knowledge must be managed, not just accumulated. Before calling `addKnowledge`:
+
+1. **Check if a related entry already exists** — did your initial `getKnowledge` query return something relevant?
+2. If yes → **UPDATE it** with `mcp__ai-knowledge__updateKnowledge(id, { content, tags })` instead of creating a new entry
+3. If the existing entry is wrong or obsolete → **DELETE it** with `mcp__ai-knowledge__deleteKnowledge(id)` and create a fresh one
+4. Only **ADD** when the knowledge is genuinely new — no existing entry covers the topic
+
+Duplicates pollute search results and waste tokens on redundant entries. One well-maintained entry is worth more than three stale duplicates.
+
 ## Scope Guidelines
 
 | Scope | When |

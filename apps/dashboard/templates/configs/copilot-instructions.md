@@ -34,6 +34,8 @@
 
 5. **All knowledge entries MUST be in English** — regardless of conversation language.
 
+6. **Manage knowledge, don't duplicate** — if a query returns an existing entry and your work updates that topic, use `updateKnowledge(id, ...)` instead of creating a new entry. Only use `addKnowledge` for genuinely new knowledge.
+
 ### Quick Reference
 
 | Tool | Required Params | When |

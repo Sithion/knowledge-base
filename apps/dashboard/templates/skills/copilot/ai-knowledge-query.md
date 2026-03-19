@@ -49,6 +49,14 @@ mcp__ai-knowledge__getKnowledge(query: "React form validation approach")
 - **Capture what you learn** — after completing your task, store new findings using `mcp__ai-knowledge__addKnowledge`
 - **Never skip** — no task is "too simple" or "too obvious" to query first
 
+## Knowledge Management: Update, Don't Duplicate
+
+Knowledge must be **managed**, not just accumulated. When a query returns an existing entry and your work produces updated information about the same topic:
+
+- **UPDATE the existing entry** using `mcp__ai-knowledge__updateKnowledge(id, ...)` — do NOT create a new one
+- **DELETE obsolete entries** using `mcp__ai-knowledge__deleteKnowledge(id)` if the knowledge is no longer valid
+- **Only ADD new entries** when the knowledge is genuinely new (no existing entry covers the topic)
+
 ## Other Available Tools
 
 | Tool | Purpose |
