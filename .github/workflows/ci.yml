@@ -24,6 +24,9 @@ jobs:
       - name: Validate MCP server package
         run: cd apps/mcp-server && npm publish --dry-run --access public 2>&1
 
+      - name: Bundle sidecar server
+        run: cd apps/dashboard && npx tsup --config tsup.sidecar.ts
+
       - name: Smoke test dashboard server
         run: |
           DASHBOARD_DIST_PATH=$PWD/apps/dashboard/dist \
