@@ -86,6 +86,7 @@ export const api = {
     activityByDay: { date: string; count: number }[];
     heatmap: { date: string; count: number }[];
     typeDistribution: { name: string; value: number }[];
+    operations: { readsLastHour: number; readsLastDay: number; writesLastHour: number; writesLastDay: number };
   }>('/api/metrics'),
 
   getHealth: () => request('/api/health'),

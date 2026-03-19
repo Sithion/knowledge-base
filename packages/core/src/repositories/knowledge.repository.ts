@@ -252,4 +252,47 @@ export class KnowledgeRepository {
       .groupBy(knowledgeEntries.scope);
     return results.map((r) => ({ scope: r.scope, count: Number(r.count) }));
   }
+
+  // ─── Operations Log ────────────────────────────────────────────
+
+  logOperation(operation: 'read' | 'write'): void {
+    this.sqlite
+      .prepare('INSERT INTO operations_log (operation, created_at) VALUES (?, ?)')
+      .run(operation, new Date().toISOString());
+  }
+
+  getOperationCounts(): {
+    readsLastHour: number;
+    readsLastDay: number;
+    writesLastHour: number;
+    writesLastDay: number;
+  } {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+    const result = this.sqlite
+      .prepare(
+        `SELECT
+          SUM(CASE WHEN operation = 'read'  AND created_at >= ? THEN 1 ELSE 0 END) as reads_1h,
+          SUM(CASE WHEN operation = 'read'  AND created_at >= ? THEN 1 ELSE 0 END) as reads_24h,
+          SUM(CASE WHEN operation = 'write' AND created_at >= ? THEN 1 ELSE 0 END) as writes_1h,
+          SUM(CASE WHEN operation = 'write' AND created_at >= ? THEN 1 ELSE 0 END) as writes_24h
+        FROM operations_log
+        WHERE created_at >= ?`
+      )
+      .get(oneHourAgo, oneDayAgo, oneHourAgo, oneDayAgo, oneDayAgo) as any;
+
+    return {
+      readsLastHour: result?.reads_1h ?? 0,
+      readsLastDay: result?.reads_24h ?? 0,
+      writesLastHour: result?.writes_1h ?? 0,
+      writesLastDay: result?.writes_24h ?? 0,
+    };
+  }
+
+  cleanupOldOperations(): number {
+    const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    return this.sqlite.prepare('DELETE FROM operations_log WHERE created_at < ?').run(cutoff).changes;
+  }
 }

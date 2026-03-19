@@ -17,16 +17,22 @@ export class KnowledgeService {
     private embeddingProvider: EmbeddingProvider
   ) {}
 
+  private logOp(op: 'read' | 'write') {
+    try { this.repository.logOperation(op); } catch { /* silent */ }
+  }
+
   async add(input: CreateKnowledgeInput): Promise<KnowledgeEntry> {
     const tagsText = input.tags.join(' ');
     const embedding = await this.embeddingProvider.embed(tagsText);
     const entry = await this.repository.create({ ...input, embedding });
+    this.logOp('write');
     return this.toKnowledgeEntry(entry);
   }
 
   async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {
     const queryEmbedding = await this.embeddingProvider.embed(query);
     const results = await this.repository.searchBySimilarity(queryEmbedding, options);
+    this.logOp('read');
     return results.map((r) => ({
       entry: this.toKnowledgeEntry(r.entry),
       similarity: r.similarity,
@@ -44,11 +50,13 @@ export class KnowledgeService {
       embedding = await this.embeddingProvider.embed(updates.tags.join(' '));
     }
     const entry = await this.repository.update(id, { ...updates, embedding });
+    if (entry) this.logOp('write');
     return entry ? this.toKnowledgeEntry(entry) : null;
   }
 
   async delete(id: string): Promise<boolean> {
     const entry = await this.repository.delete(id);
+    if (entry) this.logOp('write');
     return entry !== null;
   }
 
@@ -73,6 +81,14 @@ export class KnowledgeService {
       this.repository.lastUpdatedAt(),
     ]);
     return { total: count, byType, byScope, lastUpdatedAt };
+  }
+
+  getOperationCounts() {
+    return this.repository.getOperationCounts();
+  }
+
+  cleanupOldOperations() {
+    return this.repository.cleanupOldOperations();
   }
 
   private toKnowledgeEntry(row: any): KnowledgeEntry {

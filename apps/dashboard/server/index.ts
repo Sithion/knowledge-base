@@ -56,6 +56,11 @@ async function start() {
     }, 10000);
   }
 
+  // Cleanup old operations log entries every 6 hours
+  setInterval(() => {
+    if (sdkReady) { try { sdk.cleanupOldOperations(); } catch { /* silent */ } }
+  }, 6 * 60 * 60 * 1000);
+
   const app = Fastify({ logger: true });
   await app.register(cors, { origin: true });
 
@@ -674,6 +679,10 @@ async function start() {
       value: t.count,
     }));
 
+    // Operation counters (reads/writes last hour + last day)
+    let operations = { readsLastHour: 0, readsLastDay: 0, writesLastHour: 0, writesLastDay: 0 };
+    try { operations = sdk.getOperationCounts(); } catch { /* silent */ }
+
     return {
       database: {
         sizeBytes: dbSizeBytes,
@@ -691,6 +700,7 @@ async function start() {
       activityByDay,
       heatmap,
       typeDistribution,
+      operations,
     };
     } catch (error) {
       reply.code(500);
