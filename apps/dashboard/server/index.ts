@@ -411,6 +411,7 @@ async function start() {
 
       try { await configManager.setupMcpConfig(ConfigManager.CLAUDE_JSON, mcpEntry); results.push('Claude JSON config set'); } catch { /* optional */ }
       try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); results.push('Copilot MCP config set'); } catch { /* optional */ }
+      try { await configManager.setupOpenCodeMcp(mcpEntry); results.push('OpenCode MCP config set'); } catch { /* optional */ }
 
       // Install skills
       const skillsDir = resolve(TEMPLATES_PATH, 'skills');
@@ -472,6 +473,7 @@ async function start() {
       try { await configManager.removeMcpEntry(ConfigManager.MCP_CONFIG, 'ai-knowledge'); results.push('MCP config cleaned'); } catch { /* skip */ }
       try { await configManager.removeMcpEntry(ConfigManager.CLAUDE_JSON, 'ai-knowledge'); results.push('Claude JSON cleaned'); } catch { /* skip */ }
       try { await configManager.removeMcpEntry(ConfigManager.COPILOT_MCP_CONFIG, 'ai-knowledge'); results.push('Copilot MCP cleaned'); } catch { /* skip */ }
+      try { await configManager.removeOpenCodeMcp(); results.push('OpenCode MCP cleaned'); } catch { /* skip */ }
 
       // 3. Remove skills
       const home = homedir();
