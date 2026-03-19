@@ -42,6 +42,7 @@
 | `updateKnowledge` | `id` + fields to update | When existing knowledge is stale |
 | `deleteKnowledge` | `id` | When knowledge is wrong or obsolete |
 | `listTags` | (none) | To discover existing tag taxonomy |
+| `healthCheck` | (none) | To verify database and Ollama connectivity |
 
 ### When to Capture
 
@@ -58,4 +59,10 @@
 1. **Knowledge base** (`getKnowledge`) — always first
 2. **Project codebase** — files, patterns, existing code
 3. **Web search** — only if knowledge base and codebase insufficient
+
+### Hooks (automatic enforcement)
+
+- **PreToolUse hook**: Fires before Edit, Write, Bash, MultiEdit, Agent, NotebookEdit — reminds you to query first
+- **Stop hook**: Fires at session end — reminds you to capture knowledge before finishing
+- These hooks are non-blocking reminders. If you already queried, proceed normally.
 <!-- AI-KNOWLEDGE:END -->

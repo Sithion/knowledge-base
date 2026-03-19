@@ -43,6 +43,7 @@
 | `updateKnowledge` | `id` + fields to update | When existing knowledge is stale |
 | `deleteKnowledge` | `id` | When knowledge is wrong or obsolete |
 | `listTags` | (none) | To discover existing tag taxonomy |
+| `healthCheck` | (none) | To verify database and Ollama connectivity |
 
 ### When to Capture
 
