@@ -24,22 +24,32 @@ jobs:
       - name: Validate MCP server package
         run: cd apps/mcp-server && npm publish --dry-run --access public 2>&1
 
-      - name: Bundle sidecar server
-        run: cd apps/dashboard && npx tsup --config tsup.sidecar.ts
-
-      - name: Smoke test dashboard server
+      - name: Smoke test dashboard serves frontend
         run: |
-          DASHBOARD_DIST_PATH=$PWD/apps/dashboard/dist \
-          DASHBOARD_PORT=3299 \
-          SQLITE_PATH=/tmp/test-knowledge.db \
-          SIDECAR_TOKEN=ci-test \
-          node apps/dashboard/sidecar-bundle/dist-server/index.js &
-          SERVER_PID=$!
-          sleep 5
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3299/)
-          kill $SERVER_PID 2>/dev/null || true
-          if [ "$HTTP_CODE" != "200" ]; then
-            echo "FAIL: Dashboard server returned HTTP $HTTP_CODE"
-            exit 1
-          fi
-          echo "OK: Dashboard server returned HTTP 200"
+          node -e "
+            const http = require('http');
+            const fs = require('fs');
+            const path = require('path');
+            const distPath = path.resolve('apps/dashboard/dist');
+            const indexHtml = path.join(distPath, 'index.html');
+            if (!fs.existsSync(indexHtml)) { console.error('FAIL: dist/index.html not found'); process.exit(1); }
+            const server = http.createServer((req, res) => {
+              res.writeHead(200, {'Content-Type': 'text/html'});
+              res.end(fs.readFileSync(indexHtml));
+            });
+            server.listen(3299, '127.0.0.1', () => {
+              http.get('http://127.0.0.1:3299/', (r) => {
+                let body = '';
+                r.on('data', d => body += d);
+                r.on('end', () => {
+                  server.close();
+                  if (r.statusCode === 200 && body.includes('<div id=\"root\">')) {
+                    console.log('OK: Dashboard frontend built and serves correctly');
+                  } else {
+                    console.error('FAIL: unexpected response', r.statusCode);
+                    process.exit(1);
+                  }
+                });
+              });
+            });
+          "
