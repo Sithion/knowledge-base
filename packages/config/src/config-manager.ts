@@ -53,6 +53,12 @@ export class ConfigManager {
     '.copilot',
     'copilot-instructions.md'
   );
+  static readonly OPENCODE_CONFIG = join(
+    homedir(),
+    '.config',
+    'opencode',
+    'opencode.json'
+  );
 
   /**
    * Inject template content into a target file using markers.
@@ -233,6 +239,89 @@ export class ConfigManager {
       );
     }
 
+    return { removed: true, path: configPath };
+  }
+
+  /**
+   * Add or update the ai-knowledge MCP server entry in OpenCode config.
+   * OpenCode uses `mcp` (not `mcpServers`) and a different entry format.
+   */
+  async setupOpenCodeMcp(
+    mcpEntry: Record<string, unknown>
+  ): Promise<McpSetupResult> {
+    const configPath = ConfigManager.OPENCODE_CONFIG;
+    await mkdir(dirname(configPath), { recursive: true });
+
+    const openCodeEntry = {
+      type: 'local',
+      command: ['npx', '-y', '@ai-knowledge/mcp-server'],
+      enabled: true,
+      environment: mcpEntry.env || {},
+    };
+
+    if (!(await this.fileExists(configPath))) {
+      const config = {
+        $schema: 'https://opencode.ai/config.json',
+        mcp: { 'ai-knowledge': openCodeEntry },
+      };
+      await writeFile(
+        configPath,
+        JSON.stringify(config, null, 2) + '\n',
+        'utf-8'
+      );
+      return { action: 'created', path: configPath };
+    }
+
+    const content = await readFile(configPath, 'utf-8');
+    const config = JSON.parse(content);
+
+    if (config.mcp?.['ai-knowledge']) {
+      if (
+        JSON.stringify(config.mcp['ai-knowledge']) ===
+        JSON.stringify(openCodeEntry)
+      ) {
+        return { action: 'skipped', path: configPath };
+      }
+    }
+
+    await copyFile(configPath, `${configPath}.bak.${Date.now()}`);
+
+    if (!config.mcp) {
+      config.mcp = {};
+    }
+    config.mcp['ai-knowledge'] = openCodeEntry;
+    await writeFile(
+      configPath,
+      JSON.stringify(config, null, 2) + '\n',
+      'utf-8'
+    );
+    return { action: 'updated', path: configPath };
+  }
+
+  /**
+   * Remove the ai-knowledge MCP server entry from OpenCode config.
+   */
+  async removeOpenCodeMcp(): Promise<McpRemoveResult> {
+    const configPath = ConfigManager.OPENCODE_CONFIG;
+    if (!(await this.fileExists(configPath))) {
+      return { removed: false, path: configPath };
+    }
+
+    const content = await readFile(configPath, 'utf-8');
+    const config = JSON.parse(content);
+
+    if (!config.mcp?.['ai-knowledge']) {
+      return { removed: false, path: configPath };
+    }
+
+    await copyFile(configPath, `${configPath}.bak.${Date.now()}`);
+    delete config.mcp['ai-knowledge'];
+
+    await writeFile(
+      configPath,
+      JSON.stringify(config, null, 2) + '\n',
+      'utf-8'
+    );
     return { removed: true, path: configPath };
   }
 

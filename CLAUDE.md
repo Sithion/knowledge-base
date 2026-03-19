@@ -29,6 +29,7 @@ The Tauri app's setup wizard creates resources; the uninstall button must remove
 | Add `ai-knowledge` to `~/.claude/mcp-config.json` | Remove entry via ConfigManager |
 | Add `ai-knowledge` to `~/.claude.json` | Remove entry via ConfigManager |
 | Add `ai-knowledge` to `~/.copilot/mcp-config.json` | Remove entry via ConfigManager |
+| Add `ai-knowledge` to `~/.config/opencode/opencode.json` | Remove entry via ConfigManager |
 | Copy Claude skills to `~/.claude/skills/ai-knowledge-*/` | Remove skill directories |
 | Copy Copilot skills to `~/.copilot/skills/ai-knowledge-*.md` | Remove skill files |
 | App installed in /Applications/ (macOS) | Self-delete via rmSync |
