@@ -632,6 +632,90 @@ async function start() {
     return { success: allSuccess, fromVersion: getDeployedVersion(), toVersion: APP_VERSION, results };
   });
 
+  // ─── Re-deploy configurations (no migration, no version bump) ──
+
+  app.post('/api/redeploy', async (_request, reply) => {
+    const err = ensureReady(reply);
+    if (err) return err;
+
+    const results: { step: string; status: 'success' | 'error'; message?: string }[] = [];
+    const configTemplateDir = resolve(TEMPLATES_PATH, 'configs');
+    const skillsDir = resolve(TEMPLATES_PATH, 'skills');
+    const home = homedir();
+
+    // 1. Re-inject agent instructions
+    try {
+      const claudeTemplate = resolve(configTemplateDir, 'claude-code-instructions.md');
+      if (existsSync(claudeTemplate)) await configManager.injectConfig(ConfigManager.CLAUDE_MD, claudeTemplate, 'Claude Code');
+      results.push({ step: 'instructions-claude', status: 'success' });
+    } catch (e: any) { results.push({ step: 'instructions-claude', status: 'error', message: e.message }); }
+
+    try {
+      const copilotTemplate = resolve(configTemplateDir, 'copilot-instructions.md');
+      if (existsSync(copilotTemplate)) await configManager.injectConfig(ConfigManager.COPILOT_MD, copilotTemplate, 'GitHub Copilot');
+      results.push({ step: 'instructions-copilot', status: 'success' });
+    } catch (e: any) { results.push({ step: 'instructions-copilot', status: 'error', message: e.message }); }
+
+    // 2. Re-setup MCP configs
+    try {
+      const mcpEntry = {
+        type: 'stdio', command: 'npx', args: ['-y', '@ai-knowledge/mcp-server'],
+        env: {
+          SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
+          OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
+          OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'all-minilm',
+          EMBEDDING_DIMENSIONS: process.env.EMBEDDING_DIMENSIONS || '384',
+        },
+      };
+      await configManager.setupMcpConfig(ConfigManager.MCP_CONFIG, mcpEntry);
+      try { await configManager.setupMcpConfig(ConfigManager.CLAUDE_JSON, mcpEntry); } catch { /* optional */ }
+      try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); } catch { /* optional */ }
+      try { await configManager.setupOpenCodeMcp(mcpEntry); } catch { /* optional */ }
+      results.push({ step: 'mcp-configs', status: 'success' });
+    } catch (e: any) { results.push({ step: 'mcp-configs', status: 'error', message: e.message }); }
+
+    // 3. Re-deploy skills and hooks
+    try {
+      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+        const srcDir = resolve(skillsDir, 'claude-code', name);
+        if (existsSync(srcDir)) {
+          const destDir = resolve(home, '.claude', 'skills', name);
+          mkdirSync(destDir, { recursive: true });
+          cpSync(srcDir, destDir, { recursive: true });
+          const hooksDir = resolve(destDir, 'hooks');
+          if (existsSync(hooksDir)) {
+            for (const file of readdirSync(hooksDir)) {
+              if (file.endsWith('.sh')) chmodSync(resolve(hooksDir, file), 0o755);
+            }
+          }
+        }
+      }
+      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+        const srcDir = resolve(skillsDir, 'copilot', name);
+        if (existsSync(srcDir)) {
+          const destDir = resolve(home, '.copilot', 'skills', name);
+          mkdirSync(destDir, { recursive: true });
+          cpSync(srcDir, destDir, { recursive: true });
+          const hooksDir = resolve(destDir, 'hooks');
+          if (existsSync(hooksDir)) {
+            for (const file of readdirSync(hooksDir)) {
+              if (file.endsWith('.sh')) chmodSync(resolve(hooksDir, file), 0o755);
+            }
+          }
+        }
+      }
+      // Clean up old flat Copilot skill files
+      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+        const oldFile = resolve(home, '.copilot', 'skills', `${name}.md`);
+        if (existsSync(oldFile)) unlinkSync(oldFile);
+      }
+      results.push({ step: 'skills', status: 'success' });
+    } catch (e: any) { results.push({ step: 'skills', status: 'error', message: e.message }); }
+
+    const allSuccess = results.every((r) => r.status === 'success');
+    return { success: allSuccess, results };
+  });
+
   // ─── Uninstall endpoint ────────────────────────────────────────
 
   app.post('/api/uninstall', async (_request, reply) => {

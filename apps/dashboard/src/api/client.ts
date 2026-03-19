@@ -142,4 +142,9 @@ export const api = {
   cleanupDatabase: () => request<{ success: boolean; orphansRemoved: number; vacuumed: boolean; sizeAfter: string }>(
     '/api/maintenance/cleanup', { method: 'POST' }
   ),
+
+  // Re-deploy configurations
+  redeploy: () => request<{ success: boolean; results: { step: string; status: string; message?: string }[] }>(
+    '/api/redeploy', { method: 'POST' }
+  ),
 };

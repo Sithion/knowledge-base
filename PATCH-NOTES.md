@@ -15,6 +15,8 @@
 - **Plan file guard hook**: new PreToolUse hook on Write/Edit detects plan-like filenames (plan.md, TODO.md, etc.) and warns to use createPlan() instead
 - **Plan skill rewrite**: explicit FORBIDDEN section listing banned patterns (local files, task-list-only, chat-only plans)
 - **PostToolUse hook strengthened**: ExitPlanMode hook now explicitly forbids local file plans and task-list substitutes
+- **Re-deploy button**: new "Re-deploy configurations" in Settings → Maintenance re-deploys skills, hooks, instructions, and MCP configs without losing data
+- **Plan detail auto-refresh**: 5s polling on plan detail view + new `GET /api/plans/:id` endpoint
 - **Upgrade cleanup**: old flat Copilot skill files (`.md`) are automatically removed during upgrade
 
 ## v0.9.1

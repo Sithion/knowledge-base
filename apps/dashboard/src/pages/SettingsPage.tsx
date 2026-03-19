@@ -281,18 +281,38 @@ export function SettingsPage() {
 
 function MaintenanceSection() {
   const [cleaning, setCleaning] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [cleanResult, setCleanResult] = useState<string | null>(null);
+  const [redeploying, setRedeploying] = useState(false);
+  const [redeployResult, setRedeployResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleCleanup = async () => {
     setCleaning(true);
-    setResult(null);
+    setCleanResult(null);
     try {
       const res = await api.cleanupDatabase();
-      setResult(`${res.orphansRemoved} orphan${res.orphansRemoved !== 1 ? 's' : ''} removed${res.sizeAfter ? ` — DB: ${res.sizeAfter}` : ''}`);
+      setCleanResult(`${res.orphansRemoved} orphan${res.orphansRemoved !== 1 ? 's' : ''} removed${res.sizeAfter ? ` — DB: ${res.sizeAfter}` : ''}`);
     } catch {
-      setResult('Cleanup failed');
+      setCleanResult('Cleanup failed');
     }
     setCleaning(false);
+  };
+
+  const handleRedeploy = async () => {
+    setRedeploying(true);
+    setRedeployResult(null);
+    try {
+      const res = await api.redeploy();
+      const failed = res.results.filter((r) => r.status === 'error');
+      if (failed.length === 0) {
+        setRedeployResult({ type: 'success', text: 'All configurations re-deployed successfully' });
+      } else {
+        setRedeployResult({ type: 'error', text: `${failed.length} step(s) failed: ${failed.map((f) => f.step).join(', ')}` });
+      }
+    } catch {
+      setRedeployResult({ type: 'error', text: 'Re-deploy failed' });
+    }
+    setRedeploying(false);
+    setTimeout(() => setRedeployResult(null), 5000);
   };
 
   return (
@@ -300,29 +320,57 @@ function MaintenanceSection() {
       <h2 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-secondary)', marginBottom: 16 }}>
         Maintenance
       </h2>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button
-          onClick={handleCleanup}
-          disabled={cleaning}
-          title="Remove unused embeddings"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-            backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)',
-            border: '1px solid var(--border)', cursor: cleaning ? 'not-allowed' : 'pointer',
-            opacity: cleaning ? 0.6 : 1,
-          }}
-        >
-          {cleaning ? (
-            <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid var(--text-secondary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
-          ) : (
-            <span style={{ fontSize: 14 }}>🗑</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={handleRedeploy}
+            disabled={redeploying}
+            title="Re-deploy skills, hooks, instructions, and MCP configs without losing data"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)',
+              border: '1px solid var(--border)', cursor: redeploying ? 'not-allowed' : 'pointer',
+              opacity: redeploying ? 0.6 : 1,
+            }}
+          >
+            {redeploying ? (
+              <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid var(--text-secondary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+            ) : (
+              <span style={{ fontSize: 14 }}>🔄</span>
+            )}
+            Re-deploy configurations
+          </button>
+          {redeployResult && (
+            <span style={{ fontSize: 12, color: redeployResult.type === 'success' ? 'var(--success)' : 'var(--error)' }}>
+              {redeployResult.text}
+            </span>
           )}
-          Remove unused embeddings
-        </button>
-        {result && (
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{result}</span>
-        )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={handleCleanup}
+            disabled={cleaning}
+            title="Remove unused embeddings"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+              backgroundColor: 'var(--bg-card)', color: 'var(--text-secondary)',
+              border: '1px solid var(--border)', cursor: cleaning ? 'not-allowed' : 'pointer',
+              opacity: cleaning ? 0.6 : 1,
+            }}
+          >
+            {cleaning ? (
+              <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid var(--text-secondary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
+            ) : (
+              <span style={{ fontSize: 14 }}>🗑</span>
+            )}
+            Remove unused embeddings
+          </button>
+          {cleanResult && (
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{cleanResult}</span>
+          )}
+        </div>
       </div>
     </div>
   );
