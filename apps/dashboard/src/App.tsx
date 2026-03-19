@@ -8,6 +8,7 @@ import { StatsPage } from './pages/StatsPage.js';
 import { InfrastructurePage } from './pages/InfrastructurePage.js';
 import { SetupPage } from './pages/SetupPage.js';
 import { api } from './api/client.js';
+import { UpdateChecker } from './components/UpdateChecker.js';
 
 export function App() {
   const [setupNeeded, setSetupNeeded] = useState<boolean | null>(null);
@@ -41,6 +42,7 @@ export function App() {
   // Normal dashboard
   return (
     <BrowserRouter>
+      <UpdateChecker />
       <Layout>
         <Routes>
           <Route path="/" element={<HomePage />} />

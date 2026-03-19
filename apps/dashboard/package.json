@@ -1,6 +1,6 @@
 {
   "name": "@ai-knowledge/dashboard",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -25,6 +25,8 @@
     "@fastify/static": "^9.0.0",
     "@reduxjs/toolkit": "^2.11.2",
     "@tanstack/react-query": "^5.0.0",
+    "@tauri-apps/plugin-process": "^2.3.1",
+    "@tauri-apps/plugin-updater": "^2.10.0",
     "fastify": "^5.8.2",
     "i18next": "^25.8.18",
     "react": "^19.0.0",

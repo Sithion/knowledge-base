@@ -74,19 +74,6 @@ function WidgetCard({
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600 }}>{title}</h3>
-        {/* Show subtle refresh indicator when refreshing with cached data */}
-        {state === 'loading' && children && (
-          <div
-            style={{
-              width: 14,
-              height: 14,
-              border: '2px solid var(--border)',
-              borderTopColor: 'var(--accent)',
-              borderRadius: '50%',
-              animation: 'spin 0.8s linear infinite',
-            }}
-          />
-        )}
       </div>
       {state === 'loading' && !children && <Spinner />}
       {state === 'error' && (
