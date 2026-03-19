@@ -55,11 +55,15 @@ export function runMigrations(sqlite: BetterSqlite3.Database, migrationsDir: str
     const sqlPath = resolve(migrationsDir, file);
     const sqlContent = readFileSync(sqlPath, 'utf-8');
 
-    // Split by statements and execute individually
-    const statements = sqlContent
+    // Strip comment lines first, then split by semicolons
+    const cleanedSql = sqlContent
+      .split('\n')
+      .filter((line) => !line.trim().startsWith('--'))
+      .join('\n');
+    const statements = cleanedSql
       .split(';')
       .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !s.startsWith('--'));
+      .filter((s) => s.length > 0);
 
     for (const stmt of statements) {
       try {
