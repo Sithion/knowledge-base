@@ -464,13 +464,22 @@ async function start() {
         }
       }
 
-      // Copilot skills
+      // Copilot skills (directory format with hooks)
       for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
-        const src = resolve(skillsDir, 'copilot', `${name}.md`);
-        if (existsSync(src)) {
-          const destDir = resolve(home, '.copilot', 'skills');
+        const srcDir = resolve(skillsDir, 'copilot', name);
+        if (existsSync(srcDir)) {
+          const destDir = resolve(home, '.copilot', 'skills', name);
           mkdirSync(destDir, { recursive: true });
-          cpSync(src, resolve(destDir, `${name}.md`));
+          cpSync(srcDir, destDir, { recursive: true });
+          // Make hook scripts executable
+          const hooksDir = resolve(destDir, 'hooks');
+          if (existsSync(hooksDir)) {
+            for (const file of readdirSync(hooksDir)) {
+              if (file.endsWith('.sh')) {
+                chmodSync(resolve(hooksDir, file), 0o755);
+              }
+            }
+          }
           results.push(`Skill ${name} installed (Copilot)`);
         }
       }
@@ -585,12 +594,24 @@ async function start() {
       }
 
       for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
-        const src = resolve(skillsDir, 'copilot', `${name}.md`);
-        if (existsSync(src)) {
-          const destDir = resolve(home, '.copilot', 'skills');
+        const srcDir = resolve(skillsDir, 'copilot', name);
+        if (existsSync(srcDir)) {
+          const destDir = resolve(home, '.copilot', 'skills', name);
           mkdirSync(destDir, { recursive: true });
-          cpSync(src, resolve(destDir, `${name}.md`));
+          cpSync(srcDir, destDir, { recursive: true });
+          const hooksDir = resolve(destDir, 'hooks');
+          if (existsSync(hooksDir)) {
+            for (const file of readdirSync(hooksDir)) {
+              if (file.endsWith('.sh')) chmodSync(resolve(hooksDir, file), 0o755);
+            }
+          }
         }
+      }
+
+      // Clean up old flat Copilot skill files (pre-0.9.2 format)
+      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+        const oldFile = resolve(home, '.copilot', 'skills', `${name}.md`);
+        if (existsSync(oldFile)) unlinkSync(oldFile);
       }
 
       results.push({ step: 'skills', status: 'success' });
@@ -609,6 +630,90 @@ async function start() {
     upgradeRunning = false;
     const allSuccess = results.every((r) => r.status === 'success');
     return { success: allSuccess, fromVersion: getDeployedVersion(), toVersion: APP_VERSION, results };
+  });
+
+  // ─── Re-deploy configurations (no migration, no version bump) ──
+
+  app.post('/api/redeploy', async (_request, reply) => {
+    const err = ensureReady(reply);
+    if (err) return err;
+
+    const results: { step: string; status: 'success' | 'error'; message?: string }[] = [];
+    const configTemplateDir = resolve(TEMPLATES_PATH, 'configs');
+    const skillsDir = resolve(TEMPLATES_PATH, 'skills');
+    const home = homedir();
+
+    // 1. Re-inject agent instructions
+    try {
+      const claudeTemplate = resolve(configTemplateDir, 'claude-code-instructions.md');
+      if (existsSync(claudeTemplate)) await configManager.injectConfig(ConfigManager.CLAUDE_MD, claudeTemplate, 'Claude Code');
+      results.push({ step: 'instructions-claude', status: 'success' });
+    } catch (e: any) { results.push({ step: 'instructions-claude', status: 'error', message: e.message }); }
+
+    try {
+      const copilotTemplate = resolve(configTemplateDir, 'copilot-instructions.md');
+      if (existsSync(copilotTemplate)) await configManager.injectConfig(ConfigManager.COPILOT_MD, copilotTemplate, 'GitHub Copilot');
+      results.push({ step: 'instructions-copilot', status: 'success' });
+    } catch (e: any) { results.push({ step: 'instructions-copilot', status: 'error', message: e.message }); }
+
+    // 2. Re-setup MCP configs
+    try {
+      const mcpEntry = {
+        type: 'stdio', command: 'npx', args: ['-y', '@ai-knowledge/mcp-server'],
+        env: {
+          SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
+          OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
+          OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'all-minilm',
+          EMBEDDING_DIMENSIONS: process.env.EMBEDDING_DIMENSIONS || '384',
+        },
+      };
+      await configManager.setupMcpConfig(ConfigManager.MCP_CONFIG, mcpEntry);
+      try { await configManager.setupMcpConfig(ConfigManager.CLAUDE_JSON, mcpEntry); } catch { /* optional */ }
+      try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); } catch { /* optional */ }
+      try { await configManager.setupOpenCodeMcp(mcpEntry); } catch { /* optional */ }
+      results.push({ step: 'mcp-configs', status: 'success' });
+    } catch (e: any) { results.push({ step: 'mcp-configs', status: 'error', message: e.message }); }
+
+    // 3. Re-deploy skills and hooks
+    try {
+      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+        const srcDir = resolve(skillsDir, 'claude-code', name);
+        if (existsSync(srcDir)) {
+          const destDir = resolve(home, '.claude', 'skills', name);
+          mkdirSync(destDir, { recursive: true });
+          cpSync(srcDir, destDir, { recursive: true });
+          const hooksDir = resolve(destDir, 'hooks');
+          if (existsSync(hooksDir)) {
+            for (const file of readdirSync(hooksDir)) {
+              if (file.endsWith('.sh')) chmodSync(resolve(hooksDir, file), 0o755);
+            }
+          }
+        }
+      }
+      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+        const srcDir = resolve(skillsDir, 'copilot', name);
+        if (existsSync(srcDir)) {
+          const destDir = resolve(home, '.copilot', 'skills', name);
+          mkdirSync(destDir, { recursive: true });
+          cpSync(srcDir, destDir, { recursive: true });
+          const hooksDir = resolve(destDir, 'hooks');
+          if (existsSync(hooksDir)) {
+            for (const file of readdirSync(hooksDir)) {
+              if (file.endsWith('.sh')) chmodSync(resolve(hooksDir, file), 0o755);
+            }
+          }
+        }
+      }
+      // Clean up old flat Copilot skill files
+      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+        const oldFile = resolve(home, '.copilot', 'skills', `${name}.md`);
+        if (existsSync(oldFile)) unlinkSync(oldFile);
+      }
+      results.push({ step: 'skills', status: 'success' });
+    } catch (e: any) { results.push({ step: 'skills', status: 'error', message: e.message }); }
+
+    const allSuccess = results.every((r) => r.status === 'success');
+    return { success: allSuccess, results };
   });
 
   // ─── Uninstall endpoint ────────────────────────────────────────
@@ -639,8 +744,12 @@ async function start() {
       for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
         const claudeDir = resolve(home, '.claude', 'skills', name);
         if (existsSync(claudeDir)) { rmSync(claudeDir, { recursive: true, force: true }); results.push(`Skill ${name} removed (Claude)`); }
+        // Remove new directory format
+        const copilotDir = resolve(home, '.copilot', 'skills', name);
+        if (existsSync(copilotDir)) { rmSync(copilotDir, { recursive: true, force: true }); results.push(`Skill ${name} removed (Copilot)`); }
+        // Clean up old flat file format (pre-0.9.2)
         const copilotFile = resolve(home, '.copilot', 'skills', `${name}.md`);
-        if (existsSync(copilotFile)) { unlinkSync(copilotFile); results.push(`Skill ${name} removed (Copilot)`); }
+        if (existsSync(copilotFile)) { unlinkSync(copilotFile); }
       }
 
       // 4. Remove Ollama model
@@ -920,6 +1029,14 @@ async function start() {
     const limit = Number(q.limit) || 20;
     const status = q.status || undefined;
     return sdk.listPlans(limit, status);
+  });
+
+  app.get<{ Params: { id: string } }>('/api/plans/:id', async (request, reply) => {
+    const err = ensureReady(reply);
+    if (err) return err;
+    const result = sdk.getPlanById(request.params.id);
+    if (!result) { reply.code(404); return { error: 'Not found' }; }
+    return result;
   });
 
   app.get<{ Params: { id: string } }>('/api/plans/:id/relations', async (request, reply) => {

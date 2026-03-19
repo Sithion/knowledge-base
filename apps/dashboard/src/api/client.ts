@@ -102,6 +102,9 @@ export const api = {
     return request<any[]>(`/api/plans?${params}`);
   },
 
+  getPlan: (id: string) =>
+    request<any>(`/api/plans/${id}`),
+
   getPlanRelations: (id: string) =>
     request<{ entry: any; relationType: string }[]>(`/api/plans/${id}/relations`),
 
@@ -138,5 +141,10 @@ export const api = {
   // Maintenance
   cleanupDatabase: () => request<{ success: boolean; orphansRemoved: number; vacuumed: boolean; sizeAfter: string }>(
     '/api/maintenance/cleanup', { method: 'POST' }
+  ),
+
+  // Re-deploy configurations
+  redeploy: () => request<{ success: boolean; results: { step: string; status: string; message?: string }[] }>(
+    '/api/redeploy', { method: 'POST' }
   ),
 };
