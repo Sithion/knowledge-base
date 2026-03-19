@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import { useAppDispatch, useAppSelector } from '../store/index.js';
 import { fetchStats, fetchMetrics, fetchTags, setRefreshInterval, REFRESH_OPTIONS, type RefreshInterval } from '../store/statsSlice.js';
+import { api } from '../api/client.js';
 
 /* ── Constants ── */
 
@@ -18,6 +19,8 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 const PIE_COLORS = ['#8b5cf6', '#3b82f6', '#22c55e', '#f59e0b', '#ef4444'];
+
+const POLL_INTERVAL_MS = 10_000;
 
 /* ── Spinner ── */
 
@@ -277,12 +280,114 @@ function ContributionHeatmap({ data }: { data: { date: string; count: number }[]
   );
 }
 
+/* ── Responsive Chart Wrappers ── */
+
+const CHART_MIN_WIDTH = 300;
+
+function useContainerWidth() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  return { ref, width };
+}
+
+function TypeDistribution({ data }: { data: { name: string; value: number }[] }) {
+  const { ref, width } = useContainerWidth();
+  const maxVal = Math.max(...data.map(d => d.value));
+
+  return (
+    <div ref={ref}>
+      {width >= CHART_MIN_WIDTH ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <ResponsiveContainer width="50%" height={180}>
+            <PieChart>
+              <Pie data={data} cx="50%" cy="50%" innerRadius={40} outerRadius={70} paddingAngle={3} dataKey="value">
+                {data.map((entry, i) => (
+                  <Cell key={entry.name} fill={TYPE_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {data.map((entry, i) => (
+              <div key={entry.name} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: TYPE_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length] }} />
+                <span style={{ color: 'var(--text-secondary)' }}>{entry.name}</span>
+                <span style={{ fontWeight: 600 }}>{entry.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {data.map((entry, i) => (
+            <div key={entry.name}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 2, backgroundColor: TYPE_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length] }} />
+                  <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{entry.name}</span>
+                </div>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{entry.value}</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, backgroundColor: 'var(--bg-input)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 3, width: `${(entry.value / maxVal) * 100}%`, backgroundColor: TYPE_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length] }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ScopeDistribution({ data }: { data: { scope: string; count: number }[] }) {
+  const { ref, width } = useContainerWidth();
+  const maxVal = Math.max(...data.map(d => d.count));
+
+  return (
+    <div ref={ref}>
+      {width >= CHART_MIN_WIDTH ? (
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={data} layout="vertical" margin={{ left: 60 }}>
+            <XAxis type="number" hide />
+            <YAxis type="category" dataKey="scope" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} width={80} />
+            <Tooltip contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+            <Bar dataKey="count" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={20} />
+          </BarChart>
+        </ResponsiveContainer>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {data.map((entry) => (
+            <div key={entry.scope}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{entry.scope}</span>
+                <span style={{ fontSize: 12, fontWeight: 600 }}>{entry.count}</span>
+              </div>
+              <div style={{ height: 6, borderRadius: 3, backgroundColor: 'var(--bg-input)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', borderRadius: 3, width: `${(entry.count / maxVal) * 100}%`, backgroundColor: '#22c55e' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main Page ── */
 
 export function StatsPage() {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastTotalRef = useRef<number | null>(null);
 
   const {
     stats, statsState,
@@ -310,7 +415,7 @@ export function StatsPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-refresh interval
+  // Auto-refresh interval (from Redux selector)
   useEffect(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -324,18 +429,26 @@ export function StatsPage() {
     };
   }, [refreshInterval, refreshAll]);
 
-  // Derive widget states (show cached data while refreshing)
-  const hasStats = stats !== null;
-  const hasMetrics = metrics !== null;
+  // Poll for new entries — refresh all stats when total count changes
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const data = await api.getStats() as { total: number };
+        if (lastTotalRef.current !== null && data.total !== lastTotalRef.current) {
+          refreshAll();
+        }
+        lastTotalRef.current = data.total;
+      } catch { /* ignore polling errors */ }
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [refreshAll]);
 
-  const effectiveStatsState: WidgetState =
-    statsState === 'loading' && hasStats ? 'loaded' : statsState === 'idle' ? 'loading' : statsState;
-
-  const effectiveMetricsState: WidgetState =
-    metricsState === 'loading' && hasMetrics ? 'loaded' : metricsState === 'idle' ? 'loading' : metricsState;
-
-  const effectiveTagsState: WidgetState =
-    tagsState === 'loading' && tags.length > 0 ? 'loaded' : tagsState === 'idle' ? 'loading' : tagsState;
+  // Never show blocking loading — always treat as loaded or empty
+  const hasTypeData = metrics && metrics.typeDistribution.length > 0;
+  const hasScopeData = stats && stats.byScope.length > 0;
+  const hasActivityData = metrics && metrics.activityByDay.some((d) => d.count > 0);
+  const hasHeatmap = metrics?.heatmap;
+  const hasTags = tags.length > 0;
 
   return (
     <div>
@@ -404,130 +517,25 @@ export function StatsPage() {
 
       {/* ── Metric Cards Row ── */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <MetricCard
-          label="Total Entries"
-          value={stats?.total ?? 0}
-          loading={!hasStats && statsState === 'loading'}
-        />
-        <MetricCard
-          label="Last 24h"
-          value={metrics?.activity.last24h ?? 0}
-          sub="new entries"
-          loading={!hasMetrics && metricsState === 'loading'}
-        />
-        <MetricCard
-          label="Last 7 days"
-          value={metrics?.activity.last7d ?? 0}
-          sub="new entries"
-          loading={!hasMetrics && metricsState === 'loading'}
-        />
-        <MetricCard
-          label="Database Size"
-          value={metrics?.database.sizeFormatted ?? '-'}
-          sub={metrics?.database.path}
-          loading={!hasMetrics && metricsState === 'loading'}
-        />
+        <MetricCard label="Total Entries" value={stats?.total ?? 0} />
+        <MetricCard label="Last 24h" value={metrics?.activity.last24h ?? 0} sub="new entries" />
+        <MetricCard label="Last 7 days" value={metrics?.activity.last7d ?? 0} sub="new entries" />
+        <MetricCard label="Database Size" value={metrics?.database.sizeFormatted ?? '-'} sub={metrics?.database.path} />
       </div>
 
       {/* ── Charts Row ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
         {/* Type Distribution */}
-        <WidgetCard
-          title="Knowledge by Type"
-          state={
-            effectiveMetricsState === 'loading'
-              ? 'loading'
-              : metrics && metrics.typeDistribution.length > 0
-                ? 'loaded'
-                : 'empty'
-          }
-        >
+        <WidgetCard title="Knowledge by Type" state={hasTypeData ? 'loaded' : 'empty'}>
           {metrics && metrics.typeDistribution.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <ResponsiveContainer width="50%" height={180}>
-                <PieChart>
-                  <Pie
-                    data={metrics.typeDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {metrics.typeDistribution.map((entry, i) => (
-                      <Cell
-                        key={entry.name}
-                        fill={TYPE_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length]}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'var(--bg-card)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 8,
-                      fontSize: 12,
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {metrics.typeDistribution.map((entry, i) => (
-                  <div
-                    key={entry.name}
-                    style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}
-                  >
-                    <div
-                      style={{
-                        width: 10,
-                        height: 10,
-                        borderRadius: 2,
-                        backgroundColor:
-                          TYPE_COLORS[entry.name] || PIE_COLORS[i % PIE_COLORS.length],
-                      }}
-                    />
-                    <span style={{ color: 'var(--text-secondary)' }}>{entry.name}</span>
-                    <span style={{ fontWeight: 600 }}>{entry.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <TypeDistribution data={metrics.typeDistribution} />
           )}
         </WidgetCard>
 
         {/* Scope Distribution */}
-        <WidgetCard
-          title="Knowledge by Scope"
-          state={
-            effectiveStatsState === 'loading'
-              ? 'loading'
-              : stats && stats.byScope.length > 0
-                ? 'loaded'
-                : 'empty'
-          }
-        >
+        <WidgetCard title="Knowledge by Scope" state={hasScopeData ? 'loaded' : 'empty'}>
           {stats && stats.byScope.length > 0 && (
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={stats.byScope} layout="vertical" margin={{ left: 60 }}>
-                <XAxis type="number" hide />
-                <YAxis
-                  type="category"
-                  dataKey="scope"
-                  tick={{ fill: 'var(--text-secondary)', fontSize: 12 }}
-                  width={80}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <Bar dataKey="count" fill="#22c55e" radius={[0, 4, 4, 0]} barSize={20} />
-              </BarChart>
-            </ResponsiveContainer>
+            <ScopeDistribution data={stats.byScope} />
           )}
         </WidgetCard>
       </div>
@@ -535,13 +543,7 @@ export function StatsPage() {
       {/* ── Activity Chart ── */}
       <WidgetCard
         title="Activity (Last 15 Days)"
-        state={
-          effectiveMetricsState === 'loading'
-            ? 'loading'
-            : metrics && metrics.activityByDay.some((d) => d.count > 0)
-              ? 'loaded'
-              : 'empty'
-        }
+        state={hasActivityData ? 'loaded' : 'empty'}
         emptyText="No activity in the last 15 days"
         style={{ marginBottom: 24 }}
       >
@@ -584,20 +586,14 @@ export function StatsPage() {
       {/* ── Contribution Heatmap ── */}
       <WidgetCard
         title="Contributions (Last 90 Days)"
-        state={
-          effectiveMetricsState === 'loading'
-            ? 'loading'
-            : metrics?.heatmap
-              ? 'loaded'
-              : 'empty'
-        }
+        state={hasHeatmap ? 'loaded' : 'empty'}
         style={{ marginBottom: 24 }}
       >
         {metrics?.heatmap && <ContributionHeatmap data={metrics.heatmap} />}
       </WidgetCard>
 
       {/* ── Tag Cloud ── */}
-      <WidgetCard title={t('stats.tagCloud')} state={effectiveTagsState}>
+      <WidgetCard title={t('stats.tagCloud')} state={hasTags ? 'loaded' : 'empty'}>
         {tags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
             {tags.map((tag, i) => (

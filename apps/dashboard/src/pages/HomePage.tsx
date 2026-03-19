@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client.js';
@@ -6,6 +6,8 @@ import { KnowledgeCard } from '../components/KnowledgeCard.js';
 import { TagBar } from '../components/TagBar.js';
 import { AddKnowledgeModal } from '../components/AddKnowledgeModal.js';
 import { FloatingAddButton } from '../components/FloatingAddButton.js';
+
+const POLL_INTERVAL_MS = 10_000;
 
 interface SearchResult {
   entry: Record<string, unknown>;
@@ -28,30 +30,47 @@ export function HomePage() {
   // Tag state
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [tagsLoading, setTagsLoading] = useState(true);
 
   // Modal state
   const [showModal, setShowModal] = useState(false);
 
+  // Polling state
+  const lastTotalRef = useRef<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
   const types = ['decision', 'pattern', 'fix', 'constraint', 'gotcha'];
 
-  // Load recent entries
+  // Load recent entries (silent — no loading state)
   const loadRecent = useCallback(() => {
-    api.listRecent(20).then(setRecentEntries).catch(console.error);
+    return api.listRecent(20).then(setRecentEntries).catch(() => {});
   }, []);
 
-  // Load tags
-  useEffect(() => {
-    api.listTags().then((tags) => {
-      setAllTags(tags);
-      setTagsLoading(false);
-    }).catch(() => setTagsLoading(false));
+  // Load tags (silent)
+  const loadTags = useCallback(() => {
+    return api.listTags().then(setAllTags).catch(() => {});
   }, []);
 
-  // Load recent on mount
+  // Initial load on mount (silent)
   useEffect(() => {
     loadRecent();
-  }, [loadRecent]);
+    loadTags();
+  }, [loadRecent, loadTags]);
+
+  // Poll for new entries — refresh in background when total count changes
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const stats = await api.getStats() as { total: number };
+        if (lastTotalRef.current !== null && stats.total !== lastTotalRef.current) {
+          setRefreshing(true);
+          await Promise.all([loadRecent(), loadTags()]);
+          setRefreshing(false);
+        }
+        lastTotalRef.current = stats.total;
+      } catch { /* ignore polling errors */ }
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [loadRecent, loadTags]);
 
   // Read ?tag= from URL on mount
   useEffect(() => {
@@ -114,8 +133,9 @@ export function HomePage() {
 
   const handleAddSuccess = () => {
     loadRecent();
-    // Refresh tags too
-    api.listTags().then(setAllTags).catch(console.error);
+    loadTags();
+    // Bump ref so polling doesn't double-refresh
+    if (lastTotalRef.current !== null) lastTotalRef.current += 1;
   };
 
   // Filter recent entries by selected tags (client-side)
@@ -128,6 +148,7 @@ export function HomePage() {
 
   return (
     <div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       {/* Search Bar */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <input
@@ -190,7 +211,7 @@ export function HomePage() {
         selectedTags={selectedTags}
         onToggleTag={handleToggleTag}
         onClearTags={handleClearTags}
-        loading={tagsLoading}
+        loading={false}
       />
 
       {/* Search Results */}
@@ -213,8 +234,15 @@ export function HomePage() {
       {/* Recent Knowledge */}
       {!searched && filteredRecent.length > 0 && (
         <div>
-          <h3 style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>
+          <h3 style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
             {t('search.recent')}
+            {refreshing && (
+              <span style={{
+                display: 'inline-block', width: 12, height: 12,
+                border: '2px solid var(--border)', borderTopColor: 'var(--accent)',
+                borderRadius: '50%', animation: 'spin 0.8s linear infinite',
+              }} />
+            )}
           </h3>
           {filteredRecent.map((entry) => (
             <KnowledgeCard

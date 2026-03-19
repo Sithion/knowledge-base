@@ -77,7 +77,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Language Switcher */}
-        <div style={{ display: 'flex', gap: 4, justifyContent: 'center', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', flexDirection: collapsed ? 'column' : 'row', alignItems: 'center', gap: 4, justifyContent: 'center', paddingTop: 12, borderTop: '1px solid var(--border)' }}>
           {languages.map((lang) => (
             <button
               key={lang.code}

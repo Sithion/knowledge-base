@@ -51,8 +51,78 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+  # ── Create GitHub Release (single job to avoid race condition) ──
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      release_id: ${{ steps.create.outputs.release_id }}
+      version: ${{ steps.pkg-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: pkg-version
+        run: echo "version=$(node -p "require('./apps/dashboard/package.json').version")" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        id: create
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.pkg-version.outputs.version }}"
+          TAG="v${VERSION}"
+
+          # Check if release already exists
+          if gh release view "$TAG" &>/dev/null; then
+            RELEASE_ID=$(gh api repos/${{ github.repository }}/releases/tags/$TAG --jq '.id')
+            echo "Release $TAG already exists (id: $RELEASE_ID)"
+          else
+            RELEASE_ID=$(gh api repos/${{ github.repository }}/releases \
+              -f tag_name="$TAG" \
+              -f name="AI Knowledge Base $TAG" \
+              -f body="## AI Knowledge Base $TAG
+
+          Desktop app for managing your AI knowledge base with semantic search.
+          Download the installer for your platform below.
+
+          ### Downloads
+
+          | Platform | File | Architecture |
+          |----------|------|-------------|
+          | macOS (Apple Silicon) | \`.dmg\` | arm64 (M1/M2/M3/M4) |
+          | macOS (Intel) | \`.dmg\` | x86_64 |
+          | Linux | \`.AppImage\` | x86_64 |
+          | Linux (Debian/Ubuntu) | \`.deb\` | x86_64 |
+
+          ### macOS: \"App is damaged\" warning
+
+          This app is not yet signed with an Apple Developer certificate. macOS Gatekeeper will block it by default.
+
+          **To fix**, open Terminal and run:
+          \`\`\`bash
+          xattr -cr \"/Applications/AI Knowledge Base.app\"
+          \`\`\`
+          Or go to **System Settings > Privacy & Security** and click **Open Anyway**.
+
+          ### What's included
+
+          - Setup wizard (auto-installs Ollama, creates SQLite database)
+          - Dashboard with semantic search, stats, and contribution heatmap
+          - MCP server configuration for Claude Code and GitHub Copilot
+          - One-click uninstall (removes all data and configurations)" \
+              -F draft=false \
+              -F prerelease=false \
+              --jq '.id')
+            echo "Created release $TAG (id: $RELEASE_ID)"
+          fi
+
+          echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
+
   # ── Tauri Desktop App → GitHub Releases ────────────────────────
   publish-tauri:
+    needs: [create-release]
     strategy:
       fail-fast: false
       matrix:
@@ -103,10 +173,6 @@ jobs:
         working-directory: apps/dashboard
         run: node scripts/bundle-sidecar.mjs
 
-      - name: Get version
-        id: pkg-version
-        run: echo "version=$(node -p "require('./apps/dashboard/package.json').version")" >> $GITHUB_OUTPUT
-
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
@@ -115,38 +181,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/dashboard
-          tagName: v${{ steps.pkg-version.outputs.version }}
-          releaseName: 'AI Knowledge Base v${{ steps.pkg-version.outputs.version }}'
-          releaseBody: |
-            ## AI Knowledge Base v${{ steps.pkg-version.outputs.version }}
-
-            Desktop app for managing your AI knowledge base with semantic search.
-            Download the installer for your platform below.
-
-            ### Downloads
-
-            | Platform | File | Architecture |
-            |----------|------|-------------|
-            | macOS (Apple Silicon) | `.dmg` | arm64 (M1/M2/M3/M4) |
-            | macOS (Intel) | `.dmg` | x86_64 |
-            | Linux | `.AppImage` | x86_64 |
-            | Linux (Debian/Ubuntu) | `.deb` | x86_64 |
-
-            ### macOS: "App is damaged" warning
-
-            This app is not yet signed with an Apple Developer certificate. macOS Gatekeeper will block it by default.
-
-            **To fix**, open Terminal and run:
-            ```bash
-            xattr -cr "/Applications/AI Knowledge Base.app"
-            ```
-            Or go to **System Settings > Privacy & Security** and click **Open Anyway**.
-
-            ### What's included
-
-            - Setup wizard (auto-installs Ollama, creates SQLite database)
-            - Dashboard with semantic search, stats, and contribution heatmap
-            - MCP server configuration for Claude Code and GitHub Copilot
-            - One-click uninstall (removes all data and configurations)
+          tagName: v${{ needs.create-release.outputs.version }}
+          releaseName: 'AI Knowledge Base v${{ needs.create-release.outputs.version }}'
+          releaseId: ${{ needs.create-release.outputs.release_id }}
           releaseDraft: false
           prerelease: false
