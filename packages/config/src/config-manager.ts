@@ -62,6 +62,12 @@ export class ConfigManager {
     'opencode',
     'opencode.json'
   );
+  static readonly OPENCODE_AGENTS_MD = join(
+    homedir(),
+    '.config',
+    'opencode',
+    'AGENTS.md'
+  );
 
   /**
    * Inject template content into a target file using markers.

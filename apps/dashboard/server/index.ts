@@ -464,6 +464,14 @@ async function start() {
         }
       } catch (e) { console.warn('[CogniStore] Copilot inject error:', e); results.push('Copilot config error'); }
 
+      try {
+        const opencodeTemplatePath = resolve(configTemplateDir, 'opencode-instructions.md');
+        if (existsSync(opencodeTemplatePath)) {
+          await configManager.injectConfig(ConfigManager.OPENCODE_AGENTS_MD, opencodeTemplatePath, 'OpenCode');
+          results.push('OpenCode AGENTS.md injected');
+        }
+      } catch (e) { console.warn('[CogniStore] OpenCode inject error:', e); results.push('OpenCode config error'); }
+
       // Setup MCP configs
       const mcpEntry = {
         type: 'stdio',
@@ -607,6 +615,16 @@ async function start() {
       results.push({ step: 'instructions-copilot', status: 'error', message: e.message });
     }
 
+    try {
+      const opencodeT = resolve(configTemplateDir, 'opencode-instructions.md');
+      if (existsSync(opencodeT)) {
+        await configManager.injectConfig(ConfigManager.OPENCODE_AGENTS_MD, opencodeT, 'OpenCode');
+        results.push({ step: 'instructions-opencode', status: 'success' });
+      }
+    } catch (e: any) {
+      results.push({ step: 'instructions-opencode', status: 'error', message: e.message });
+    }
+
     // Step 3: Re-setup MCP configs
     try {
       const mcpEntry = {
@@ -713,6 +731,12 @@ async function start() {
       results.push({ step: 'instructions-copilot', status: 'success' });
     } catch (e: any) { results.push({ step: 'instructions-copilot', status: 'error', message: e.message }); }
 
+    try {
+      const opencodeTemplate = resolve(configTemplateDir, 'opencode-instructions.md');
+      if (existsSync(opencodeTemplate)) await configManager.injectConfig(ConfigManager.OPENCODE_AGENTS_MD, opencodeTemplate, 'OpenCode');
+      results.push({ step: 'instructions-opencode', status: 'success' });
+    } catch (e: any) { results.push({ step: 'instructions-opencode', status: 'error', message: e.message }); }
+
     // 2. Re-setup MCP configs
     try {
       const mcpEntry = {
@@ -790,6 +814,7 @@ async function start() {
       await step('CLAUDE.md cleaned', () => configManager.removeConfig(ConfigManager.CLAUDE_MD), results, errors);
       await step('Copilot config cleaned', () => configManager.removeConfig(ConfigManager.COPILOT_MD), results, errors);
       await step('Copilot CLI cleaned', () => configManager.removeConfig(ConfigManager.COPILOT_INSTRUCTIONS), results, errors);
+      await step('OpenCode AGENTS.md cleaned', () => configManager.removeConfig(ConfigManager.OPENCODE_AGENTS_MD), results, errors);
 
       // 2. Remove MCP entries
       await step('MCP config cleaned', () => configManager.removeMcpEntry(ConfigManager.MCP_CONFIG, 'cognistore'), results, errors);

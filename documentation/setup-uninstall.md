@@ -78,12 +78,13 @@ The configure step performs multiple actions:
 
 1. **Inject CLAUDE.md markers** — Adds knowledge-first protocol instructions
 2. **Inject copilot-instructions.md markers** — Same for Copilot
-3. **Add MCP entries** — Adds `cognistore` to all client configs:
+3. **Inject OpenCode AGENTS.md markers** — Same for OpenCode (`~/.config/opencode/AGENTS.md`)
+4. **Add MCP entries** — Adds `cognistore` to all client configs:
    - `~/.claude/mcp-config.json`
    - `~/.claude.json`
    - `~/.copilot/mcp-config.json`
    - `~/.config/opencode/opencode.json`
-4. **Copy skills** — Installs AI skills for Claude Code (query, capture, plan) and Copilot (query, capture, plan)
+5. **Copy skills** — Installs AI skills for Claude Code (query, capture, plan) and Copilot (query, capture, plan)
 
 ---
 

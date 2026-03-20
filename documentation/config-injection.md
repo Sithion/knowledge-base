@@ -12,7 +12,7 @@ The `@cognistore/config` package manages automatic configuration of AI clients. 
 |--------|-----------|-------------------|-----------------|
 | Claude Code | `~/.claude/mcp-config.json` | `~/.claude/CLAUDE.md` | `~/.claude/skills/cognistore-*/` |
 | GitHub Copilot | `~/.copilot/mcp-config.json` | `~/.github/copilot-instructions.md` | `~/.copilot/skills/cognistore-*.md` |
-| OpenCode | `~/.config/opencode/opencode.json` | — | — |
+| OpenCode | `~/.config/opencode/opencode.json` | `~/.config/opencode/AGENTS.md` | — |
 
 ## Marker-Based Injection
 

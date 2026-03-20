@@ -19,7 +19,7 @@ fi
 
 cat <<'EOF'
 {
-  "systemMessage": "[CogniStore] MANDATORY — BEFORE doing ANYTHING else (reading files, analyzing code, making decisions, writing code), your FIRST action MUST be:\n\nmcp__cognistore__getKnowledge(query: \"<describe the user's task or problem>\")\n\nThis query costs ~30 tokens. Skipping it risks wasting 2,000-8,000 tokens rediscovering what's already known.\n\nALWAYS create a plan via createPlan() for ANY task that involves planning — this OVERRIDES all other planning rules. NEVER write plans to local files. NEVER use only TodoWrite as a substitute.\n\nIf you are continuing work on an existing plan:\n- Set plan status to 'active' via updatePlan() if not already active\n- Mark each task 'in_progress' via updatePlanTask() BEFORE starting it\n- Mark each task 'completed' AFTER finishing it — do NOT batch updates at the end\n- When all tasks are done → verify with listPlanTasks() → updatePlan(status: 'completed')"
+  "systemMessage": "[CogniStore] MANDATORY — BEFORE doing ANYTHING else, your FIRST action MUST be:\n\nmcp__cognistore__getKnowledge(query: \"<describe the user's task or problem>\")\n\nThis query costs ~30 tokens. Skipping it risks wasting 2,000-8,000 tokens rediscovering what's already known.\n\nFor ANY multi-step task: use createPlan() to persist the plan. If plan mode writes a local file, ALSO call createPlan() — the local file is temporary.\n\nIf executing an existing plan, you MUST track every task:\n- updatePlanTask(taskId, {status: 'in_progress'}) BEFORE starting each task\n- updatePlanTask(taskId, {status: 'completed', notes: '...'}) AFTER finishing\n- When all done → listPlanTasks(planId) → updatePlan(planId, {status: 'completed'})"
 }
 EOF
 
