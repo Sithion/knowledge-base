@@ -36,9 +36,11 @@ If a query returned an existing entry on the same topic, **UPDATE it** instead o
 mcp__cognistore__updateKnowledge(id: "<uuid>", content: "...", tags: [...])
 ```
 
-### CHECKPOINT 3: Planning (ALWAYS use createPlan)
+### CHECKPOINT 3: Plan Detection (output-based — applies in ALL modes)
 
-**This OVERRIDES all other planning rules.** Any time you plan work, you MUST persist it in the knowledge base:
+**Trigger condition: If you produced a multi-step approach, implementation steps, a task list, or any structured plan — regardless of how or why — you MUST call `createPlan()`.** This applies in plan mode, outside plan mode, and in any other workflow. The trigger is the OUTPUT (you wrote a plan), not the intent.
+
+**Detection rule**: Did you write 2+ ordered steps describing what to implement? → call `createPlan()`.
 
 ```
 mcp__cognistore__createPlan({
@@ -49,13 +51,13 @@ mcp__cognistore__createPlan({
 })
 ```
 
-- If plan mode requires a local file (`.claude/plans/`), write it AND ALSO call `createPlan()` — the local file is temporary, `createPlan()` is the source of truth
-- **NEVER** use only TodoWrite/task lists as a substitute — those are ephemeral, not persistent
-- **NEVER** call createPlan() from subagents (Agent tool) — only the main agent creates plans to avoid duplicates
+- **Plan mode**: write the local plan file as required, then ALSO call `createPlan()` — the local file is temporary
+- **Outside plan mode**: call `createPlan()` directly
+- **NEVER** use only TodoWrite/task lists as a substitute — those are ephemeral
+- **NEVER** call createPlan() from subagents (Agent tool) — only the main agent
 - **ALWAYS** include a `tasks` array with every implementation step
-- **ALWAYS** set plan status to `active` when you begin execution: `updatePlan(planId, { status: "active" })`
-- **ALWAYS** mark each task `in_progress` BEFORE starting it, then `completed` AFTER finishing — do NOT batch updates
-- When all tasks done → verify with `listPlanTasks(planId)` → `updatePlan(planId, { status: "completed" })`
+- **Execution tracking**: mark each task `in_progress` BEFORE starting, `completed` AFTER finishing — do NOT batch
+- When all tasks done → `listPlanTasks(planId)` → `updatePlan(planId, { status: "completed" })`
 
 ### Rules (Mandatory)
 
@@ -63,7 +65,7 @@ mcp__cognistore__createPlan({
 2. **All knowledge entries MUST be in English** — regardless of conversation language.
 3. **Manage knowledge, don't duplicate** — update existing entries instead of creating new ones when the topic already exists.
 4. **Only store high-value knowledge** — hard-won insights, non-obvious gotchas, project-specific decisions, architectural constraints. NOT trivial fixes or standard docs.
-5. **Plans MUST be in the knowledge base** — use `createPlan()`. If plan mode writes a local file, ALSO call `createPlan()`. NEVER use only task lists as a substitute.
+5. **Any multi-step plan you produce MUST be persisted** — `createPlan()` whenever you write 2+ implementation steps, in ANY mode.
 
 ### Quick Reference
 
