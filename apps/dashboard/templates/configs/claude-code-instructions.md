@@ -40,10 +40,11 @@ mcp__cognistore__updateKnowledge(id: "<uuid>", content: "...", tags: [...])
 
 **Two triggers — EITHER one activates this checkpoint:**
 
-1. **INPUT trigger**: The user's message contains 3+ distinct action steps, numbered items, or sequential tasks? → Call `createPlan()` BEFORE starting work, using the user's steps as tasks.
-   - "Create 4 files, verify, grep content, delete, verify cleanup" → 5 steps → createPlan() FIRST
-   - "Fix login bug, add tests, update docs" → 3 steps → createPlan() FIRST
+1. **INPUT trigger**: The user's message contains 3+ distinct **actionable** steps that require code changes, file operations, or tool calls? → Call `createPlan()` BEFORE starting work, using the user's steps as tasks.
+   - "Create 4 files, verify, grep content, delete, verify cleanup" → 5 actionable steps → createPlan() FIRST
+   - "Fix login bug, add tests, update docs" → 3 actionable steps → createPlan() FIRST
    - "Refactor the API module" → 1 step → no plan (unless YOUR solution needs 2+ steps)
+   - "Explain the difference between REST, GraphQL, and gRPC" → NOT actionable, just a question → no plan
 
 2. **OUTPUT trigger**: You produced 2+ ordered steps describing what to implement? → Call `createPlan()` immediately.
 

@@ -15,6 +15,9 @@
 - **UserPromptSubmit hook**: INPUT detection added to cognistore-query hooks to detect multi-step tasks at the earliest point
 - **Subagent plan leak**: Explicit instruction added to prevent subagents from calling createPlan() — "When launching a subagent, include 'Do NOT call createPlan()' in the prompt"
 
+### Known assumptions
+- **MCP tools in plan mode**: The plan mode persistence fix relies on MCP tools (createPlan, getKnowledge) being callable during Claude Code's plan mode. This was empirically confirmed (2026-03-20) but is not guaranteed by the spec — Anthropic could restrict MCP calls in plan mode in a future release. The `post-plan-check.sh` hook serves as a fallback if this assumption breaks.
+
 ## v0.9.13
 
 ### Fixes

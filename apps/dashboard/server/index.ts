@@ -493,7 +493,7 @@ async function start() {
       try { await configManager.setupOpenCodeMcp(mcpEntry); results.push('OpenCode MCP config set'); } catch { /* optional */ }
 
       // Inject read-only tool permissions for dontAsk mode
-      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS); results.push('Claude permissions injected'); } catch { /* optional */ }
+      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS); results.push('Claude permissions injected'); } catch (e: any) { console.warn('[CogniStore] Permission injection failed:', e.message); }
 
       // Install skills
       const skillsDir = resolve(TEMPLATES_PATH, 'skills');
@@ -643,7 +643,7 @@ async function start() {
       try { await configManager.setupMcpConfig(ConfigManager.CLAUDE_JSON, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupOpenCodeMcp(mcpEntry); } catch { /* optional */ }
-      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS); } catch { /* optional */ }
+      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS); } catch (e: any) { console.warn('[CogniStore] Permission injection failed:', e.message); }
       results.push({ step: 'mcp-configs', status: 'success' });
     } catch (e: any) {
       results.push({ step: 'mcp-configs', status: 'error', message: e.message });
@@ -756,7 +756,7 @@ async function start() {
       try { await configManager.setupMcpConfig(ConfigManager.CLAUDE_JSON, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupOpenCodeMcp(mcpEntry); } catch { /* optional */ }
-      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS); } catch { /* optional */ }
+      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS); } catch (e: any) { console.warn('[CogniStore] Permission injection failed:', e.message); }
       results.push({ step: 'mcp-configs', status: 'success' });
     } catch (e: any) { results.push({ step: 'mcp-configs', status: 'error', message: e.message }); }
 

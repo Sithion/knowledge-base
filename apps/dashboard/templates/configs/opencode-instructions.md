@@ -36,7 +36,7 @@ If an existing entry covers the topic, **UPDATE it** instead of creating a dupli
 
 **Two triggers — EITHER one activates this checkpoint:**
 
-1. **INPUT trigger**: The user's message contains 3+ distinct action steps, numbered items, or sequential tasks? → Call `createPlan()` BEFORE starting work, using the user's steps as tasks.
+1. **INPUT trigger**: The user's message contains 3+ distinct **actionable** steps that require code changes, file operations, or tool calls? → Call `createPlan()` BEFORE starting work, using the user's steps as tasks. Questions, comparisons, and explanations are NOT actionable.
 
 2. **OUTPUT trigger**: You produced 2+ ordered steps describing what to implement? → Call `createPlan()` immediately.
 

@@ -267,6 +267,10 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
 
   // Scope-aware knowledge context resource
   // Provides auto-loaded KB context for agents — useful when tools can't be called (e.g., plan mode)
+  // STATUS: Future-proofing. As of 2026-03, Claude Code and Copilot don't fully support MCP resources
+  // in plan mode. Revisit when MCP resource support matures in client implementations.
+  // URI: cognistore://context/{scope} where scope is a project name (e.g., "knowledge-base")
+  // Fallback: if scope is empty or "global", returns unscoped results
   server.resource(
     'knowledge-context',
     new ResourceTemplate('cognistore://context/{scope}', { list: undefined }),
