@@ -88,7 +88,71 @@ async function start() {
     }
   };
 
+  const SYSTEM_KNOWLEDGE_TITLE = 'CogniStore Agent Workflow';
+  const SYSTEM_KNOWLEDGE_CONTENT = `## Your Workflow — Follow on every task automatically
+
+### 1. Search existing knowledge (FIRST action)
+mcp__cognistore__getKnowledge(query: "<describe your task>")
+Save any returned entry IDs for step 2.
+
+### 2. Create a plan (for tasks with 2+ steps)
+mcp__cognistore__createPlan({
+  title, content, tags, scope, source,
+  tasks: [{ description: "Step 1" }, { description: "Step 2" }, ...],
+  relatedKnowledgeIds: ["<ids-from-step-1>"]
+})
+Save the returned planId — you need it in step 4.
+Plan activates automatically when you start the first task.
+Plan completes automatically when all tasks are done.
+
+### 3. Track each task
+Before starting a task: mcp__cognistore__updatePlanTask(taskId, { status: "in_progress" })
+After finishing a task: mcp__cognistore__updatePlanTask(taskId, { status: "completed" })
+Use updatePlanTasks (plural) to update multiple tasks at once.
+
+### 4. Save what you learned (LAST action)
+mcp__cognistore__addKnowledge({
+  title, content, tags, type, scope, source,
+  planId: "<your-plan-id>"
+})
+Types: fix, decision, pattern, constraint, gotcha. All entries in English.
+Update existing entries instead of creating duplicates.
+Use addKnowledgeBatch to create multiple entries at once.
+
+### Rules
+- Follow this workflow on every task — steps 1 and 4 always apply, even for simple tasks
+- For plan-then-execute workflows (two sessions): the getKnowledge response will show your existing active plan
+- Never call createPlan() from subagents — only the main agent
+- All knowledge entries must be in English`;
+
+  const seedSystemKnowledge = async () => {
+    if (!sdkReady) return;
+    try {
+      // listRecent filters system entries, so use direct sqlite query
+      const existing = (sdk as any).sqlite?.prepare?.(
+        "SELECT id FROM knowledge_entries WHERE type = 'system' AND title = ?"
+      )?.get(SYSTEM_KNOWLEDGE_TITLE) as { id: string } | undefined;
+
+      if (existing) {
+        // Update content in case it changed between versions
+        await sdk.updateKnowledge(existing.id, { content: SYSTEM_KNOWLEDGE_CONTENT });
+      } else {
+        await sdk.addKnowledge({
+          title: SYSTEM_KNOWLEDGE_TITLE,
+          content: SYSTEM_KNOWLEDGE_CONTENT,
+          tags: ['system', 'workflow', 'mandatory'],
+          type: 'system' as any,
+          scope: 'global',
+          source: 'setup',
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to seed system knowledge:', err instanceof Error ? err.message : String(err));
+    }
+  };
+
   const initOk = await tryInitSDK();
+  if (initOk) await seedSystemKnowledge();
   if (!initOk) {
     console.warn(`SDK initialization failed (degraded mode): ${sdkError}`);
     retryInterval = setInterval(async () => {
@@ -539,6 +603,12 @@ async function start() {
         }
       }
 
+      // OpenCode skills (SKILL.md only, no hooks)
+      try { await configManager.setupOpenCodeSkills(TEMPLATES_PATH); results.push('OpenCode skills installed'); } catch { /* optional */ }
+
+      // OpenCode plugins
+      try { await configManager.setupOpenCodePlugins(TEMPLATES_PATH); results.push('OpenCode plugins installed'); } catch { /* optional */ }
+
       return { success: true, results };
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error) };
@@ -552,7 +622,10 @@ async function start() {
         sdkReady = false;
       }
       const ok = await tryInitSDK();
-      if (ok) saveDeployedVersion();
+      if (ok) {
+        saveDeployedVersion();
+        await seedSystemKnowledge();
+      }
       return { success: ok, sdkReady };
     } catch (error) {
       return { success: false, message: error instanceof Error ? error.message : String(error) };
@@ -584,6 +657,7 @@ async function start() {
       if (sdkReady) { await sdk.close(); sdkReady = false; }
       const ok = await tryInitSDK();
       results.push({ step: 'database', status: ok ? 'success' : 'error', message: ok ? 'Schema up to date' : 'SDK init failed' });
+      if (ok) await seedSystemKnowledge();
     } catch (e: any) {
       results.push({ step: 'database', status: 'error', message: e.message });
     }
@@ -690,6 +764,10 @@ async function start() {
         if (existsSync(oldFile)) unlinkSync(oldFile);
       }
 
+      // OpenCode skills + plugins
+      try { await configManager.setupOpenCodeSkills(TEMPLATES_PATH); } catch { /* optional */ }
+      try { await configManager.setupOpenCodePlugins(TEMPLATES_PATH); } catch { /* optional */ }
+
       results.push({ step: 'skills', status: 'success' });
     } catch (e: any) {
       results.push({ step: 'skills', status: 'error', message: e.message });
@@ -795,6 +873,9 @@ async function start() {
         const oldFile = resolve(home, '.copilot', 'skills', `${name}.md`);
         if (existsSync(oldFile)) unlinkSync(oldFile);
       }
+      // OpenCode skills + plugins
+      try { await configManager.setupOpenCodeSkills(TEMPLATES_PATH); } catch { /* optional */ }
+      try { await configManager.setupOpenCodePlugins(TEMPLATES_PATH); } catch { /* optional */ }
       results.push({ step: 'skills', status: 'success' });
     } catch (e: any) { results.push({ step: 'skills', status: 'error', message: e.message }); }
 
@@ -839,6 +920,9 @@ async function start() {
         const copilotFile = resolve(home, '.copilot', 'skills', `${name}.md`);
         if (existsSync(copilotFile)) { unlinkSync(copilotFile); }
       }
+      // Remove OpenCode skills + plugins
+      configManager.removeOpenCodeSkills(); results.push('OpenCode skills removed');
+      configManager.removeOpenCodePlugins(); results.push('OpenCode plugins removed');
 
       // 4. Remove Ollama model
       await step('Ollama model removed', () => { execSync(`ollama rm ${process.env.OLLAMA_MODEL || 'all-minilm'}`, { stdio: 'pipe', timeout: 30000 }); }, results, errors);
@@ -1219,7 +1303,9 @@ async function start() {
 
       // Handle JSON import
       if (body.entries && Array.isArray(body.entries)) {
-        const result = await sdk.importKnowledge(body.entries);
+        // Strip system type from imports — system knowledge is seeded internally only
+        const sanitized = body.entries.map((e: any) => e.type === 'system' ? { ...e, type: 'pattern' } : e);
+        const result = await sdk.importKnowledge(sanitized);
         return result;
       }
 
@@ -1239,7 +1325,7 @@ async function start() {
           entries.push({
             title: cols[0] || '', content: cols[1] || '',
             tags: (cols[2] || '').split(';').filter(Boolean),
-            type: cols[3] || 'pattern', scope: cols[4] || 'global',
+            type: (cols[3] === 'system' ? 'pattern' : cols[3]) || 'pattern', scope: cols[4] || 'global',
             source: cols[5] || 'csv-import',
             confidenceScore: cols[6] ? Number(cols[6]) : 1.0,
             agentId: cols[7] || null,

@@ -43,7 +43,7 @@ esac
 
 cat <<EOF
 {
-  "systemMessage": "[CogniStore] MANDATORY: You are about to start ${ACTION} (${TOOL_NAME}). Have you queried mcp__cognistore__getKnowledge() first? Check for existing patterns, decisions, and fixes before proceeding. A single query costs ~30 tokens — a missed cache hit wastes thousands on redundant work."
+  "systemMessage": "[CogniStore] MANDATORY: You are about to start ${ACTION} (${TOOL_NAME}). Have you queried mcp__cognistore__getKnowledge() first? Check for existing patterns, decisions, and fixes before proceeding. A single query costs ~30 tokens — a missed cache hit wastes thousands on redundant work.\n\nPlan tracking: If you have an active plan, ensure the current task is marked in_progress before proceeding."
 }
 EOF
 

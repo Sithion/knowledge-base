@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # UserPromptSubmit hook: Fires IMMEDIATELY when the user sends a message,
 # BEFORE the agent starts thinking or using any tools.
-# This is the earliest possible point to remind about knowledge queries.
+# Injects system knowledge (mandatory workflow protocol) into agent context.
 # Non-blocking — only adds a systemMessage.
 
 set -euo pipefail
@@ -17,10 +17,27 @@ EOF
   exit 0
 fi
 
-cat <<'EOF'
+# Try to read system knowledge from DB
+SYSTEM_CONTENT=""
+if command -v sqlite3 &>/dev/null; then
+  SYSTEM_CONTENT=$(sqlite3 "$SQLITE_PATH" "SELECT content FROM knowledge_entries WHERE type='system' LIMIT 1" 2>/dev/null || true)
+fi
+
+if [ -n "$SYSTEM_CONTENT" ]; then
+  # Escape for JSON: replace newlines, quotes, backslashes
+  ESCAPED=$(echo "$SYSTEM_CONTENT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+  cat <<ENDJSON
 {
-  "systemMessage": "[CogniStore] MANDATORY — BEFORE doing ANYTHING else, your FIRST action MUST be:\n\nmcp__cognistore__getKnowledge(query: \"<describe the user's task or problem>\")\n\nThis query costs ~30 tokens. Skipping it risks wasting 2,000-8,000 tokens rediscovering what's already known.\n\nIf the user's message contains 3+ action steps or sequential tasks, call createPlan() BEFORE starting execution.\n\nIf you produce 2+ ordered implementation steps (in ANY mode), call createPlan() to persist them.\n\nIf executing an existing plan, you MUST track every task:\n- updatePlanTask(taskId, {status: 'in_progress'}) BEFORE starting each task\n- updatePlanTask(taskId, {status: 'completed', notes: '...'}) AFTER finishing\n- When all done → listPlanTasks(planId) → updatePlan(planId, {status: 'completed'})"
+  "systemMessage": "[COGNISTORE-PROTOCOL]\n${ESCAPED}\n[END PROTOCOL]"
+}
+ENDJSON
+else
+  # Fallback: hardcoded protocol if sqlite3 unavailable or no system entry
+  cat <<'EOF'
+{
+  "systemMessage": "[COGNISTORE-PROTOCOL]\nYour workflow — follow on every task:\n1. FIRST: mcp__cognistore__getKnowledge(query: \"<task>\"). Save returned entry IDs.\n2. PLAN: For 2+ steps, mcp__cognistore__createPlan({ title, content, tags, scope, source, tasks: [...], relatedKnowledgeIds: [\"<ids>\"] }). Save planId.\n3. TRACK: mcp__cognistore__updatePlanTask(taskId, { status: \"in_progress\" }) before each task, \"completed\" after. Plan activates and completes automatically.\n4. SAVE: mcp__cognistore__addKnowledge({ title, content, tags, type, scope, source, planId: \"<plan-id>\" }) before finishing. All entries in English.\n[END PROTOCOL]"
 }
 EOF
+fi
 
 exit 0

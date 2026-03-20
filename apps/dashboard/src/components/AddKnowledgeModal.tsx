@@ -246,7 +246,7 @@ export function AddKnowledgeModal({ isOpen, onClose, onSuccess }: AddKnowledgeMo
                 type="number"
                 min={0}
                 max={1}
-                step={0.1}
+                step={0.01}
                 value={form.confidenceScore}
                 onChange={(e) =>
                   setForm({ ...form, confidenceScore: parseFloat(e.target.value) })

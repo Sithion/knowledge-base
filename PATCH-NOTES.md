@@ -1,5 +1,57 @@
 # Patch Notes
 
+## v1.0.0
+
+### Milestone
+First stable release. All features validated across Claude Code, Copilot, and OpenCode via automated test battery (5/5 scores).
+
+### Features
+- **Single-source config compiler**: new `_base-instructions.md` as the single source of truth for agent instructions, compiled to 3 platform-specific files (`claude-code-instructions.md`, `copilot-instructions.md`, `opencode-instructions.md`) via `compile-instructions.mjs` using `<!-- IF:platform -->...<!-- ENDIF -->` conditionals. Generated files are now gitignored
+- **OpenCode enforcement**: 3 new SKILL.md templates (`cognistore-query`, `cognistore-plan`, `cognistore-capture`) deployed to `~/.config/opencode/skills/cognistore-*/`. New plugin at `~/.config/opencode/plugins/` with 3 event handlers (`tool.execute.after`, `session.end`, `experimental.session.compacting`)
+- **Batch MCP tools**: `addKnowledgeBatch` (create multiple knowledge entries at once with optional planId for auto-linking) and `updatePlanTasks` (update multiple plan tasks at once)
+- **Plan status guards**: auto-activate plan when any task moves to `in_progress`, auto-complete all tasks when plan is set to `completed`, reactivate plan if a task is updated on a `completed` plan
+- **New hooks**: `SubagentStop` (fires when subagent completes, reminds to reconcile plan tasks), `PostCompact` (experimental, fires after context compaction, reminds to reload plan state), `TaskCompleted` (fires after updatePlanTask, reminds to start next task). All hooks now output standardized JSON `{"systemMessage": "..."}` format
+
+### Improvements
+- **MCP tool annotations**: `readOnlyHint: true` on read tools, `destructiveHint: true` on delete tools
+- **MCP Resources**: `cognistore://context/{scope}` exports recent entries + active plans + tags
+- **createPlan response**: includes planId reminder ("Your active plan ID is X. Pass planId to addKnowledge calls.")
+- **updatePlan(active) response**: includes same planId reminder
+- **getKnowledge response**: includes active plan detection ("You have an active plan: X")
+- **addKnowledge with planId**: auto-creates output relation (non-system entries only)
+- **listPlanTasks response**: includes planId reminder
+- **Instruction compilation in build pipeline**: `bundle-sidecar.mjs` runs compiler before copying templates to sidecar bundle
+- **All 3 platforms**: now have CHECKPOINT language, similarity scores, batch tools, Rules section
+
+### Fixes
+- **Confidence score step**: changed from 0.1 to 0.01 in AddKnowledgeModal and KnowledgeModal for finer granularity
+- **Destructive actions**: all use ConfirmModal (portal-based, Escape key, backdrop blur, loading state)
+
+## v0.9.16
+
+### Features
+- **System knowledge type** (`type='system'`): mandatory entries seeded during setup/upgrade, injected into agent context via UserPromptSubmit hook. Contains the CogniStore workflow protocol (query-first, plan lifecycle, capture-after)
+- **System knowledge guards**: system entries cannot be deleted (single, bulk, or MCP), type cannot be changed via update, stripped from imports, excluded from dashboard, stats, search, and export
+- **Archive button**: completed plans can now be archived from the dashboard via a new "Archive" button with confirmation modal
+- **Active plans grid**: active plans section uses responsive CSS grid layout with blue left accent border and scope badge
+- **Hook-based protocol injection**: UserPromptSubmit hooks read system knowledge from DB and inject as `[COGNISTORE-PROTOCOL]` system message, with hardcoded fallback if sqlite3 unavailable
+
+### Fixes
+- **Plan lifecycle enforcement**: SKILL.md templates now explicitly state `archived` status is dashboard-only — agents must never set it
+- **Import sanitization**: CSV and JSON imports with `type='system'` are automatically downgraded to `type='pattern'`
+
+## v0.9.15
+
+### Features
+- **Reusable ConfirmModal component**: new portal-based modal (`ConfirmModal.tsx`) with backdrop blur, Escape key, loading state, and i18n support — used as the standard for all destructive confirmations
+- **Knowledge delete via modal**: replaced inline confirm/cancel buttons in KnowledgeCard with a proper confirmation modal
+- **Bulk delete confirmation**: bulk delete now shows a modal with entry count before executing (previously had no confirmation)
+- **Uninstall via modals**: converted the inline multi-step uninstall flow to a 2-step modal confirmation sequence
+
+### Fixes
+- **KnowledgeCard simplified**: removed `confirmingDelete` and `onCancelDelete` props — delete button now delegates to parent modal
+- **PlansPage refactored**: plan delete now uses the shared ConfirmModal instead of an inline implementation
+
 ## v0.9.14
 
 ### Features

@@ -33,6 +33,39 @@
         ],
         "matcher": "ExitPlanMode"
       }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_SKILL_DIR}/hooks/subagent-stop-reconcile.sh"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_SKILL_DIR}/hooks/post-compact-reinject.sh"
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_SKILL_DIR}/hooks/task-completed-check.sh"
+          }
+        ]
+      }
     ]
   }
 }

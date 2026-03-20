@@ -4,6 +4,7 @@ export enum KnowledgeType {
   FIX = 'fix',
   CONSTRAINT = 'constraint',
   GOTCHA = 'gotcha',
+  SYSTEM = 'system',
 }
 
 export enum KnowledgeStatus {
@@ -130,6 +131,15 @@ export interface UpdatePlanTaskInput {
   priority?: TaskPriority;
   notes?: string | null;
   position?: number;
+}
+
+// ─── Plan Task Update Result ─────────────────────────────────
+
+export interface PlanTaskUpdateResult {
+  task: PlanTask;
+  plan: { id: string; status: string; progress: string };
+  autoActions: string[];
+  reminder: string;
 }
 
 // ─── Plan Relations ──────────────────────────────────────────

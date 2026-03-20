@@ -97,5 +97,15 @@ mcp__cognistore__createPlan({
 - **Always include tasks** when creating a plan
 - **Always link knowledge** — relatedKnowledgeIds on create, addPlanRelation during execution
 - **Update task AND plan status in real-time** — in_progress → completed, draft → active → completed
+- **NEVER set plan status to 'archived'** — this is a dashboard-only action, not for agents
 - **Run completion protocol** when all tasks are finished
-- **All entries in English** — regardless of user language preference
+- **All entries in English** — regardless of user language
+
+## After Delegation Protocol
+
+When a subagent completes plan tasks:
+1. `listPlanTasks(planId)` — reload current state
+2. `updatePlanTask(taskId, {status: 'completed', notes: 'Completed by subagent'})` for each finished task
+3. `updatePlanTask(nextTaskId, {status: 'in_progress'})` for next task
+
+This is the #1 cause of orphaned plans. Never skip reconciliation after delegation. preference

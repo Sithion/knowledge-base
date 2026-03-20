@@ -19,6 +19,27 @@
         "bash": "${COPILOT_SKILL_DIR}/hooks/post-plan-check.sh",
         "timeoutSec": 5
       }
+    ],
+    "subagentStop": [
+      {
+        "type": "bash",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/subagent-stop-reconcile.sh",
+        "timeoutSec": 10
+      }
+    ],
+    "postCompact": [
+      {
+        "type": "bash",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/post-compact-reinject.sh",
+        "timeoutSec": 10
+      }
+    ],
+    "taskCompleted": [
+      {
+        "type": "bash",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/task-completed-check.sh",
+        "timeoutSec": 10
+      }
     ]
   }
 }

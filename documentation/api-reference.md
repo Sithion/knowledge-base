@@ -38,9 +38,11 @@ Check if all setup components are installed and ready.
 
 ## Knowledge CRUD
 
+**System entry filtering:** All GET endpoints for knowledge entries automatically exclude `type=system` entries from results. System entries are managed exclusively by the setup/upgrade pipeline and are not visible in the dashboard.
+
 ### GET /api/knowledge/recent
 
-List recent knowledge entries.
+List recent knowledge entries (excludes system entries).
 
 | Query Param | Type | Default | Description |
 |-------------|------|---------|-------------|
@@ -98,7 +100,7 @@ Required: `title`, `content`, `tags`, `type`, `scope`, `source`
 
 ### PUT /api/knowledge/:id
 
-Update an existing entry. Only include fields to change.
+Update an existing entry. Only include fields to change. Returns `403 Forbidden` if attempting to change `type` or `content` on a system entry (`type=system`).
 
 **Body:**
 ```json
@@ -112,9 +114,17 @@ Update an existing entry. Only include fields to change.
 
 ### DELETE /api/knowledge/:id
 
-Delete an entry and its embedding.
+Delete an entry and its embedding. Returns `403 Forbidden` if the entry has `type=system` (system entries are protected and cannot be deleted).
 
 **Response:** `{ success: true }`
+
+**Error (system entry):**
+```json
+{
+  "error": "System knowledge entries cannot be deleted",
+  "statusCode": 403
+}
+```
 
 ## Statistics & Metrics
 
@@ -199,6 +209,38 @@ Inject MCP configs, instruction markers, and AI skills into all supported client
 
 Finalize setup and re-initialize the SDK.
 
+## Upgrade
+
+### POST /api/upgrade/run
+
+Run the upgrade pipeline. Compares `~/.cognistore/.version` with the running app version. On mismatch, re-deploys all artifacts: database migrations, agent instructions (recompiled from `_base-instructions.md`), MCP configs, skills/hooks, OpenCode plugins, and system knowledge entries.
+
+**Response (success):**
+```json
+{
+  "success": true,
+  "from": "0.9.16",
+  "to": "1.0.0",
+  "steps": ["migrations", "instructions", "mcpConfigs", "skills", "plugins", "systemKnowledge"]
+}
+```
+
+**Response (already up-to-date):**
+```json
+{
+  "success": true,
+  "message": "Already up to date"
+}
+```
+
+**Response (concurrent request):**
+```json
+{
+  "error": "Upgrade already in progress",
+  "statusCode": 409
+}
+```
+
 ## Uninstall
 
 ### POST /api/uninstall
@@ -244,7 +286,7 @@ Required: `title`, `content`, `tags`, `scope`, `source`
 
 ### PUT /api/plans/:id
 
-Update a plan. Only include fields to change.
+Update a plan. Only include fields to change. The `archived` status can only be set from the dashboard (not via MCP) — agents are restricted to `draft`, `active`, and `completed` transitions.
 
 **Body:**
 ```json
@@ -270,7 +312,7 @@ Get knowledge entries linked to a plan.
 
 ### POST /api/plans/:id/relations
 
-Link a knowledge entry to a plan.
+Link a knowledge entry to a plan. Silently skips system knowledge entries (`type=system`) — returns success but does not create the relation.
 
 **Body:**
 ```json

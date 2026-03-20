@@ -6,6 +6,11 @@ import {
   unlink,
   access,
 } from 'node:fs/promises';
+import {
+  existsSync,
+  rmSync,
+  unlinkSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 
@@ -68,6 +73,8 @@ export class ConfigManager {
     'opencode',
     'AGENTS.md'
   );
+  static readonly OPENCODE_SKILLS_DIR = join(homedir(), '.config', 'opencode', 'skills');
+  static readonly OPENCODE_PLUGINS_DIR = join(homedir(), '.config', 'opencode', 'plugins');
 
   /**
    * Inject template content into a target file using markers.
@@ -452,6 +459,69 @@ export class ConfigManager {
     }
 
     return { cleaned };
+  }
+
+  /**
+   * Install OpenCode skills from templates.
+   * Copies SKILL.md files for cognistore-query, cognistore-plan, cognistore-capture
+   * into ~/.config/opencode/skills/ (no hooks subdirectories).
+   */
+  async setupOpenCodeSkills(templatesDir: string): Promise<void> {
+    const skillNames = ['cognistore-query', 'cognistore-capture', 'cognistore-plan'];
+    for (const name of skillNames) {
+      const srcDir = join(templatesDir, 'skills', 'opencode', name);
+      const destDir = join(ConfigManager.OPENCODE_SKILLS_DIR, name);
+      try {
+        await access(srcDir);
+      } catch {
+        continue; // source doesn't exist, skip
+      }
+      await mkdir(destDir, { recursive: true });
+      const skillFile = join(srcDir, 'SKILL.md');
+      try {
+        await access(skillFile);
+        await copyFile(skillFile, join(destDir, 'SKILL.md'));
+      } catch {
+        // SKILL.md not found, skip
+      }
+    }
+  }
+
+  /**
+   * Install OpenCode plugins from templates.
+   * Copies cognistore-plan-enforcement.ts into ~/.config/opencode/plugins/
+   */
+  async setupOpenCodePlugins(templatesDir: string): Promise<void> {
+    const srcFile = join(templatesDir, 'plugins', 'opencode', 'cognistore-plan-enforcement.ts');
+    try {
+      await access(srcFile);
+    } catch {
+      return; // source doesn't exist, skip
+    }
+    await mkdir(ConfigManager.OPENCODE_PLUGINS_DIR, { recursive: true });
+    await copyFile(srcFile, join(ConfigManager.OPENCODE_PLUGINS_DIR, 'cognistore-plan-enforcement.ts'));
+  }
+
+  /**
+   * Remove OpenCode skill directories from ~/.config/opencode/skills/
+   */
+  removeOpenCodeSkills(): void {
+    for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
+      const dir = join(ConfigManager.OPENCODE_SKILLS_DIR, name);
+      if (existsSync(dir)) {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  }
+
+  /**
+   * Remove cognistore-plan-enforcement.ts from ~/.config/opencode/plugins/
+   */
+  removeOpenCodePlugins(): void {
+    const pluginFile = join(ConfigManager.OPENCODE_PLUGINS_DIR, 'cognistore-plan-enforcement.ts');
+    if (existsSync(pluginFile)) {
+      unlinkSync(pluginFile);
+    }
   }
 
   private async fileExists(path: string): Promise<boolean> {

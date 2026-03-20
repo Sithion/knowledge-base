@@ -27,7 +27,7 @@ Knowledge management interface with search, filters, and CRUD.
 - Search bar with natural language query input
 - Filter dropdowns: type (decision/pattern/fix/constraint/gotcha), scope, tags
 - Knowledge cards grid with title, tag chips, type badges, and similarity scores
-- Floating action button (FAB) → add knowledge modal
+- Floating action button (FAB) → add knowledge modal (confidence score step: 0.01 for fine granularity)
 - Auto-refresh polling (detects new entries every 10 seconds)
 
 ### PlansPage (`/plans`)
@@ -35,12 +35,14 @@ Knowledge management interface with search, filters, and CRUD.
 Plan management with live task tracking.
 
 **Components:**
-- Active plans section at top showing plans with `active` status
+- Active plans section at top showing plans with `active` status in a responsive grid layout
 - Task list per plan with status icons: ○ pending, spinner in_progress, ✓ completed
 - Priority left-border colors: red (high), yellow (medium), gray (low)
 - Progress bars and mini progress counters (e.g., "3/5 tasks")
 - Plan relations sections (input/output knowledge entries)
 - Plan status lifecycle: draft → active → completed → archived
+- **Archive button** on completed plans — allows users to archive plans directly from the dashboard (agents cannot set `archived` status via MCP; this is a user-only action)
+- All destructive actions (delete plan, delete entry, etc.) use the shared **ConfirmModal** component
 
 ### StatsPage (`/stats`)
 
@@ -174,6 +176,30 @@ States:
 4. Installing → shows "Installing..." message
 5. Ready → auto-relaunch after 1.5 seconds
 ```
+
+## Shared Components
+
+### ConfirmModal
+
+**File:** `apps/dashboard/src/components/ConfirmModal.tsx`
+
+A portal-based modal used for all destructive action confirmations across the dashboard. Replaces the previous inline confirmation patterns.
+
+**Features:**
+- Rendered via React portal (attached to document body, z-index layering)
+- Closes on Escape key press or backdrop click (click outside)
+- Backdrop blur effect for visual focus
+- Shows a loading spinner on the confirm button while the action is in progress (prevents double-clicks)
+- Accepts custom title, message, confirm/cancel labels, and an async `onConfirm` handler
+- Used by: delete knowledge entry, delete plan, bulk delete, uninstall wizard, cleanup orphan embeddings, plan archive
+
+### System Knowledge Filtering
+
+The frontend automatically filters out `type=system` entries from all views:
+- Knowledge list (HomePage) excludes system entries
+- Search results exclude system entries
+- Stats page charts exclude system entries from type distribution
+- System entries are not editable or deletable from the UI
 
 ## API Client
 

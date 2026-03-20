@@ -65,3 +65,9 @@ Only store knowledge that **saves significant time in future sessions**. Do NOT 
 |-------|------|
 | `workspace:<project>` | Knowledge specific to one project |
 | `global` | Cross-project knowledge |
+
+## Pre-Capture: Plan Completion Check
+
+Before capturing knowledge, ensure active plans are complete:
+1. `listPlanTasks(planId)` — if any tasks are not `completed`, update them first
+2. Only after plan tracking is current, proceed with knowledge capture
