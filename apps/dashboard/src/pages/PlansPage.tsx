@@ -518,6 +518,7 @@ export function PlansPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval>>();
 
   // Load all plans
@@ -655,15 +656,7 @@ export function PlansPage() {
             <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{selectedPlan.scope}</span>
           </div>
           <button
-            onClick={async () => {
-              if (!window.confirm(t('plans.confirmDelete'))) return;
-              try {
-                await api.deletePlan(selectedPlan.id);
-                setSelectedPlan(null);
-                loadPlans();
-                loadActivePlans();
-              } catch { /* silent */ }
-            }}
+            onClick={() => setConfirmDelete(true)}
             style={{
               padding: '6px 12px', borderRadius: 6, fontSize: 12,
               border: '1px solid var(--error, #ef4444)', backgroundColor: 'transparent',
@@ -735,6 +728,57 @@ export function PlansPage() {
             )}
           </div>
         </div>
+
+        {/* Delete Confirm Modal */}
+        {confirmDelete && (
+          <div style={{
+            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          }} onClick={() => setConfirmDelete(false)}>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)',
+                padding: 24, maxWidth: 400, width: '90%',
+              }}
+            >
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>{t('plans.delete')}</h3>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>{t('plans.confirmDelete')}</p>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  style={{
+                    padding: '8px 16px', borderRadius: 6, fontSize: 13,
+                    border: '1px solid var(--border)', backgroundColor: 'transparent',
+                    color: 'var(--text-secondary)', cursor: 'pointer',
+                  }}
+                >
+                  {t('actions.cancel')}
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.deletePlan(selectedPlan.id);
+                      setSelectedPlan(null);
+                      setConfirmDelete(false);
+                      setSearchParams({}, { replace: true });
+                      loadPlans();
+                      loadActivePlans();
+                    } catch { /* silent */ }
+                  }}
+                  style={{
+                    padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                    border: 'none', backgroundColor: 'var(--error, #ef4444)',
+                    color: '#fff', cursor: 'pointer',
+                  }}
+                >
+                  {t('actions.confirm')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

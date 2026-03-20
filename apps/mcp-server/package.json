@@ -1,25 +1,25 @@
 {
-  "name": "@ai-knowledge/mcp-server",
-  "version": "0.9.7",
+  "name": "@cognistore/mcp-server",
+  "version": "0.9.8",
   "private": false,
   "type": "module",
-  "description": "MCP server for AI Knowledge Base — integrates with Claude Code and GitHub Copilot",
+  "description": "MCP server for CogniStore — integrates with Claude Code and GitHub Copilot",
   "license": "BUSL-1.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Sithion/ai-knowledge",
+    "url": "https://github.com/Sithion/cognistore",
     "directory": "apps/mcp-server"
   },
   "main": "./dist/index.js",
   "bin": {
-    "ai-knowledge-mcp": "./dist/index.js"
+    "cognistore-mcp": "./dist/index.js"
   },
   "files": [
     "dist"
   ],
   "scripts": {
     "build": "pnpm build:deps && tsup",
-    "build:deps": "pnpm --filter @ai-knowledge/shared build && pnpm --filter @ai-knowledge/core build && pnpm --filter @ai-knowledge/embeddings build && pnpm --filter @ai-knowledge/sdk build",
+    "build:deps": "pnpm --filter @cognistore/shared build && pnpm --filter @cognistore/core build && pnpm --filter @cognistore/embeddings build && pnpm --filter @cognistore/sdk build",
     "dev": "tsx src/index.ts",
     "clean": "rm -rf dist",
     "test": "if find . -name '*.test.ts' -o -name '*.spec.ts' | grep -q .; then npx playwright test; else echo 'No tests found, skipping'; fi"
@@ -32,8 +32,8 @@
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@ai-knowledge/sdk": "workspace:*",
-    "@ai-knowledge/shared": "workspace:*",
+    "@cognistore/sdk": "workspace:*",
+    "@cognistore/shared": "workspace:*",
     "@playwright/test": "^1.50.0",
     "tsup": "^8.5.1",
     "tsx": "^4.0.0",

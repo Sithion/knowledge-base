@@ -29,7 +29,7 @@ The desktop application uses a **sidecar model**: Tauri v2 (Rust) manages the wi
 2. setup() callback:
    a. find_node()          → resolve Node.js v20 binary path
    b. Resolve resource paths (dist-server, dist, node_modules, templates)
-   c. Compute SQLite path  → ~/.ai-knowledge/knowledge.db
+   c. Compute SQLite path  → ~/.cognistore/knowledge.db
    d. find_available_port(3210) → scan for free port
    e. spawn_node()         → launch Fastify as child process
    f. wait_for_ready()     → poll GET /api/health for 15 seconds
@@ -59,7 +59,7 @@ The Rust shell passes configuration to the Fastify sidecar via environment:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
-| `SQLITE_PATH` | `~/.ai-knowledge/knowledge.db` | Database file location |
+| `SQLITE_PATH` | `~/.cognistore/knowledge.db` | Database file location |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `all-minilm` | Embedding model name |
 | `EMBEDDING_DIMENSIONS` | `384` | Vector dimensions |
@@ -89,7 +89,7 @@ Scans ports starting from 3210, testing each with a TCP bind. Returns the first 
 | Setting | Value |
 |---------|-------|
 | Check interval | 30 minutes (after 5s initial delay) |
-| Endpoint | `https://github.com/Sithion/ai-knowledge/releases/latest/download/latest.json` |
+| Endpoint | `https://github.com/Sithion/cognistore/releases/latest/download/latest.json` |
 | Signature verification | Ed25519 public key in `tauri.conf.json` |
 | User flow | Banner → "Update now" → download progress → auto-relaunch (1.5s) |
 

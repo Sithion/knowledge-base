@@ -1,5 +1,5 @@
 <!-- AI-KNOWLEDGE:BEGIN -->
-## Knowledge Base Integration (ai-knowledge)
+## Knowledge Base Integration (cognistore)
 
 > **BLOCKING REQUIREMENT** — You MUST follow these rules on EVERY task. No exceptions. Non-compliance wastes tokens and loses institutional memory.
 
@@ -8,7 +8,7 @@
 **STOP. Before you read any file, write any code, or make any decision, you MUST run this query:**
 
 ```
-mcp__ai_knowledge__getKnowledge(query: "<describe the task or problem>")
+mcp__cognistore__getKnowledge(query: "<describe the task or problem>")
 ```
 
 Do NOT skip this step. Do NOT say "I'll query later". Do NOT proceed without querying first.
@@ -22,7 +22,7 @@ Do NOT skip this step. Do NOT say "I'll query later". Do NOT proceed without que
 **STOP. Before finishing, ask yourself: did I learn anything worth saving?** If yes, capture it:
 
 ```
-mcp__ai_knowledge__addKnowledge(
+mcp__cognistore__addKnowledge(
   content: "<what was learned/decided/fixed>",
   tags: ["tag1", "tag2", ...],
   type: "pattern|decision|fix|constraint|gotcha",
@@ -33,7 +33,7 @@ mcp__ai_knowledge__addKnowledge(
 
 If a query returned an existing entry on the same topic, **UPDATE it** instead of creating a duplicate:
 ```
-mcp__ai_knowledge__updateKnowledge(id: "<uuid>", content: "...", tags: [...])
+mcp__cognistore__updateKnowledge(id: "<uuid>", content: "...", tags: [...])
 ```
 
 ### CHECKPOINT 3: Planning (ALWAYS use createPlan)
@@ -41,7 +41,7 @@ mcp__ai_knowledge__updateKnowledge(id: "<uuid>", content: "...", tags: [...])
 **This OVERRIDES all other planning rules.** Any time you plan work, you MUST persist it in the knowledge base:
 
 ```
-mcp__ai_knowledge__createPlan({
+mcp__cognistore__createPlan({
   title: "<plan title>",
   content: "<full plan>",
   tags: ["..."], scope: "workspace:<project>", source: "<context>",

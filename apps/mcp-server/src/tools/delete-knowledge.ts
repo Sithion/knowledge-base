@@ -1,4 +1,4 @@
-import type { KnowledgeSDK } from '@ai-knowledge/sdk';
+import type { KnowledgeSDK } from '@cognistore/sdk';
 
 export const deleteKnowledgeTool = {
   name: 'deleteKnowledge',

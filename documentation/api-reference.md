@@ -15,7 +15,7 @@ Check database and Ollama connectivity.
 **Response:**
 ```json
 {
-  "database": { "connected": true, "path": "~/.ai-knowledge/knowledge.db" },
+  "database": { "connected": true, "path": "~/.cognistore/knowledge.db" },
   "ollama": { "connected": true, "host": "http://localhost:11434" }
 }
 ```
@@ -144,7 +144,7 @@ Detailed metrics for the stats dashboard.
 **Response:**
 ```json
 {
-  "database": { "size": "2.4 MB", "path": "~/.ai-knowledge/knowledge.db" },
+  "database": { "size": "2.4 MB", "path": "~/.cognistore/knowledge.db" },
   "activity": { "last24h": 12, "last7d": 45 },
   "activityByDay": [
     { "date": "2026-03-17", "count": 8 },

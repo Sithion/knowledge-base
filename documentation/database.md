@@ -2,7 +2,7 @@
 
 ## Overview
 
-The knowledge base uses **SQLite** with the **sqlite-vec** extension for vector similarity search. The database is managed through **Drizzle ORM** and stored as a single file at `~/.ai-knowledge/knowledge.db`.
+The knowledge base uses **SQLite** with the **sqlite-vec** extension for vector similarity search. The database is managed through **Drizzle ORM** and stored as a single file at `~/.cognistore/knowledge.db`.
 
 ## Schema
 
@@ -208,8 +208,8 @@ Response: { embedding: [0.012, -0.045, ...] }  // 384 floats
 
 | Item | Path |
 |------|------|
-| Database file | `~/.ai-knowledge/knowledge.db` |
-| WAL file | `~/.ai-knowledge/knowledge.db-wal` |
-| SHM file | `~/.ai-knowledge/knowledge.db-shm` |
+| Database file | `~/.cognistore/knowledge.db` |
+| WAL file | `~/.cognistore/knowledge.db-wal` |
+| SHM file | `~/.cognistore/knowledge.db-shm` |
 
-The parent directory `~/.ai-knowledge/` is created automatically by `createDbClient()` if it doesn't exist.
+The parent directory `~/.cognistore/` is created automatically by `createDbClient()` if it doesn't exist.

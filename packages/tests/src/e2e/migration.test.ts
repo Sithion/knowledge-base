@@ -6,11 +6,11 @@ import BetterSqlite3 from 'better-sqlite3';
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const sqliteVec = require('sqlite-vec');
-import { createDbClient } from '@ai-knowledge/core';
-import { runMigrations } from '@ai-knowledge/core';
+import { createDbClient } from '@cognistore/core';
+import { runMigrations } from '@cognistore/core';
 
 function tmpDbPath(): string {
-  return join(tmpdir(), `ai-knowledge-migration-test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
+  return join(tmpdir(), `cognistore-migration-test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 }
 
 function cleanupDb(dbPath: string): void {

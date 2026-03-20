@@ -16,7 +16,7 @@ The setup wizard runs on first launch and installs all dependencies automaticall
 | 1 | Node.js | `POST /api/setup/node` | Detect or install Node.js v20 via nvm |
 | 2 | Ollama | `POST /api/setup/ollama` | Install Ollama via brew (macOS) or curl (Linux) |
 | 3 | Start Ollama | `POST /api/setup/ollama-start` | Spawn `ollama serve` as background daemon, wait 15s |
-| 4 | Database | `POST /api/setup/database` | Create `~/.ai-knowledge/knowledge.db` with schema + indices |
+| 4 | Database | `POST /api/setup/database` | Create `~/.cognistore/knowledge.db` with schema + indices |
 | 5 | Model | `POST /api/setup/model` | Pull `all-minilm` embedding model via Ollama API |
 | 6 | Configure | `POST /api/setup/configure` | Inject MCP configs, instructions, and skills |
 | 7 | Complete | `POST /api/setup/complete` | Finalize setup, re-initialize SDK |
@@ -78,7 +78,7 @@ The configure step performs multiple actions:
 
 1. **Inject CLAUDE.md markers** — Adds knowledge-first protocol instructions
 2. **Inject copilot-instructions.md markers** — Same for Copilot
-3. **Add MCP entries** — Adds `ai-knowledge` to all client configs:
+3. **Add MCP entries** — Adds `cognistore` to all client configs:
    - `~/.claude/mcp-config.json`
    - `~/.claude.json`
    - `~/.copilot/mcp-config.json`
@@ -109,12 +109,12 @@ The uninstall button requires a 3-step confirmation to prevent accidental data l
 | # | Action | Details |
 |---|--------|---------|
 | 1 | Remove instruction markers | Delete `AI-KNOWLEDGE:BEGIN/END` blocks from CLAUDE.md, copilot-instructions.md |
-| 2 | Remove MCP entries | Delete `ai-knowledge` from all `mcpServers`/`mcp` configs |
-| 3 | Remove skills | Delete `~/.claude/skills/ai-knowledge-*/` directories (query, capture, plan) and `~/.copilot/skills/ai-knowledge-*.md` files |
+| 2 | Remove MCP entries | Delete `cognistore` from all `mcpServers`/`mcp` configs |
+| 3 | Remove skills | Delete `~/.claude/skills/cognistore-*/` directories (query, capture, plan) and `~/.copilot/skills/cognistore-*.md` files |
 | 4 | Uninstall Ollama model | `ollama rm all-minilm` |
 | 5 | Uninstall Ollama binary | `brew uninstall ollama` (macOS) or remove binary (Linux) |
 | 6 | Close SDK | Gracefully close database connections |
-| 7 | Remove data directory | `rm -rf ~/.ai-knowledge/` (database + WAL files) |
+| 7 | Remove data directory | `rm -rf ~/.cognistore/` (database + WAL files) |
 | 8 | Clean backup files | Remove `*.bak.*` files created during config injection |
 | 9 | Self-delete app | `setTimeout` → remove app from `/Applications/` (macOS) or `~/.local/bin/` (Linux) |
 
@@ -124,7 +124,7 @@ Every resource created by setup **must** be removed by uninstall. This is a mand
 
 | Setup Creates | Uninstall Removes |
 |---------------|-------------------|
-| `~/.ai-knowledge/` directory | Remove recursively |
+| `~/.cognistore/` directory | Remove recursively |
 | `knowledge.db` (SQLite) | Removed with directory |
 | Ollama via brew/curl | Uninstall via brew or remove binary |
 | `ollama serve` process | Stop via `pkill` |
@@ -134,6 +134,6 @@ Every resource created by setup **must** be removed by uninstall. This is a mand
 | MCP config entries (4 files) | Remove via ConfigManager |
 | Claude skills directories | Remove directories |
 | Copilot skill files | Remove files |
-| Claude plan skill directory | Remove `~/.claude/skills/ai-knowledge-plan/` |
-| Copilot plan skill file | Remove `~/.copilot/skills/ai-knowledge-plan.md` |
+| Claude plan skill directory | Remove `~/.claude/skills/cognistore-plan/` |
+| Copilot plan skill file | Remove `~/.copilot/skills/cognistore-plan.md` |
 | App in /Applications/ | Self-delete via rmSync |

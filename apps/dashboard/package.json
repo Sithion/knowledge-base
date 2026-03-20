@@ -1,6 +1,6 @@
 {
-  "name": "@ai-knowledge/dashboard",
-  "version": "0.9.7",
+  "name": "@cognistore/dashboard",
+  "version": "0.9.8",
   "private": true,
   "type": "module",
   "scripts": {
@@ -17,10 +17,10 @@
     "tauri:bundle": "node scripts/bundle-sidecar.mjs && tauri build"
   },
   "dependencies": {
-    "@ai-knowledge/config": "workspace:*",
-    "@ai-knowledge/core": "workspace:*",
-    "@ai-knowledge/sdk": "workspace:*",
-    "@ai-knowledge/shared": "workspace:*",
+    "@cognistore/config": "workspace:*",
+    "@cognistore/core": "workspace:*",
+    "@cognistore/sdk": "workspace:*",
+    "@cognistore/shared": "workspace:*",
     "@fastify/cors": "^11.2.0",
     "@fastify/static": "^9.0.0",
     "@reduxjs/toolkit": "^2.11.2",

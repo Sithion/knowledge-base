@@ -1,5 +1,5 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { KnowledgeSDK } from '@ai-knowledge/sdk';
+import { KnowledgeSDK } from '@cognistore/sdk';
 import { createServer } from './server.js';
 
 async function main() {

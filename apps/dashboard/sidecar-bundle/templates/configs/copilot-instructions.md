@@ -1,35 +1,35 @@
 <!-- AI-KNOWLEDGE:BEGIN -->
-## Knowledge Base Integration (ai-knowledge)
+## Knowledge Base Integration (cognistore)
 
 > **BLOCKING REQUIREMENT** — You MUST follow these rules on EVERY task. No exceptions.
-> Tools are provided by the `ai-knowledge` MCP server.
+> Tools are provided by the `cognistore` MCP server.
 
 ### Mandatory Skills — ALWAYS Invoke
 
 You have 3 skills that MUST be invoked automatically. These are NOT optional:
 
-1. **`ai-knowledge-query`** — MUST be your **FIRST action** in every task, before reading files, writing code, or making decisions. No exceptions.
-2. **`ai-knowledge-capture`** — MUST be your **LAST action** after completing any task that produced new knowledge (fixes, decisions, patterns, constraints).
-3. **`ai-knowledge-plan`** — MUST be invoked ANY time you plan work, INCLUDING in `[PLAN]` mode. ALL plans MUST go through `createPlan()`. This OVERRIDES all other planning rules. NEVER write plans to local files (plan.md, TODO.md, PLAN.md, etc.). NEVER use only task lists as a substitute. `[PLAN]` mode changes HOW you plan, NOT WHERE you store it — always `createPlan()`.
+1. **`cognistore-query`** — MUST be your **FIRST action** in every task, before reading files, writing code, or making decisions. No exceptions.
+2. **`cognistore-capture`** — MUST be your **LAST action** after completing any task that produced new knowledge (fixes, decisions, patterns, constraints).
+3. **`cognistore-plan`** — MUST be invoked ANY time you plan work, INCLUDING in `[PLAN]` mode. ALL plans MUST go through `createPlan()`. This OVERRIDES all other planning rules. NEVER write plans to local files (plan.md, TODO.md, PLAN.md, etc.). NEVER use only task lists as a substitute. `[PLAN]` mode changes HOW you plan, NOT WHERE you store it — always `createPlan()`.
 
-### CHECKPOINT 1: Query First (ai-knowledge-query)
+### CHECKPOINT 1: Query First (cognistore-query)
 
 **STOP. Before you read any file, write any code, or make any decision:**
 
 ```
-mcp__ai-knowledge__getKnowledge(query: "<describe the task or problem>")
+mcp__cognistore__getKnowledge(query: "<describe the task or problem>")
 ```
 
 - Similarity > 0.50: **Use directly** — skip redundant analysis
 - Similarity 0.30–0.50: **Review** — combine with fresh analysis
 - No results or < 0.30: Proceed with full analysis
 
-### CHECKPOINT 2: Capture Last (ai-knowledge-capture)
+### CHECKPOINT 2: Capture Last (cognistore-capture)
 
 **Before finishing, capture what you learned:**
 
 ```
-mcp__ai-knowledge__addKnowledge({
+mcp__cognistore__addKnowledge({
   content: "<what was learned>",
   tags: ["tag1", "tag2"],
   type: "pattern|decision|fix|constraint|gotcha",
@@ -40,12 +40,12 @@ mcp__ai-knowledge__addKnowledge({
 
 If an existing entry covers the topic, **UPDATE it** instead of creating a duplicate.
 
-### CHECKPOINT 3: Plan via createPlan (ai-knowledge-plan)
+### CHECKPOINT 3: Plan via createPlan (cognistore-plan)
 
 **ALL plans MUST be persisted in the knowledge base:**
 
 ```
-mcp__ai-knowledge__createPlan({
+mcp__cognistore__createPlan({
   title: "<plan title>",
   content: "<full plan>",
   tags: ["..."], scope: "workspace:<project>", source: "<context>",

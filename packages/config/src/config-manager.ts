@@ -153,7 +153,7 @@ export class ConfigManager {
   }
 
   /**
-   * Add or update the ai-knowledge MCP server entry in an MCP JSON config file.
+   * Add or update the cognistore MCP server entry in an MCP JSON config file.
    */
   async setupMcpConfig(
     configPath: string,
@@ -162,7 +162,7 @@ export class ConfigManager {
     await mkdir(dirname(configPath), { recursive: true });
 
     if (!(await this.fileExists(configPath))) {
-      const config = { mcpServers: { 'ai-knowledge': mcpEntry } };
+      const config = { mcpServers: { 'cognistore': mcpEntry } };
       await writeFile(
         configPath,
         JSON.stringify(config, null, 2) + '\n',
@@ -174,10 +174,10 @@ export class ConfigManager {
     const content = await readFile(configPath, 'utf-8');
     const config = JSON.parse(content);
 
-    if (config.mcpServers?.['ai-knowledge']) {
+    if (config.mcpServers?.['cognistore']) {
       // Check if already identical
       if (
-        JSON.stringify(config.mcpServers['ai-knowledge']) ===
+        JSON.stringify(config.mcpServers['cognistore']) ===
         JSON.stringify(mcpEntry)
       ) {
         return { action: 'skipped', path: configPath };
@@ -192,7 +192,7 @@ export class ConfigManager {
     if (!config.mcpServers) {
       config.mcpServers = {};
     }
-    config.mcpServers['ai-knowledge'] = mcpEntry;
+    config.mcpServers['cognistore'] = mcpEntry;
     await writeFile(
       configPath,
       JSON.stringify(config, null, 2) + '\n',
@@ -243,7 +243,7 @@ export class ConfigManager {
   }
 
   /**
-   * Add or update the ai-knowledge MCP server entry in OpenCode config.
+   * Add or update the cognistore MCP server entry in OpenCode config.
    * OpenCode uses `mcp` (not `mcpServers`) and a different entry format.
    */
   async setupOpenCodeMcp(
@@ -254,7 +254,7 @@ export class ConfigManager {
 
     const openCodeEntry = {
       type: 'local',
-      command: ['npx', '-y', '@ai-knowledge/mcp-server'],
+      command: ['npx', '-y', '@cognistore/mcp-server'],
       enabled: true,
       environment: mcpEntry.env || {},
     };
@@ -262,7 +262,7 @@ export class ConfigManager {
     if (!(await this.fileExists(configPath))) {
       const config = {
         $schema: 'https://opencode.ai/config.json',
-        mcp: { 'ai-knowledge': openCodeEntry },
+        mcp: { 'cognistore': openCodeEntry },
       };
       await writeFile(
         configPath,
@@ -275,9 +275,9 @@ export class ConfigManager {
     const content = await readFile(configPath, 'utf-8');
     const config = JSON.parse(content);
 
-    if (config.mcp?.['ai-knowledge']) {
+    if (config.mcp?.['cognistore']) {
       if (
-        JSON.stringify(config.mcp['ai-knowledge']) ===
+        JSON.stringify(config.mcp['cognistore']) ===
         JSON.stringify(openCodeEntry)
       ) {
         return { action: 'skipped', path: configPath };
@@ -289,7 +289,7 @@ export class ConfigManager {
     if (!config.mcp) {
       config.mcp = {};
     }
-    config.mcp['ai-knowledge'] = openCodeEntry;
+    config.mcp['cognistore'] = openCodeEntry;
     await writeFile(
       configPath,
       JSON.stringify(config, null, 2) + '\n',
@@ -299,7 +299,7 @@ export class ConfigManager {
   }
 
   /**
-   * Remove the ai-knowledge MCP server entry from OpenCode config.
+   * Remove the cognistore MCP server entry from OpenCode config.
    */
   async removeOpenCodeMcp(): Promise<McpRemoveResult> {
     const configPath = ConfigManager.OPENCODE_CONFIG;
@@ -310,12 +310,12 @@ export class ConfigManager {
     const content = await readFile(configPath, 'utf-8');
     const config = JSON.parse(content);
 
-    if (!config.mcp?.['ai-knowledge']) {
+    if (!config.mcp?.['cognistore']) {
       return { removed: false, path: configPath };
     }
 
     await copyFile(configPath, `${configPath}.bak.${Date.now()}`);
-    delete config.mcp['ai-knowledge'];
+    delete config.mcp['cognistore'];
 
     await writeFile(
       configPath,
@@ -326,7 +326,7 @@ export class ConfigManager {
   }
 
   /**
-   * Find and remove old 'knowledge' (not 'ai-knowledge') MCP entries from known config files.
+   * Find and remove old 'knowledge' (not 'cognistore') MCP entries from known config files.
    */
   async removeOldKnowledgeMcp(): Promise<{ cleaned: string[] }> {
     const cleaned: string[] = [];

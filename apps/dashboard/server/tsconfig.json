@@ -17,8 +17,8 @@
     "rootDir": ".",
     "baseUrl": "./",
     "paths": {
-      "@ai-knowledge/sdk": ["../../packages/sdk/dist"],
-      "@ai-knowledge/shared": ["../../packages/shared/dist"]
+      "@cognistore/sdk": ["../../packages/sdk/dist"],
+      "@cognistore/shared": ["../../packages/shared/dist"]
     }
   },
   "include": ["."],

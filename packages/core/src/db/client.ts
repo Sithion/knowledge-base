@@ -1,7 +1,7 @@
 import BetterSqlite3 from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as sqliteVec from 'sqlite-vec';
-import { DEFAULT_SQLITE_PATH } from '@ai-knowledge/shared';
+import { DEFAULT_SQLITE_PATH } from '@cognistore/shared';
 import * as schema from './schema/index.js';
 import { createEmbeddingsTable } from './schema/sqlite-vec.js';
 import { runMigrations, runSeeds } from './migrate.js';

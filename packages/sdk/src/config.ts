@@ -4,7 +4,7 @@ import {
   DEFAULT_EMBEDDING_MODEL,
   DEFAULT_EMBEDDING_DIMENSIONS,
   type SDKConfig,
-} from '@ai-knowledge/shared';
+} from '@cognistore/shared';
 
 export function resolveConfig(userConfig?: Partial<SDKConfig>): SDKConfig {
   return {

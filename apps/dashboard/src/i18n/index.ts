@@ -4,7 +4,7 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   en: {
     translation: {
-      app: { title: 'AI Knowledge Base', subtitle: 'Semantic knowledge management for AI agents' },
+      app: { title: 'CogniStore', subtitle: 'Semantic knowledge management for AI agents' },
       nav: { home: 'Knowledge Base', add: 'Add Knowledge', tags: 'Tags', plans: 'Plans', stats: 'Statistics', statsKnowledge: 'Knowledge', statsPlans: 'Plans', settings: 'Settings' },
       statsTitle: { knowledge: 'Knowledge Statistics', plans: 'Plan Statistics' },
       search: { placeholder: 'Search knowledge semantically...', button: 'Search', noResults: 'No results found.', resultsCount: '{{count}} result(s) found', recent: 'Recent Knowledge', empty: 'No knowledge entries yet. Add some knowledge to get started.' },
@@ -84,7 +84,7 @@ const resources = {
   },
   es: {
     translation: {
-      app: { title: 'Base de Conocimiento IA', subtitle: 'Gestión semántica de conocimiento para agentes de IA' },
+      app: { title: 'CogniStore', subtitle: 'Gestión semántica de conocimiento para agentes de IA' },
       nav: { home: 'Base de Conocimiento', add: 'Agregar Conocimiento', tags: 'Etiquetas', plans: 'Planes', stats: 'Estadísticas', statsKnowledge: 'Conocimiento', statsPlans: 'Planes', settings: 'Configuración' },
       statsTitle: { knowledge: 'Estadísticas de Conocimiento', plans: 'Estadísticas de Planes' },
       search: { placeholder: 'Buscar conocimiento semánticamente...', button: 'Buscar', noResults: 'No se encontraron resultados.', resultsCount: '{{count}} resultado(s) encontrado(s)', recent: 'Conocimiento Reciente', empty: 'Aún no hay entradas. Agrega conocimiento para comenzar.' },
@@ -164,7 +164,7 @@ const resources = {
   },
   pt: {
     translation: {
-      app: { title: 'Base de Conhecimento IA', subtitle: 'Gestão semântica de conhecimento para agentes de IA' },
+      app: { title: 'CogniStore', subtitle: 'Gestão semântica de conhecimento para agentes de IA' },
       nav: { home: 'Base de Conhecimento', add: 'Adicionar Conhecimento', tags: 'Tags', plans: 'Planos', stats: 'Estatísticas', statsKnowledge: 'Conhecimento', statsPlans: 'Planos', settings: 'Configurações' },
       statsTitle: { knowledge: 'Estatísticas de Conhecimento', plans: 'Estatísticas de Planos' },
       search: { placeholder: 'Buscar conhecimento semanticamente...', button: 'Buscar', noResults: 'Nenhum resultado encontrado.', resultsCount: '{{count}} resultado(s) encontrado(s)', recent: 'Conhecimento Recente', empty: 'Nenhuma entrada ainda. Adicione conhecimento para começar.' },
@@ -244,7 +244,7 @@ const resources = {
   },
 };
 
-const LANG_KEY = 'ai-knowledge-lang';
+const LANG_KEY = 'cognistore-lang';
 const SUPPORTED_LANGS = ['en', 'es', 'pt'];
 const savedLang = typeof window !== 'undefined' ? localStorage.getItem(LANG_KEY) : null;
 

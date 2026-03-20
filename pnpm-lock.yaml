@@ -20,16 +20,16 @@ importers:
 
   apps/dashboard:
     dependencies:
-      '@ai-knowledge/config':
+      '@cognistore/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@ai-knowledge/core':
+      '@cognistore/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@ai-knowledge/sdk':
+      '@cognistore/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@ai-knowledge/shared':
+      '@cognistore/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@fastify/cors':
@@ -130,10 +130,10 @@ importers:
         specifier: ^3.23.0
         version: 3.25.76
     devDependencies:
-      '@ai-knowledge/sdk':
+      '@cognistore/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
-      '@ai-knowledge/shared':
+      '@cognistore/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@playwright/test':
@@ -157,7 +157,7 @@ importers:
 
   packages/core:
     dependencies:
-      '@ai-knowledge/shared':
+      '@cognistore/shared':
         specifier: workspace:*
         version: link:../shared
       better-sqlite3:
@@ -188,7 +188,7 @@ importers:
 
   packages/embeddings:
     dependencies:
-      '@ai-knowledge/shared':
+      '@cognistore/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -201,13 +201,13 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@ai-knowledge/core':
+      '@cognistore/core':
         specifier: workspace:*
         version: link:../core
-      '@ai-knowledge/embeddings':
+      '@cognistore/embeddings':
         specifier: workspace:*
         version: link:../embeddings
-      '@ai-knowledge/shared':
+      '@cognistore/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -233,13 +233,13 @@ importers:
 
   packages/tests:
     dependencies:
-      '@ai-knowledge/core':
+      '@cognistore/core':
         specifier: workspace:*
         version: link:../core
-      '@ai-knowledge/sdk':
+      '@cognistore/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@ai-knowledge/shared':
+      '@cognistore/shared':
         specifier: workspace:*
         version: link:../shared
       better-sqlite3:

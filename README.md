@@ -1,19 +1,19 @@
 <div align="center">
 
-# AI Knowledge Base
+<img src="assets/logo-banner.png" alt="CogniStore" width="500" />
 
-**Semantic knowledge management for AI coding agents.**
+**Knowledge & Plan Management for AI Agents**
 
 Store, search, and retrieve knowledge using local vector embeddings — directly from your AI assistant.
 
-[![CI](https://github.com/Sithion/ai-knowledge/actions/workflows/ci.yml/badge.svg)](https://github.com/Sithion/ai-knowledge/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/@ai-knowledge/mcp-server)](https://www.npmjs.com/package/@ai-knowledge/mcp-server)
-[![GitHub Release](https://img.shields.io/github/v/release/Sithion/ai-knowledge)](https://github.com/Sithion/ai-knowledge/releases)
+[![CI](https://github.com/Sithion/cognistore/actions/workflows/ci.yml/badge.svg)](https://github.com/Sithion/cognistore/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@cognistore/mcp-server)](https://www.npmjs.com/package/@cognistore/mcp-server)
+[![GitHub Release](https://img.shields.io/github/v/release/Sithion/cognistore)](https://github.com/Sithion/cognistore/releases)
 [![License: BSL 1.1](https://img.shields.io/badge/License-BSL_1.1-yellow.svg)](LICENSE)
 
 [Download](#quick-start) · [Features](#features) · [MCP Integration](#mcp-integration) · [Dashboard](#dashboard) · [Development](#development) · [Patch Notes](PATCH-NOTES.md)
 
-![AI Knowledge Base Dashboard](screenshot.png)
+![CogniStore Dashboard](screenshot.png)
 
 </div>
 
@@ -21,7 +21,7 @@ Store, search, and retrieve knowledge using local vector embeddings — directly
 
 ## Overview
 
-AI Knowledge Base is a desktop application that gives your AI coding agents a persistent, searchable memory. It runs entirely on your machine — no cloud, no API keys, no data leaving your laptop.
+CogniStore is a desktop application that gives your AI coding agents a persistent, searchable memory. It runs entirely on your machine — no cloud, no API keys, no data leaving your laptop.
 
 The app acts as an [MCP](https://modelcontextprotocol.io/) server for **Claude Code**, **GitHub Copilot**, and **OpenCode**, allowing your AI assistant to store and retrieve knowledge with semantic search powered by local embeddings.
 
@@ -41,7 +41,7 @@ The app acts as an [MCP](https://modelcontextprotocol.io/) server for **Claude C
 
 ### 1. Download
 
-Grab the latest release for your platform from [GitHub Releases](https://github.com/Sithion/ai-knowledge/releases).
+Grab the latest release for your platform from [GitHub Releases](https://github.com/Sithion/cognistore/releases).
 
 | Platform | Format |
 |----------|--------|
@@ -55,7 +55,7 @@ Open the downloaded file and drag the app to your Applications folder (macOS) or
 
 > **macOS users:** The app is not yet code-signed. If macOS reports the app is damaged, run:
 > ```bash
-> xattr -cr "/Applications/AI Knowledge Base.app"
+> xattr -cr "/Applications/CogniStore.app"
 > ```
 
 ### 3. Run the Setup Wizard
@@ -65,7 +65,7 @@ On first launch, the setup wizard will automatically:
 1. Check and install [Node.js](https://nodejs.org/) v20
 2. Install [Ollama](https://ollama.com) (via Homebrew on macOS, curl on Linux)
 3. Start the Ollama service
-4. Create the local SQLite database at `~/.ai-knowledge/knowledge.db`
+4. Create the local SQLite database at `~/.cognistore/knowledge.db`
 5. Pull the `all-minilm` embedding model
 6. Configure MCP servers and install AI skills for Claude Code, GitHub Copilot, and OpenCode
 7. Mark setup as complete and open the dashboard
@@ -91,10 +91,10 @@ If you prefer to configure the MCP server manually:
 ```json
 {
   "mcpServers": {
-    "ai-knowledge": {
+    "cognistore": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@ai-knowledge/mcp-server"]
+      "args": ["-y", "@cognistore/mcp-server"]
     }
   }
 }
@@ -133,11 +133,11 @@ Entries are categorized by type for structured retrieval:
 
 The setup wizard installs skills with lifecycle hooks that enforce knowledge base usage:
 
-- **ai-knowledge-query** — Hooks into `PreToolUse` to remind agents to query before making changes
-- **ai-knowledge-capture** — Hooks into `Stop` to remind agents to capture findings before ending a session
-- **ai-knowledge-plan** — Hooks into `PostToolUse` (ExitPlanMode) to remind agents to save plans to the knowledge base with task management workflow
+- **cognistore-query** — Hooks into `PreToolUse` to remind agents to query before making changes
+- **cognistore-capture** — Hooks into `Stop` to remind agents to capture findings before ending a session
+- **cognistore-plan** — Hooks into `PostToolUse` (ExitPlanMode) to remind agents to save plans to the knowledge base with task management workflow
 
-Hooks are non-blocking (system messages only) and skip automatically when the agent is already using ai-knowledge tools.
+Hooks are non-blocking (system messages only) and skip automatically when the agent is already using cognistore tools.
 
 ## Dashboard
 
@@ -178,7 +178,7 @@ The desktop app includes a full dashboard with four main pages:
 ## Architecture
 
 ```
-ai-knowledge/
+cognistore/
 ├── apps/
 │   ├── dashboard/          # Tauri v2 desktop app (React + Fastify sidecar)
 │   └── mcp-server/         # MCP server (published to npm)
@@ -220,8 +220,8 @@ ai-knowledge/
 
 ```bash
 # Clone the repository
-git clone https://github.com/Sithion/ai-knowledge.git
-cd ai-knowledge
+git clone https://github.com/Sithion/cognistore.git
+cd cognistore
 
 # Install dependencies
 pnpm install
@@ -230,10 +230,10 @@ pnpm install
 pnpm build
 
 # Run the dashboard in dev mode
-pnpm dev --filter @ai-knowledge/dashboard
+pnpm dev --filter @cognistore/dashboard
 
 # Run the Tauri app in dev mode
-pnpm tauri:dev --filter @ai-knowledge/dashboard
+pnpm tauri:dev --filter @cognistore/dashboard
 ```
 
 ### Version Bump
@@ -251,7 +251,7 @@ This updates version in all `package.json` files, `Cargo.toml`, and the `LICENSE
 
 On merge to `main`, the CI pipeline runs two jobs in parallel:
 
-- **publish-mcp** — Publishes `@ai-knowledge/mcp-server` to npm
+- **publish-mcp** — Publishes `@cognistore/mcp-server` to npm
 - **publish-tauri** — Builds platform binaries (macOS dmg, Linux AppImage/deb) and uploads them to GitHub Releases
 
 ## Contributing

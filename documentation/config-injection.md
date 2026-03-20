@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `@ai-knowledge/config` package manages automatic configuration of AI clients. It uses a **marker-based injection** system to safely add and remove configuration blocks in shared files without overwriting user content.
+The `@cognistore/config` package manages automatic configuration of AI clients. It uses a **marker-based injection** system to safely add and remove configuration blocks in shared files without overwriting user content.
 
 **File:** `packages/config/src/config-manager.ts`
 
@@ -10,8 +10,8 @@ The `@ai-knowledge/config` package manages automatic configuration of AI clients
 
 | Client | MCP Config | Instructions File | Skills Location |
 |--------|-----------|-------------------|-----------------|
-| Claude Code | `~/.claude/mcp-config.json` | `~/.claude/CLAUDE.md` | `~/.claude/skills/ai-knowledge-*/` |
-| GitHub Copilot | `~/.copilot/mcp-config.json` | `~/.github/copilot-instructions.md` | `~/.copilot/skills/ai-knowledge-*.md` |
+| Claude Code | `~/.claude/mcp-config.json` | `~/.claude/CLAUDE.md` | `~/.claude/skills/cognistore-*/` |
+| GitHub Copilot | `~/.copilot/mcp-config.json` | `~/.github/copilot-instructions.md` | `~/.copilot/skills/cognistore-*.md` |
 | OpenCode | `~/.config/opencode/opencode.json` | — | — |
 
 ## Marker-Based Injection
@@ -58,12 +58,12 @@ ELSE IF markers exist:
 ```json
 {
   "mcpServers": {
-    "ai-knowledge": {
+    "cognistore": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@ai-knowledge/mcp-server"],
+      "args": ["-y", "@cognistore/mcp-server"],
       "env": {
-        "SQLITE_PATH": "~/.ai-knowledge/knowledge.db",
+        "SQLITE_PATH": "~/.cognistore/knowledge.db",
         "OLLAMA_HOST": "http://localhost:11434"
       }
     }
@@ -74,7 +74,7 @@ ELSE IF markers exist:
 The `setupMcpConfig(path, entry)` function:
 1. Reads existing JSON (or creates `{}`)
 2. Ensures `mcpServers` object exists
-3. Sets `mcpServers['ai-knowledge']` = entry
+3. Sets `mcpServers['cognistore']` = entry
 4. Writes back with 2-space indentation
 
 ### OpenCode Format
@@ -84,12 +84,12 @@ OpenCode uses a different JSON structure:
 ```json
 {
   "mcp": {
-    "ai-knowledge": {
+    "cognistore": {
       "type": "local",
-      "command": ["npx", "-y", "@ai-knowledge/mcp-server"],
+      "command": ["npx", "-y", "@cognistore/mcp-server"],
       "enabled": true,
       "environment": {
-        "SQLITE_PATH": "~/.ai-knowledge/knowledge.db",
+        "SQLITE_PATH": "~/.cognistore/knowledge.db",
         "OLLAMA_HOST": "http://localhost:11434"
       }
     }
@@ -111,9 +111,9 @@ Copied to `~/.claude/skills/`:
 
 | Skill | Directory | Hook | Purpose |
 |-------|-----------|------|---------|
-| `ai-knowledge-capture` | `~/.claude/skills/ai-knowledge-capture/SKILL.md` | `Stop` | Capture knowledge after completing tasks |
-| `ai-knowledge-query` | `~/.claude/skills/ai-knowledge-query/SKILL.md` | `PreToolUse` | Query knowledge before starting tasks |
-| `ai-knowledge-plan` | `~/.claude/skills/ai-knowledge-plan/SKILL.md` | `PostToolUse` (ExitPlanMode) | Save plans to knowledge base with task management workflow |
+| `cognistore-capture` | `~/.claude/skills/cognistore-capture/SKILL.md` | `Stop` | Capture knowledge after completing tasks |
+| `cognistore-query` | `~/.claude/skills/cognistore-query/SKILL.md` | `PreToolUse` | Query knowledge before starting tasks |
+| `cognistore-plan` | `~/.claude/skills/cognistore-plan/SKILL.md` | `PostToolUse` (ExitPlanMode) | Save plans to knowledge base with task management workflow |
 
 ### Copilot Skills
 
@@ -121,9 +121,9 @@ Copied to `~/.copilot/skills/` (directory format with hooks, same as Claude Code
 
 | Skill | Directory | Hook | Purpose |
 |-------|-----------|------|---------|
-| `ai-knowledge-query` | `~/.copilot/skills/ai-knowledge-query/SKILL.md` | `preToolUse` | Query knowledge before starting tasks |
-| `ai-knowledge-capture` | `~/.copilot/skills/ai-knowledge-capture/SKILL.md` | `sessionEnd` | Capture knowledge after completing tasks |
-| `ai-knowledge-plan` | `~/.copilot/skills/ai-knowledge-plan/SKILL.md` | `postToolUse` | Save plans to knowledge base with task management workflow |
+| `cognistore-query` | `~/.copilot/skills/cognistore-query/SKILL.md` | `preToolUse` | Query knowledge before starting tasks |
+| `cognistore-capture` | `~/.copilot/skills/cognistore-capture/SKILL.md` | `sessionEnd` | Capture knowledge after completing tasks |
+| `cognistore-plan` | `~/.copilot/skills/cognistore-plan/SKILL.md` | `postToolUse` | Save plans to knowledge base with task management workflow |
 
 ## Instruction Templates
 
@@ -141,7 +141,7 @@ Similar protocol adapted for Copilot's instruction format.
 
 ### Plan Persistence Rule
 
-Both Claude Code and Copilot instructions include the rule: **plans must be stored in the knowledge base** using `createPlan`, never as local files. The `ai-knowledge-plan` skill reinforces this with a `PostToolUse` hook on `ExitPlanMode` that reminds agents to persist their plans before leaving plan mode.
+Both Claude Code and Copilot instructions include the rule: **plans must be stored in the knowledge base** using `createPlan`, never as local files. The `cognistore-plan` skill reinforces this with a `PostToolUse` hook on `ExitPlanMode` that reminds agents to persist their plans before leaving plan mode.
 
 ## Backup Strategy
 
@@ -159,5 +159,5 @@ During uninstall, backup files matching `*.bak.*` are also cleaned up.
 | Function | What It Removes |
 |----------|----------------|
 | `removeMarkers(path)` | Content between `AI-KNOWLEDGE:BEGIN/END` markers |
-| `removeMcpEntry(path, 'ai-knowledge')` | `ai-knowledge` key from `mcpServers` object |
-| `removeOpenCodeMcp()` | `ai-knowledge` key from OpenCode `mcp` object |
+| `removeMcpEntry(path, 'cognistore')` | `cognistore` key from `mcpServers` object |
+| `removeOpenCodeMcp()` | `cognistore` key from OpenCode `mcp` object |

@@ -16,10 +16,10 @@ export default defineConfig({
   // Bundle all workspace packages (sdk, core, embeddings, shared) inline
   // Keep npm packages and native modules as external dependencies
   noExternal: [
-    '@ai-knowledge/sdk',
-    '@ai-knowledge/shared',
-    '@ai-knowledge/core',
-    '@ai-knowledge/embeddings',
+    '@cognistore/sdk',
+    '@cognistore/shared',
+    '@cognistore/core',
+    '@cognistore/embeddings',
   ],
   external: [
     'better-sqlite3',

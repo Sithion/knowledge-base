@@ -1,6 +1,6 @@
 {
-  "name": "@ai-knowledge/core",
-  "version": "0.9.7",
+  "name": "@cognistore/core",
+  "version": "0.9.8",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
@@ -20,7 +20,7 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "dependencies": {
-    "@ai-knowledge/shared": "workspace:*",
+    "@cognistore/shared": "workspace:*",
     "better-sqlite3": "^12.8.0",
     "drizzle-orm": "^0.38.0",
     "sqlite-vec": "^0.1.7",

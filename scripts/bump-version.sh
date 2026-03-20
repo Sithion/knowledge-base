@@ -46,7 +46,7 @@ fi
 # LICENSE (BSL 1.1 — Licensed Work version)
 LICENSE="$ROOT/LICENSE"
 if [ -f "$LICENSE" ]; then
-  sed -i '' "s/AI Knowledge Base v[0-9]\.[0-9]\.[0-9]/AI Knowledge Base v${VERSION}/" "$LICENSE"
+  sed -i '' "s/CogniStore v[0-9]\.[0-9]\.[0-9]/CogniStore v${VERSION}/" "$LICENSE"
   echo "  Updated LICENSE"
 fi
 

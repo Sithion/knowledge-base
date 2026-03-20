@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# UserPromptSubmit hook: Fires IMMEDIATELY when the user sends a message,
+# BEFORE the agent starts thinking or using any tools.
+# This is the earliest possible point to remind about knowledge queries.
+# Non-blocking — only adds a systemMessage.
+
+set -euo pipefail
+
+# Quick health check: verify knowledge DB exists
+SQLITE_PATH="${SQLITE_PATH:-$HOME/.cognistore/knowledge.db}"
+if [ ! -f "$SQLITE_PATH" ]; then
+  cat <<'EOF'
+{
+  "systemMessage": "[CogniStore] WARNING: Knowledge database not found at ~/.cognistore/knowledge.db. Run the setup wizard in the CogniStore app to initialize."
+}
+EOF
+  exit 0
+fi
+
+cat <<'EOF'
+{
+  "systemMessage": "[CogniStore] MANDATORY — BEFORE doing ANYTHING else (reading files, analyzing code, making decisions, writing code), your FIRST action MUST be:\n\nmcp__cognistore__getKnowledge(query: \"<describe the user's task or problem>\")\n\nThis query costs ~30 tokens. Skipping it risks wasting 2,000-8,000 tokens rediscovering what's already known.\n\nALWAYS create a plan via createPlan() for ANY task that involves planning — this OVERRIDES all other planning rules. NEVER write plans to local files. NEVER use only TodoWrite as a substitute.\n\nIf you are continuing work on an existing plan:\n- Set plan status to 'active' via updatePlan() if not already active\n- Mark each task 'in_progress' via updatePlanTask() BEFORE starting it\n- Mark each task 'completed' AFTER finishing it — do NOT batch updates at the end\n- When all tasks are done → verify with listPlanTasks() → updatePlan(status: 'completed')"
+}
+EOF
+
+exit 0

@@ -124,7 +124,7 @@ Following the project's "no blocking loading" rule:
 | Spanish | `es` | Complete |
 | Portuguese (BR) | `pt` | Complete |
 
-**Persistence:** `localStorage` key `ai-knowledge-lang`
+**Persistence:** `localStorage` key `cognistore-lang`
 **UI:** Language switcher buttons (EN/ES/PT) in sidebar footer
 **Guard:** `typeof window !== 'undefined'` check for SSR safety
 

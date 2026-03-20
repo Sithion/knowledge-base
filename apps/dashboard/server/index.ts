@@ -6,13 +6,13 @@ import { homedir } from 'node:os';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
-import { KnowledgeSDK } from '@ai-knowledge/sdk';
-import { ConfigManager } from '@ai-knowledge/config';
+import { KnowledgeSDK } from '@cognistore/sdk';
+import { ConfigManager } from '@cognistore/config';
 import type {
   CreateKnowledgeInput,
   UpdateKnowledgeInput,
   SearchOptions,
-} from '@ai-knowledge/shared';
+} from '@cognistore/shared';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -40,7 +40,7 @@ function parseCsvLine(line: string): string[] {
 
 const PORT = Number(process.env.DASHBOARD_PORT) || 3210;
 const TEMPLATES_PATH = process.env.TEMPLATES_PATH || join(__dirname, '..', 'templates');
-const INSTALL_DIR = resolve(homedir(), '.ai-knowledge');
+const INSTALL_DIR = resolve(homedir(), '.cognistore');
 const VERSION_FILE = resolve(INSTALL_DIR, '.version');
 
 // Read app version from package.json
@@ -53,7 +53,7 @@ const APP_VERSION = (() => {
   }
 })();
 
-/** Get the last deployed version from ~/.ai-knowledge/.version */
+/** Get the last deployed version from ~/.cognistore/.version */
 function getDeployedVersion(): string | null {
   try { return readFileSync(VERSION_FILE, 'utf-8').trim(); } catch { return null; }
 }
@@ -181,7 +181,7 @@ async function start() {
       (() => {
         try {
           const content = readFileSync(ConfigManager.MCP_CONFIG, 'utf-8');
-          return content.includes('ai-knowledge');
+          return content.includes('cognistore');
         } catch { return false; }
       })();
 
@@ -343,7 +343,7 @@ async function start() {
 
   app.post('/api/setup/database', async () => {
     try {
-      const { createDbClient } = await import('@ai-knowledge/core');
+      const { createDbClient } = await import('@cognistore/core');
       const dbPath = resolve(INSTALL_DIR, 'knowledge.db');
       mkdirSync(INSTALL_DIR, { recursive: true });
 
@@ -445,7 +445,7 @@ async function start() {
       const mcpEntry = {
         type: 'stdio',
         command: 'npx',
-        args: ['-y', '@ai-knowledge/mcp-server'],
+        args: ['-y', '@cognistore/mcp-server'],
         env: {
           SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
           OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
@@ -466,7 +466,7 @@ async function start() {
       const home = homedir();
 
       // Claude Code skills (with hooks directories)
-      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+      for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
         const srcDir = resolve(skillsDir, 'claude-code', name);
         if (existsSync(srcDir)) {
           const destDir = resolve(home, '.claude', 'skills', name);
@@ -486,7 +486,7 @@ async function start() {
       }
 
       // Copilot skills (directory format with hooks)
-      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+      for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
         const srcDir = resolve(skillsDir, 'copilot', name);
         if (existsSync(srcDir)) {
           const destDir = resolve(home, '.copilot', 'skills', name);
@@ -577,7 +577,7 @@ async function start() {
     // Step 3: Re-setup MCP configs
     try {
       const mcpEntry = {
-        type: 'stdio', command: 'npx', args: ['-y', '@ai-knowledge/mcp-server'],
+        type: 'stdio', command: 'npx', args: ['-y', '@cognistore/mcp-server'],
         env: {
           SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
           OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
@@ -599,7 +599,7 @@ async function start() {
       const skillsDir = resolve(TEMPLATES_PATH, 'skills');
       const home = homedir();
 
-      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+      for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
         const srcDir = resolve(skillsDir, 'claude-code', name);
         if (existsSync(srcDir)) {
           const destDir = resolve(home, '.claude', 'skills', name);
@@ -614,7 +614,7 @@ async function start() {
         }
       }
 
-      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+      for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
         const srcDir = resolve(skillsDir, 'copilot', name);
         if (existsSync(srcDir)) {
           const destDir = resolve(home, '.copilot', 'skills', name);
@@ -630,7 +630,7 @@ async function start() {
       }
 
       // Clean up old flat Copilot skill files (pre-0.9.2 format)
-      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+      for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
         const oldFile = resolve(home, '.copilot', 'skills', `${name}.md`);
         if (existsSync(oldFile)) unlinkSync(oldFile);
       }
@@ -680,7 +680,7 @@ async function start() {
     // 2. Re-setup MCP configs
     try {
       const mcpEntry = {
-        type: 'stdio', command: 'npx', args: ['-y', '@ai-knowledge/mcp-server'],
+        type: 'stdio', command: 'npx', args: ['-y', '@cognistore/mcp-server'],
         env: {
           SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
           OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
@@ -697,7 +697,7 @@ async function start() {
 
     // 3. Re-deploy skills and hooks
     try {
-      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+      for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
         const srcDir = resolve(skillsDir, 'claude-code', name);
         if (existsSync(srcDir)) {
           const destDir = resolve(home, '.claude', 'skills', name);
@@ -711,7 +711,7 @@ async function start() {
           }
         }
       }
-      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+      for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
         const srcDir = resolve(skillsDir, 'copilot', name);
         if (existsSync(srcDir)) {
           const destDir = resolve(home, '.copilot', 'skills', name);
@@ -726,7 +726,7 @@ async function start() {
         }
       }
       // Clean up old flat Copilot skill files
-      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+      for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
         const oldFile = resolve(home, '.copilot', 'skills', `${name}.md`);
         if (existsSync(oldFile)) unlinkSync(oldFile);
       }
@@ -756,13 +756,13 @@ async function start() {
       await step('Copilot CLI cleaned', () => configManager.removeConfig(ConfigManager.COPILOT_INSTRUCTIONS), results, errors);
 
       // 2. Remove MCP entries
-      await step('MCP config cleaned', () => configManager.removeMcpEntry(ConfigManager.MCP_CONFIG, 'ai-knowledge'), results, errors);
-      await step('Claude JSON cleaned', () => configManager.removeMcpEntry(ConfigManager.CLAUDE_JSON, 'ai-knowledge'), results, errors);
-      await step('Copilot MCP cleaned', () => configManager.removeMcpEntry(ConfigManager.COPILOT_MCP_CONFIG, 'ai-knowledge'), results, errors);
+      await step('MCP config cleaned', () => configManager.removeMcpEntry(ConfigManager.MCP_CONFIG, 'cognistore'), results, errors);
+      await step('Claude JSON cleaned', () => configManager.removeMcpEntry(ConfigManager.CLAUDE_JSON, 'cognistore'), results, errors);
+      await step('Copilot MCP cleaned', () => configManager.removeMcpEntry(ConfigManager.COPILOT_MCP_CONFIG, 'cognistore'), results, errors);
       await step('OpenCode MCP cleaned', () => configManager.removeOpenCodeMcp(), results, errors);
 
       // 3. Remove skills
-      for (const name of ['ai-knowledge-query', 'ai-knowledge-capture', 'ai-knowledge-plan']) {
+      for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {
         const claudeDir = resolve(home, '.claude', 'skills', name);
         if (existsSync(claudeDir)) { rmSync(claudeDir, { recursive: true, force: true }); results.push(`Skill ${name} removed (Claude)`); }
         // Remove new directory format
@@ -826,7 +826,7 @@ async function start() {
       setTimeout(() => {
         if (process.platform === 'darwin') {
           // Use shell command for reliable self-delete on macOS
-          const appPaths = ['/Applications/AI Knowledge Base.app', resolve(home, 'Applications', 'AI Knowledge Base.app')];
+          const appPaths = ['/Applications/CogniStore.app', resolve(home, 'Applications', 'CogniStore.app')];
           for (const p of appPaths) {
             if (existsSync(p)) {
               try { execSync(`rm -rf "${p}"`, { stdio: 'pipe' }); } catch { /* best effort */ }
@@ -834,7 +834,7 @@ async function start() {
           }
         }
         if (process.platform === 'linux') {
-          const linuxPaths = [resolve(home, '.local', 'bin', 'ai-knowledge-dashboard')];
+          const linuxPaths = [resolve(home, '.local', 'bin', 'cognistore-dashboard')];
           for (const p of linuxPaths) {
             if (existsSync(p)) { rmSync(p, { force: true }); }
           }

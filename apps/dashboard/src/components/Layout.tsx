@@ -95,11 +95,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   {!collapsed && <span>{t(`nav.${item.key}`)}</span>}
                 </Link>
                 {/* Sub-items */}
-                {item.children && isParentActive && !collapsed && (
+                {item.children && isParentActive && (
                   <div style={{
                     backgroundColor: 'rgba(99,102,241,0.15)',
                     borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
-                    marginBottom: 4, paddingBottom: 4,
+                    marginBottom: 4, paddingBottom: collapsed ? 2 : 4,
+                    paddingTop: collapsed ? 2 : 0,
                   }}>
                     {item.children.map((child) => {
                       const childActive = location.pathname === child.path;
@@ -113,17 +114,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
                               navigate(child.path, { replace: true, state: { reset: Date.now() } });
                             }
                           }}
+                          title={collapsed ? t(`nav.${child.key}`) : undefined}
                           style={{
                             display: 'block',
-                            padding: '6px 12px 6px 36px',
+                            padding: collapsed ? '5px 0' : '6px 12px 6px 36px',
                             textDecoration: 'none',
-                            fontSize: 12,
+                            fontSize: collapsed ? 11 : 12,
+                            textAlign: collapsed ? 'center' : 'left',
                             color: childActive ? '#fff' : 'rgba(255,255,255,0.7)',
                             fontWeight: childActive ? 600 : 400,
                             transition: 'all 0.15s ease',
                           }}
                         >
-                          {t(`nav.${child.key}`)}
+                          {collapsed ? t(`nav.${child.key}`).charAt(0).toUpperCase() : t(`nav.${child.key}`)}
                         </Link>
                       );
                     })}
