@@ -280,6 +280,9 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
       const scopeFilter = scope === 'global' ? undefined : `workspace:${scope}`;
 
       // Fetch recent knowledge entries for this scope
+      // NOTE: Using '*' as query with threshold 0 is a workaround — the SDK lacks a listRecent() method.
+      // This computes an embedding for '*' but returns everything above 0 similarity, effectively listing entries.
+      // TODO: Add a dedicated listRecentEntries() SDK method in a future release.
       let knowledgeSection = '';
       try {
         const results = await sdk.getKnowledge('*', {
@@ -301,6 +304,7 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
       // Fetch active plans
       let plansSection = '';
       try {
+        // NOTE: listPlans/listPlanTasks are synchronous (SQLite). If they become async, update this handler.
         const plans = sdk.listPlans(10, 'active');
         const scopedPlans = scopeFilter
           ? plans.filter(p => p.scope === scopeFilter || p.scope === 'global')

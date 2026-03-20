@@ -361,6 +361,8 @@ export class ConfigManager {
   /**
    * Inject permission allow rules for read-only CogniStore tools into a settings.json file.
    * Merge-only: never overwrites existing rules, never removes user entries.
+   * If the file doesn't exist, creates a minimal { permissions: { allow: [...] } } — Claude Code
+   * will extend this with its own keys on next run. The format is compatible.
    */
   async injectPermissions(
     settingsPath: string,
