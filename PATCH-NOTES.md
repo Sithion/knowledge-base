@@ -1,5 +1,11 @@
 # Patch Notes
 
+## v0.9.13
+
+### Fixes
+- **Output-based plan detection**: CHECKPOINT 3 in all instruction templates (Claude Code, Copilot, OpenCode) now triggers based on OUTPUT — "if you produced 2+ ordered implementation steps, call createPlan()" — instead of intent ("any time you plan work"). This fixes plan mode ignoring createPlan() because the agent didn't identify itself as "planning work"
+- **Consistent language across all templates**: all 3 instruction templates + both user-prompt-check.sh hooks use the same output-based detection rule
+
 ## v0.9.12
 
 ### Features

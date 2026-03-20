@@ -10,7 +10,7 @@ You have 3 skills that MUST be invoked automatically. These are NOT optional:
 
 1. **`cognistore-query`** — MUST be your **FIRST action** in every task, before reading files, writing code, or making decisions. No exceptions.
 2. **`cognistore-capture`** — MUST be your **LAST action** after completing any task that produced new knowledge (fixes, decisions, patterns, constraints).
-3. **`cognistore-plan`** — MUST be invoked ANY time you plan work. ALL plans MUST go through `createPlan()`. During execution, you MUST track EVERY task via `updatePlanTask()` — mark `in_progress` BEFORE starting, `completed` AFTER finishing. NEVER skip task tracking.
+3. **`cognistore-plan`** — **Output-based trigger**: if you produced 2+ ordered implementation steps (in ANY mode — plan mode, normal mode, any workflow), you MUST call `createPlan()`. During execution, track EVERY task via `updatePlanTask()` — `in_progress` BEFORE, `completed` AFTER.
 
 ### CHECKPOINT 1: Query First (cognistore-query)
 
@@ -40,9 +40,9 @@ mcp__cognistore__addKnowledge({
 
 If an existing entry covers the topic, **UPDATE it** instead of creating a duplicate.
 
-### CHECKPOINT 3: Plan via createPlan (cognistore-plan)
+### CHECKPOINT 3: Plan Detection (output-based — applies in ALL modes)
 
-**ALL plans MUST be persisted in the knowledge base:**
+**If you produced a multi-step approach, implementation steps, or any structured plan — regardless of mode — call `createPlan()`.**
 
 ```
 mcp__cognistore__createPlan({
@@ -63,5 +63,5 @@ mcp__cognistore__createPlan({
 2. **All entries MUST be in English** — regardless of conversation language.
 3. **Update, don't duplicate** — update existing entries when the topic already exists.
 4. **Only store high-value knowledge** — non-obvious insights, not trivial fixes or standard docs.
-5. **Plans MUST be in the knowledge base** — `createPlan()` with tasks array, track execution via `updatePlanTask()`.
+5. **Any multi-step plan you produce MUST be persisted** — `createPlan()` whenever you write 2+ implementation steps, in ANY mode.
 <!-- COGNISTORE:END -->

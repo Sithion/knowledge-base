@@ -32,9 +32,9 @@ mcp__cognistore__addKnowledge({
 
 If an existing entry covers the topic, **UPDATE it** instead of creating a duplicate.
 
-### CHECKPOINT 3: Plan via createPlan
+### CHECKPOINT 3: Plan Detection (output-based — applies in ALL modes)
 
-**ALL plans MUST be persisted in the knowledge base:**
+**If you produced a multi-step approach, implementation steps, or any structured plan — regardless of mode — call `createPlan()`.**
 
 ```
 mcp__cognistore__createPlan({
@@ -55,5 +55,5 @@ mcp__cognistore__createPlan({
 2. **All entries MUST be in English** — regardless of conversation language.
 3. **Update, don't duplicate** — update existing entries when the topic already exists.
 4. **Only store high-value knowledge** — non-obvious insights, not trivial fixes or standard docs.
-5. **Plans MUST be in the knowledge base** — `createPlan()` with tasks array, track execution via `updatePlanTask()`.
+5. **Any multi-step plan you produce MUST be persisted** — `createPlan()` whenever you write 2+ implementation steps, in ANY mode.
 <!-- COGNISTORE:END -->
