@@ -20,7 +20,7 @@
             "timeout": 5
           }
         ],
-        "matcher": "Edit|Write|Bash|MultiEdit|Agent|NotebookEdit"
+        "matcher": "Edit|Write|Bash|MultiEdit|Agent|NotebookEdit|EnterPlanMode"
       }
     ]
   }
