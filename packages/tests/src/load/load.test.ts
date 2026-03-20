@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createTestContext, destroyTestContext, createFactory, type TestContext } from '../test-helpers.js';
-import { KnowledgeType } from '@ai-knowledge/shared';
+import { KnowledgeType } from '@cognistore/shared';
 
 let ctx: TestContext;
 let factory: ReturnType<typeof createFactory>;

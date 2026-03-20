@@ -4,8 +4,8 @@ import {
   KnowledgeService,
   type Database,
   type SQLiteDatabase,
-} from '@ai-knowledge/core';
-import { OllamaEmbeddingClient, checkOllamaHealth } from '@ai-knowledge/embeddings';
+} from '@cognistore/core';
+import { OllamaEmbeddingClient, checkOllamaHealth } from '@cognistore/embeddings';
 import {
   createKnowledgeSchema,
   updateKnowledgeSchema,
@@ -23,7 +23,7 @@ import {
   type PlanTask,
   type HealthStatus,
   type SDKConfig,
-} from '@ai-knowledge/shared';
+} from '@cognistore/shared';
 import { resolveConfig } from './config.js';
 import { ConnectionError, EmbeddingError, ValidationError } from './errors.js';
 

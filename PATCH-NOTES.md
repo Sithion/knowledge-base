@@ -30,8 +30,8 @@
 - **Activity chart**: replaced single-line area chart with 3-line chart (Total, Reads, Writes) with color legend
 
 ### Fixes
-- **Copilot instructions template**: rewrote `copilot-instructions.md` template to explicitly reference all 3 mandatory skills (`ai-knowledge-query`, `ai-knowledge-capture`, `ai-knowledge-plan`) by name — fixes issue where Copilot treated skills as optional and wrote plans to local files instead of using `createPlan()`
-- **Copilot [PLAN] mode**: updated `ai-knowledge-plan` skill to explicitly state it applies in `[PLAN]` mode — plan mode changes HOW you plan, NOT WHERE you store it (always `createPlan()`)
+- **Copilot instructions template**: rewrote `copilot-instructions.md` template to explicitly reference all 3 mandatory skills (`cognistore-query`, `cognistore-capture`, `cognistore-plan`) by name — fixes issue where Copilot treated skills as optional and wrote plans to local files instead of using `createPlan()`
+- **Copilot [PLAN] mode**: updated `cognistore-plan` skill to explicitly state it applies in `[PLAN]` mode — plan mode changes HOW you plan, NOT WHERE you store it (always `createPlan()`)
 
 ## v0.9.3
 
@@ -110,7 +110,7 @@
 
 ### Dashboard
 - Cleanup orphan embeddings moved from Stats to Settings > Maintenance
-- New `ai-knowledge-plan` skill with PostToolUse hook on ExitPlanMode
+- New `cognistore-plan` skill with PostToolUse hook on ExitPlanMode
 - Plan completion protocol: agents must verify all tasks completed before closing plan
 
 ### Auto-Update

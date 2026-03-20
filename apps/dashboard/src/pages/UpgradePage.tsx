@@ -95,7 +95,7 @@ export function UpgradePage({ fromVersion, onComplete }: { fromVersion: string; 
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ fontSize: 36, marginBottom: 12 }}>🧠</div>
           <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>
-            Updating AI Knowledge Base
+            Updating CogniStore
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, fontSize: 14 }}>
             <span style={{

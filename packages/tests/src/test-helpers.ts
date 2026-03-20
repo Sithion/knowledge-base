@@ -1,9 +1,9 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { unlinkSync } from 'node:fs';
-import { createDbClient, KnowledgeRepository, KnowledgeService, type Database, type SQLiteDatabase } from '@ai-knowledge/core';
-import { KnowledgeType, type CreateKnowledgeInput } from '@ai-knowledge/shared';
-import type { EmbeddingProvider } from '@ai-knowledge/core';
+import { createDbClient, KnowledgeRepository, KnowledgeService, type Database, type SQLiteDatabase } from '@cognistore/core';
+import { KnowledgeType, type CreateKnowledgeInput } from '@cognistore/shared';
+import type { EmbeddingProvider } from '@cognistore/core';
 
 export interface TestContext {
   service: KnowledgeService;
@@ -29,7 +29,7 @@ function createMockEmbeddingProvider(): EmbeddingProvider {
 
 /** Create a fresh test context with temp database */
 export function createTestContext(): TestContext {
-  const dbPath = join(tmpdir(), `ai-knowledge-test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
+  const dbPath = join(tmpdir(), `cognistore-test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
   const { db, sqlite } = createDbClient(dbPath);
   const repository = new KnowledgeRepository(db, sqlite);
   const service = new KnowledgeService(repository, createMockEmbeddingProvider());

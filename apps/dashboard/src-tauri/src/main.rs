@@ -37,7 +37,7 @@ fn main() {
             let home = dirs::home_dir().ok_or_else(|| {
                 Box::<dyn std::error::Error>::from("Cannot resolve home directory")
             })?;
-            let sqlite_path = home.join(".ai-knowledge").join("knowledge.db");
+            let sqlite_path = home.join(".cognistore").join("knowledge.db");
 
             // 4. Find available port
             let port = sidecar::find_available_port(3210);
@@ -81,5 +81,5 @@ fn main() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("Error while running AI Knowledge Base");
+        .expect("Error while running CogniStore");
 }

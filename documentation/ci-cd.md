@@ -31,7 +31,7 @@ Three jobs run in sequence:
 
 ### Job 1: publish-mcp
 
-Publishes `@ai-knowledge/mcp-server` to npm.
+Publishes `@cognistore/mcp-server` to npm.
 
 ```
 Steps:
@@ -73,7 +73,7 @@ Steps per platform:
 2. Install Rust stable toolchain
 3. Setup pnpm + Node.js 20
 4. pnpm install --frozen-lockfile
-5. pnpm turbo build --filter=@ai-knowledge/dashboard
+5. pnpm turbo build --filter=@cognistore/dashboard
 6. Bundle sidecar (node scripts/bundle-sidecar.mjs)
 7. tauri-action → build + upload to GitHub Release
 ```

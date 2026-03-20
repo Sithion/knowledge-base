@@ -2,7 +2,7 @@
 
 ## System Context
 
-AI Knowledge Base is a desktop application that provides AI coding agents with persistent semantic memory. It runs entirely on the user's machine — no cloud services, no API keys, no data leaving the laptop.
+CogniStore is a desktop application that provides AI coding agents with persistent semantic memory. It runs entirely on the user's machine — no cloud services, no API keys, no data leaving the laptop.
 
 The system consists of three runtime subsystems:
 
@@ -20,7 +20,7 @@ The system consists of three runtime subsystems:
                │ MCP stdio transport
                ▼
 ┌──────────────────────────┐    ┌──────────────────────────────────┐
-│  @ai-knowledge/mcp-server│    │  Tauri Desktop App               │
+│  @cognistore/mcp-server│    │  Tauri Desktop App               │
 │  (npx, standalone)       │    │  ┌────────────┐ ┌──────────────┐ │
 │                          │    │  │ React UI   │ │ Fastify      │ │
 │  12 tools (knowledge +   │    │  │ (WebView)  │→│ sidecar      │ │
@@ -33,20 +33,20 @@ The system consists of three runtime subsystems:
            │                                             │
            ▼                                             ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                      @ai-knowledge/sdk                           │
+│                      @cognistore/sdk                           │
 │              (unified entry point for all consumers)             │
 └──────────┬──────────────────────────────────┬────────────────────┘
            │                                  │
            ▼                                  ▼
 ┌──────────────────────┐          ┌────────────────────────────────┐
-│  @ai-knowledge/core  │          │  @ai-knowledge/embeddings      │
+│  @cognistore/core  │          │  @cognistore/embeddings      │
 │  SQLite + sqlite-vec │          │  Ollama HTTP client             │
 │  Drizzle ORM         │          │  all-minilm model (384-dim)     │
 └──────────┬───────────┘          └──────────┬─────────────────────┘
            │                                 │
            ▼                                 ▼
 ┌──────────────────────┐          ┌────────────────────────────────┐
-│  ~/.ai-knowledge/    │          │  Ollama (localhost:11434)       │
+│  ~/.cognistore/    │          │  Ollama (localhost:11434)       │
 │  knowledge.db        │          │  Native, auto-installed         │
 └──────────────────────┘          └────────────────────────────────┘
 ```
@@ -54,17 +54,17 @@ The system consists of three runtime subsystems:
 ## Package Dependency Graph
 
 ```
-@ai-knowledge/mcp-server ──→ @ai-knowledge/sdk
+@cognistore/mcp-server ──→ @cognistore/sdk
                                     │
                             ┌───────┴───────┐
                             ▼               ▼
-                    @ai-knowledge/core  @ai-knowledge/embeddings
+                    @cognistore/core  @cognistore/embeddings
                             │               │
                             ▼               ▼
-                    @ai-knowledge/shared  @ai-knowledge/shared
+                    @cognistore/shared  @cognistore/shared
 
-@ai-knowledge/dashboard ──→ @ai-knowledge/sdk
-                         ──→ @ai-knowledge/config
+@cognistore/dashboard ──→ @cognistore/sdk
+                         ──→ @cognistore/config
 ```
 
 All cross-package dependencies use `workspace:*` protocol via pnpm.
@@ -154,7 +154,7 @@ A `schema_version` table tracks which migrations have been applied. On startup, 
 ## Directory Structure
 
 ```
-ai-knowledge/
+cognistore/
 ├── apps/
 │   ├── dashboard/              # Tauri v2 desktop application
 │   │   ├── src/                # React frontend

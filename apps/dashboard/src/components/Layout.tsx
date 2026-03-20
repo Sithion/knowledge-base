@@ -117,9 +117,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                           title={collapsed ? t(`nav.${child.key}`) : undefined}
                           style={{
                             display: 'block',
-                            padding: collapsed ? '4px 0' : '6px 12px 6px 36px',
+                            padding: collapsed ? '5px 0' : '6px 12px 6px 36px',
                             textDecoration: 'none',
-                            fontSize: collapsed ? 10 : 12,
+                            fontSize: collapsed ? 11 : 12,
                             textAlign: collapsed ? 'center' : 'left',
                             color: childActive ? '#fff' : 'rgba(255,255,255,0.7)',
                             fontWeight: childActive ? 600 : 400,

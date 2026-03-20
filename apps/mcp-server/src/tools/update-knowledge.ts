@@ -1,5 +1,5 @@
-import type { KnowledgeSDK } from '@ai-knowledge/sdk';
-import { KnowledgeType } from '@ai-knowledge/shared';
+import type { KnowledgeSDK } from '@cognistore/sdk';
+import { KnowledgeType } from '@cognistore/shared';
 
 export const updateKnowledgeTool = {
   name: 'updateKnowledge',

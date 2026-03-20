@@ -1,5 +1,5 @@
 {
-  "name": "@ai-knowledge/shared",
+  "name": "@cognistore/shared",
   "version": "0.9.8",
   "private": true,
   "type": "module",

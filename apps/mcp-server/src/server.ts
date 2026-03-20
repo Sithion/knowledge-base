@@ -1,14 +1,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { KnowledgeSDK } from '@ai-knowledge/sdk';
-import { KnowledgeType } from '@ai-knowledge/shared';
+import { KnowledgeSDK } from '@cognistore/sdk';
+import { KnowledgeType } from '@cognistore/shared';
 
 const knowledgeTypeValues = ['decision', 'pattern', 'fix', 'constraint', 'gotcha'] as const;
 const knowledgeStatusValues = ['draft', 'active', 'completed', 'archived'] as const;
 
 export function createServer(sdk: KnowledgeSDK): McpServer {
   const server = new McpServer({
-    name: 'ai-knowledge',
+    name: 'cognistore',
     version: '0.1.0',
   });
 

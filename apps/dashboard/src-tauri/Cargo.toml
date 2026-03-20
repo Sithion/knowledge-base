@@ -1,5 +1,5 @@
 [package]
-name = "ai-knowledge-dashboard"
+name = "cognistore-dashboard"
 version = "0.9.8"
 edition = "2021"
 

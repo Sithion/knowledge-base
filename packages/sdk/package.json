@@ -1,5 +1,5 @@
 {
-  "name": "@ai-knowledge/sdk",
+  "name": "@cognistore/sdk",
   "version": "0.9.8",
   "private": false,
   "type": "module",
@@ -17,9 +17,9 @@
     "test": "if find . -name '*.test.ts' -o -name '*.spec.ts' | grep -q .; then npx playwright test; else echo 'No tests found, skipping'; fi"
   },
   "dependencies": {
-    "@ai-knowledge/core": "workspace:*",
-    "@ai-knowledge/embeddings": "workspace:*",
-    "@ai-knowledge/shared": "workspace:*"
+    "@cognistore/core": "workspace:*",
+    "@cognistore/embeddings": "workspace:*",
+    "@cognistore/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { createTestContext, destroyTestContext, createFactory, type TestContext } from '../test-helpers.js';
-import { KnowledgeType } from '@ai-knowledge/shared';
+import { KnowledgeType } from '@cognistore/shared';
 import { performance } from 'node:perf_hooks';
 import { statSync } from 'node:fs';
 

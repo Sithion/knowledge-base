@@ -2,7 +2,7 @@ import {
   DEFAULT_OLLAMA_HOST,
   DEFAULT_EMBEDDING_MODEL,
   DEFAULT_EMBEDDING_DIMENSIONS,
-} from '@ai-knowledge/shared';
+} from '@cognistore/shared';
 import type { EmbeddingRequest, EmbeddingResponse, OllamaTagsResponse } from './types.js';
 
 export interface OllamaClientConfig {

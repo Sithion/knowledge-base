@@ -1,5 +1,5 @@
 {
-  "name": "@ai-knowledge/config",
+  "name": "@cognistore/config",
   "version": "0.9.8",
   "private": true,
   "type": "module",

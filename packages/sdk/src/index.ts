@@ -17,4 +17,4 @@ export type {
   HealthStatus,
   SDKConfig,
   KnowledgeType,
-} from '@ai-knowledge/shared';
+} from '@cognistore/shared';

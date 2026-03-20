@@ -1,6 +1,6 @@
 # Documentation
 
-Technical documentation for AI Knowledge Base.
+Technical documentation for CogniStore.
 
 ## Contents
 

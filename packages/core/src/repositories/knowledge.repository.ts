@@ -7,8 +7,8 @@ import {
   deleteEmbedding,
   searchKnn,
 } from '../db/schema/sqlite-vec.js';
-import type { CreateKnowledgeInput, UpdateKnowledgeInput, SearchOptions } from '@ai-knowledge/shared';
-import { DEFAULT_SEARCH_LIMIT, DEFAULT_SIMILARITY_THRESHOLD } from '@ai-knowledge/shared';
+import type { CreateKnowledgeInput, UpdateKnowledgeInput, SearchOptions } from '@cognistore/shared';
+import { DEFAULT_SEARCH_LIMIT, DEFAULT_SIMILARITY_THRESHOLD } from '@cognistore/shared';
 
 export class KnowledgeRepository {
   constructor(

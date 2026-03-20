@@ -2,7 +2,7 @@
 
 ## Overview
 
-The MCP server (`@ai-knowledge/mcp-server`) is the primary interface for AI coding agents. It exposes 12 tools via the [Model Context Protocol](https://modelcontextprotocol.io/) stdio transport. Published to npm as a standalone package.
+The MCP server (`@cognistore/mcp-server`) is the primary interface for AI coding agents. It exposes 12 tools via the [Model Context Protocol](https://modelcontextprotocol.io/) stdio transport. Published to npm as a standalone package.
 
 ## Transport
 
@@ -10,7 +10,7 @@ The MCP server (`@ai-knowledge/mcp-server`) is the primary interface for AI codi
 AI Client ←── stdio (stdin/stdout JSON-RPC) ──→ MCP Server ──→ SDK ──→ SQLite + Ollama
 ```
 
-The server is launched by AI clients via `npx -y @ai-knowledge/mcp-server`. Communication happens over stdin/stdout using JSON-RPC messages per the MCP specification.
+The server is launched by AI clients via `npx -y @cognistore/mcp-server`. Communication happens over stdin/stdout using JSON-RPC messages per the MCP specification.
 
 ## Tools
 
@@ -149,10 +149,10 @@ List all tasks for a plan, ordered by position. Use to check progress or resume 
 The MCP server uses **tsup** to create a single ESM bundle that inlines all workspace packages:
 
 **Inlined (bundled):**
-- `@ai-knowledge/sdk`
-- `@ai-knowledge/core`
-- `@ai-knowledge/embeddings`
-- `@ai-knowledge/shared`
+- `@cognistore/sdk`
+- `@cognistore/core`
+- `@cognistore/embeddings`
+- `@cognistore/shared`
 
 **External (resolved at runtime via node_modules):**
 - `better-sqlite3` (native addon)
@@ -161,7 +161,7 @@ The MCP server uses **tsup** to create a single ESM bundle that inlines all work
 - `@modelcontextprotocol/sdk`
 - `zod`
 
-This means `npx -y @ai-knowledge/mcp-server` installs only the external dependencies — the workspace code is pre-bundled.
+This means `npx -y @cognistore/mcp-server` installs only the external dependencies — the workspace code is pre-bundled.
 
 ## Configuration
 
@@ -169,7 +169,7 @@ The MCP server reads configuration from environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SQLITE_PATH` | `~/.ai-knowledge/knowledge.db` | Database file path |
+| `SQLITE_PATH` | `~/.cognistore/knowledge.db` | Database file path |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `all-minilm` | Embedding model |
 | `EMBEDDING_DIMENSIONS` | `384` | Vector dimensions |
@@ -182,10 +182,10 @@ The MCP server reads configuration from environment variables:
 // ~/.claude/mcp-config.json
 {
   "mcpServers": {
-    "ai-knowledge": {
+    "cognistore": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@ai-knowledge/mcp-server"]
+      "args": ["-y", "@cognistore/mcp-server"]
     }
   }
 }
@@ -197,10 +197,10 @@ The MCP server reads configuration from environment variables:
 // ~/.copilot/mcp-config.json
 {
   "mcpServers": {
-    "ai-knowledge": {
+    "cognistore": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@ai-knowledge/mcp-server"]
+      "args": ["-y", "@cognistore/mcp-server"]
     }
   }
 }
@@ -212,9 +212,9 @@ The MCP server reads configuration from environment variables:
 // ~/.config/opencode/opencode.json
 {
   "mcp": {
-    "ai-knowledge": {
+    "cognistore": {
       "type": "local",
-      "command": ["npx", "-y", "@ai-knowledge/mcp-server"],
+      "command": ["npx", "-y", "@cognistore/mcp-server"],
       "enabled": true
     }
   }

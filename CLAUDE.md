@@ -1,12 +1,12 @@
-# AI Knowledge Base - Agent Rules
+# CogniStore - Agent Rules
 
 ## Architecture (v0.6.0 — App-first, Docker-free)
 
 - **Entry point**: Tauri desktop app (macOS .dmg, Linux .AppImage/.deb)
-- **Database**: SQLite + sqlite-vec (file at `~/.ai-knowledge/knowledge.db`)
+- **Database**: SQLite + sqlite-vec (file at `~/.cognistore/knowledge.db`)
 - **Embeddings**: Ollama native (auto-installed by app on first launch)
 - **Dashboard**: Tauri app (webview + Fastify sidecar)
-- **MCP Server**: `@ai-knowledge/mcp-server` npm package (only npm package remaining)
+- **MCP Server**: `@cognistore/mcp-server` npm package (only npm package remaining)
 - **CLI**: Deprecated (removed in v0.6.0)
 - **Docker**: Removed entirely
 
@@ -18,20 +18,20 @@ The Tauri app's setup wizard creates resources; the uninstall button must remove
 
 | Setup action | Uninstall action |
 |---|---|
-| Create `~/.ai-knowledge/` directory | Remove directory recursively |
-| Create `~/.ai-knowledge/knowledge.db` (SQLite + schema) | Removed with directory |
+| Create `~/.cognistore/` directory | Remove directory recursively |
+| Create `~/.cognistore/knowledge.db` (SQLite + schema) | Removed with directory |
 | Install Ollama via brew/curl | Uninstall Ollama via brew uninstall or remove binary |
 | Start `ollama serve` | Stop `ollama serve` via pkill |
 | Pull embedding model via Ollama API | Remove model via `ollama rm` |
 | Inject `~/.claude/CLAUDE.md` markers | Remove markers via ConfigManager |
 | Inject `~/.github/copilot-instructions.md` markers | Remove markers via ConfigManager |
 | Inject `~/.copilot/copilot-instructions.md` markers | Remove markers via ConfigManager |
-| Add `ai-knowledge` to `~/.claude/mcp-config.json` | Remove entry via ConfigManager |
-| Add `ai-knowledge` to `~/.claude.json` | Remove entry via ConfigManager |
-| Add `ai-knowledge` to `~/.copilot/mcp-config.json` | Remove entry via ConfigManager |
-| Add `ai-knowledge` to `~/.config/opencode/opencode.json` | Remove entry via ConfigManager |
-| Copy Claude skills to `~/.claude/skills/ai-knowledge-*/` | Remove skill directories |
-| Copy Copilot skills to `~/.copilot/skills/ai-knowledge-*/` | Remove skill directories |
+| Add `cognistore` to `~/.claude/mcp-config.json` | Remove entry via ConfigManager |
+| Add `cognistore` to `~/.claude.json` | Remove entry via ConfigManager |
+| Add `cognistore` to `~/.copilot/mcp-config.json` | Remove entry via ConfigManager |
+| Add `cognistore` to `~/.config/opencode/opencode.json` | Remove entry via ConfigManager |
+| Copy Claude skills to `~/.claude/skills/cognistore-*/` | Remove skill directories |
+| Copy Copilot skills to `~/.copilot/skills/cognistore-*/` | Remove skill directories |
 | App installed in /Applications/ (macOS) | Self-delete via rmSync |
 
 ## Development Rules (MANDATORY)
@@ -43,7 +43,7 @@ Every feature that changes **any** of the following MUST include an upgrade scri
 - **Agent instructions** → re-injected automatically on version change
 - **MCP configs** → re-written automatically on version change
 
-The upgrade system (`/api/upgrade/run`) compares `~/.ai-knowledge/.version` with the running app version. On mismatch, it re-deploys all artifacts.
+The upgrade system (`/api/upgrade/run`) compares `~/.cognistore/.version` with the running app version. On mismatch, it re-deploys all artifacts.
 
 ### Patch Notes
 Every change MUST update `PATCH-NOTES.md` at the project root. Group entries by version and category (features, fixes, improvements). This file is linked from README.md.

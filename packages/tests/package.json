@@ -1,5 +1,5 @@
 {
-  "name": "@ai-knowledge/tests",
+  "name": "@cognistore/tests",
   "version": "0.9.8",
   "private": true,
   "type": "module",
@@ -11,9 +11,9 @@
     "build": "echo 'No build needed for test package'"
   },
   "dependencies": {
-    "@ai-knowledge/core": "workspace:*",
-    "@ai-knowledge/shared": "workspace:*",
-    "@ai-knowledge/sdk": "workspace:*",
+    "@cognistore/core": "workspace:*",
+    "@cognistore/shared": "workspace:*",
+    "@cognistore/sdk": "workspace:*",
     "better-sqlite3": "^12.8.0"
   },
   "devDependencies": {

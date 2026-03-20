@@ -9,7 +9,7 @@ import type {
   CreatePlanInput,
   UpdatePlanInput,
   PlanTask,
-} from '@ai-knowledge/shared';
+} from '@cognistore/shared';
 
 export interface EmbeddingProvider {
   embed(text: string): Promise<number[]>;
