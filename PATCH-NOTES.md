@@ -1,14 +1,23 @@
 # Patch Notes
 
-## v0.9.11
+## v0.9.12
+
+### Features
+- **OpenCode AGENTS.md instructions**: new instruction template injected into `~/.config/opencode/AGENTS.md` during setup — OpenCode now gets the same knowledge-first protocol as Claude Code and Copilot (query → plan → track → capture)
+- **OpenCode setup/upgrade/uninstall symmetry**: AGENTS.md is injected on setup, re-injected on upgrade/redeploy, and cleaned up on uninstall
 
 ### Fixes
+- **Skill/hook rewrite — full lifecycle coverage**: skills and hooks now cover the entire plan lifecycle (creation + execution tracking), not just plan mode events. Previously hooks only fired on EnterPlanMode/ExitPlanMode, missing execution-phase tracking entirely
 - **Claude Code plan mode compatibility**: `pre-plan-file-check.sh` now detects `.claude/plans/` directory paths (plan mode generates random slugs like `sorted-jumping-whistle.md` that the previous filename-only check missed)
 - **Claude Code SKILL.md conflict**: changed approach from "NEVER write local files" to "write local AND ALSO call createPlan()" — works WITH plan mode instead of against it, resolving instruction priority conflict where system-level plan mode instructions overrode skill-level instructions
 - **Claude Code `post-plan-check.sh`**: shortened verbose 8-line message to 1 direct instruction — reduces likelihood of model ignoring the hook after "finishing" planning
-- **Copilot execution tracking**: restructured SKILL.md with Two-Phase Workflow (Planning + Execution) at the top, added execution tracking callout in blockquote, added task tracking reference table
-- **Copilot hook fatigue**: shortened `post-plan-check.sh` and `pre-enter-plan-check.sh` messages (these fire on ALL tool uses without matchers); `post-plan-check` now includes execution tracking reminder instead of only planning reminder
-- **`claude-code-instructions.md` template**: updated to match new "write local AND ALSO createPlan()" language
+- **Copilot execution tracking**: restructured SKILL.md with Two-Phase Workflow (Planning + Execution) at the top, added execution tracking callout and task tracking reference table
+- **Copilot hook fatigue**: shortened hook messages; `post-plan-check` now includes execution tracking reminder instead of only planning reminder
+- **`user-prompt-check.sh` (both agents)**: updated to include execution tracking reminders on every user message, not just plan creation
+- **Instruction templates**: claude-code-instructions.md and copilot-instructions.md updated with consistent plan tracking language
+- **Renamed "AI Knowledge" to "CogniStore"**: all SKILL.md titles now use "CogniStore Plan" instead of "AI Knowledge Plan"
+
+## v0.9.11
 
 ## v0.9.5
 

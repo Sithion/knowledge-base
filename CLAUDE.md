@@ -26,6 +26,7 @@ The Tauri app's setup wizard creates resources; the uninstall button must remove
 | Inject `~/.claude/CLAUDE.md` markers | Remove markers via ConfigManager |
 | Inject `~/.github/copilot-instructions.md` markers | Remove markers via ConfigManager |
 | Inject `~/.copilot/copilot-instructions.md` markers | Remove markers via ConfigManager |
+| Inject `~/.config/opencode/AGENTS.md` markers | Remove markers via ConfigManager |
 | Add `cognistore` to `~/.claude/mcp-config.json` | Remove entry via ConfigManager |
 | Add `cognistore` to `~/.claude.json` | Remove entry via ConfigManager |
 | Add `cognistore` to `~/.copilot/mcp-config.json` | Remove entry via ConfigManager |
