@@ -143,7 +143,7 @@ test('auto-activate: plan moves from draft to active when task starts', async ()
   const result = ctx.service.updatePlanTask(task.id, { status: TaskStatus.IN_PROGRESS });
   expect(result).not.toBeNull();
   expect(result!.planStatus).toBe('active');
-  expect(result!.autoActions).toContain(expect.stringContaining('auto-activated'));
+  expect(result!.autoActions).toContainEqual(expect.stringContaining('auto-activated'));
 });
 
 test('auto-complete: plan completes when all tasks are done', async () => {
@@ -158,7 +158,7 @@ test('auto-complete: plan completes when all tasks are done', async () => {
 
   const final = ctx.service.updatePlanTask(t2.id, { status: TaskStatus.COMPLETED });
   expect(final!.planStatus).toBe('completed');
-  expect(final!.autoActions).toContain(expect.stringContaining('auto-completed'));
+  expect(final!.autoActions).toContainEqual(expect.stringContaining('auto-completed'));
 });
 
 test('reactivation: updating task on completed plan reactivates it', async () => {
@@ -175,5 +175,5 @@ test('reactivation: updating task on completed plan reactivates it', async () =>
   const t2 = factory.planTask(plan.id, { description: 'New task' });
   const result = ctx.service.updatePlanTask(t2.id, { status: TaskStatus.IN_PROGRESS });
   expect(result!.planStatus).toBe('active');
-  expect(result!.autoActions).toContain(expect.stringContaining('auto-activated'));
+  expect(result!.autoActions).toContainEqual(expect.stringContaining('auto-activated'));
 });
