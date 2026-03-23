@@ -127,3 +127,9 @@ Duplicates pollute search results and waste tokens on redundant entries. One wel
 | `mcp__cognistore__updateKnowledge` | Update existing entry by ID |
 | `mcp__cognistore__deleteKnowledge` | Remove outdated entry by ID |
 | `mcp__cognistore__listTags` | Browse all tags in the database |
+
+## Pre-Capture: Plan Completion Check
+
+Before capturing knowledge, ensure active plans are complete:
+1. `listPlanTasks(planId)` — if any tasks are not `completed`, update them first
+2. Only after plan tracking is current, proceed with knowledge capture

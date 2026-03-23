@@ -78,6 +78,12 @@ export class KnowledgeService {
     const errors: string[] = [];
     for (const id of ids) {
       try {
+        // Guard: skip system knowledge entries
+        const entry = await this.repository.findById(id);
+        if (entry?.type === 'system') {
+          errors.push(`Skipped ${id}: system knowledge cannot be deleted`);
+          continue;
+        }
         const result = await this.repository.delete(id);
         if (result) {
           deleted++;
@@ -187,7 +193,19 @@ export class KnowledgeService {
 
   updatePlan(id: string, updates: UpdatePlanInput): Plan | null {
     const row = this.repository.updatePlan(id, updates as Record<string, unknown>);
-    return row ? this.toPlan(row) : null;
+    if (!row) return null;
+
+    // Guard: when plan is completed, auto-complete all incomplete tasks
+    if (updates.status === 'completed') {
+      const tasks = this.repository.listPlanTasks(id);
+      for (const t of tasks) {
+        if ((t as any).status !== 'completed') {
+          this.repository.updatePlanTask((t as any).id, { status: 'completed' });
+        }
+      }
+    }
+
+    return this.toPlan(row);
   }
 
   deletePlan(id: string): boolean {
@@ -274,9 +292,47 @@ export class KnowledgeService {
     return this.toPlanTask(this.repository.createPlanTask(input));
   }
 
-  updatePlanTask(id: string, updates: { description?: string; status?: string; priority?: string; notes?: string | null; position?: number }): PlanTask | null {
+  updatePlanTask(id: string, updates: { description?: string; status?: string; priority?: string; notes?: string | null; position?: number }): { task: PlanTask; planId: string; planStatus: string; progress: string; autoActions: string[] } | null {
     const row = this.repository.updatePlanTask(id, updates);
-    return row ? this.toPlanTask(row) : null;
+    if (!row) return null;
+
+    const task = this.toPlanTask(row);
+    const planId = this.repository.getTaskPlanId(id);
+    const autoActions: string[] = [];
+
+    if (planId) {
+      // A1: Auto-activate plan when any task starts (from draft or completed)
+      if (updates.status === 'in_progress') {
+        const plan = this.repository.getPlanById(planId);
+        if (plan && (plan.status === 'draft' || plan.status === 'completed')) {
+          this.repository.updatePlan(planId, { status: 'active' });
+          autoActions.push(`Plan auto-activated from ${plan.status} to active`);
+        }
+      }
+
+      // A2: Auto-complete plan when all tasks done
+      if (updates.status === 'completed') {
+        const incomplete = this.repository.countIncompleteTasks(planId);
+        if (incomplete === 0) {
+          this.repository.updatePlan(planId, { status: 'completed' });
+          autoActions.push('Plan auto-completed — all tasks done');
+        }
+      }
+    }
+
+    // Get current plan status and progress
+    const currentPlan = planId ? this.repository.getPlanById(planId) : null;
+    const allTasks = planId ? this.repository.listPlanTasks(planId) : [];
+    const completedCount = allTasks.filter((t: any) => t.status === 'completed').length;
+    const progress = `${completedCount}/${allTasks.length} completed`;
+
+    return {
+      task,
+      planId: planId ?? '',
+      planStatus: currentPlan?.status ?? 'unknown',
+      progress,
+      autoActions,
+    };
   }
 
   deletePlanTask(id: string): boolean {

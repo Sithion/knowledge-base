@@ -18,7 +18,7 @@ The setup wizard runs on first launch and installs all dependencies automaticall
 | 3 | Start Ollama | `POST /api/setup/ollama-start` | Spawn `ollama serve` as background daemon, wait 15s |
 | 4 | Database | `POST /api/setup/database` | Create `~/.cognistore/knowledge.db` with schema + indices |
 | 5 | Model | `POST /api/setup/model` | Pull `all-minilm` embedding model via Ollama API |
-| 6 | Configure | `POST /api/setup/configure` | Inject MCP configs, instructions, and skills |
+| 6 | Configure | `POST /api/setup/configure` | Inject MCP configs, instructions, skills, and seed system knowledge |
 | 7 | Complete | `POST /api/setup/complete` | Finalize setup, re-initialize SDK |
 
 ### Status Check
@@ -84,7 +84,10 @@ The configure step performs multiple actions:
    - `~/.claude.json`
    - `~/.copilot/mcp-config.json`
    - `~/.config/opencode/opencode.json`
-5. **Copy skills** — Installs AI skills for Claude Code (query, capture, plan) and Copilot (query, capture, plan)
+5. **Compile instructions** — Runs `compile-instructions.mjs` to generate platform-specific instruction files from `_base-instructions.md`
+6. **Copy skills** — Installs AI skills for Claude Code (query, capture, plan), Copilot (query, capture, plan), and OpenCode (query, capture, plan)
+7. **Deploy OpenCode plugins** — Copies plan enforcement plugin to `~/.config/opencode/plugins/`
+8. **Seed system knowledge** — Creates mandatory `type=system` knowledge entries in the database containing protocol instructions (knowledge-first workflow, plan persistence rules, etc.). These entries are injected into agent sessions via `UserPromptSubmit` hooks as `[COGNISTORE-PROTOCOL]` system messages. System entries are hidden from the dashboard, undeletable, and protected from modification
 
 ---
 
@@ -137,4 +140,8 @@ Every resource created by setup **must** be removed by uninstall. This is a mand
 | Copilot skill files | Remove files |
 | Claude plan skill directory | Remove `~/.claude/skills/cognistore-plan/` |
 | Copilot plan skill file | Remove `~/.copilot/skills/cognistore-plan.md` |
+| OpenCode skill directories | Remove `~/.config/opencode/skills/cognistore-*/` |
+| OpenCode plugins | Remove `~/.config/opencode/plugins/cognistore-*` files |
+| Compiled instruction files | Removed with sidecar bundle (not deployed to user filesystem) |
+| System knowledge entries (`type=system`) | Removed with database directory |
 | App in /Applications/ | Self-delete via rmSync |

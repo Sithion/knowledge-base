@@ -163,7 +163,7 @@ export function KnowledgeModal({ isOpen, onClose, onSuccess, entry }: KnowledgeM
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>{t('knowledge.confidence')}</label>
             <input
-              type="number" min={0} max={1} step={0.1}
+              type="number" min={0} max={1} step={0.01}
               value={form.confidenceScore}
               onChange={(e) => setForm({ ...form, confidenceScore: parseFloat(e.target.value) })}
               style={inputStyle}

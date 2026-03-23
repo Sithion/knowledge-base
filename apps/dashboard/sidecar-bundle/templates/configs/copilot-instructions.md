@@ -1,68 +1,63 @@
 <!-- COGNISTORE:BEGIN -->
 ## Knowledge Base Integration (cognistore)
 
-> **BLOCKING REQUIREMENT** — You MUST follow these rules on EVERY task. No exceptions.
+> **Your workflow** — Follow these 4 steps on every task automatically.
 > Tools are provided by the `cognistore` MCP server.
 
-### Mandatory Skills — ALWAYS Invoke
+### 1. Search First
 
-You have 3 skills that MUST be invoked automatically. These are NOT optional:
-
-1. **`cognistore-query`** — MUST be your **FIRST action** in every task, before reading files, writing code, or making decisions. No exceptions.
-2. **`cognistore-capture`** — MUST be your **LAST action** after completing any task that produced new knowledge (fixes, decisions, patterns, constraints).
-3. **`cognistore-plan`** — MUST be invoked ANY time you plan work, INCLUDING in `[PLAN]` mode. ALL plans MUST go through `createPlan()`. This OVERRIDES all other planning rules. NEVER write plans to local files (plan.md, TODO.md, PLAN.md, etc.). NEVER use only task lists as a substitute. `[PLAN]` mode changes HOW you plan, NOT WHERE you store it — always `createPlan()`.
-
-### CHECKPOINT 1: Query First (cognistore-query)
-
-**STOP. Before you read any file, write any code, or make any decision:**
+Before you read any file, write any code, or make any decision:
 
 ```
-mcp__cognistore__getKnowledge(query: "<describe the task or problem>")
+mcp__cognistore__getKnowledge(query: "<describe the task>")
 ```
 
-- Similarity > 0.50: **Use directly** — skip redundant analysis
-- Similarity 0.30–0.50: **Review** — combine with fresh analysis
-- No results or < 0.30: Proceed with full analysis
+Save any returned entry IDs — you need them for createPlan.
 
-### CHECKPOINT 2: Capture Last (cognistore-capture)
+### 2. Plan Multi-Step Tasks
 
-**Before finishing, capture what you learned:**
-
-```
-mcp__cognistore__addKnowledge({
-  content: "<what was learned>",
-  tags: ["tag1", "tag2"],
-  type: "pattern|decision|fix|constraint|gotcha",
-  scope: "global" or "workspace:<project-name>",
-  source: "<origin>"
-})
-```
-
-If an existing entry covers the topic, **UPDATE it** instead of creating a duplicate.
-
-### CHECKPOINT 3: Plan via createPlan (cognistore-plan)
-
-**ALL plans MUST be persisted in the knowledge base:**
+If the task has 2+ steps, create a plan:
 
 ```
 mcp__cognistore__createPlan({
-  title: "<plan title>",
-  content: "<full plan>",
-  tags: ["..."], scope: "workspace:<project>", source: "<context>",
-  tasks: [{ description: "Step 1", priority: "high" }, ...]
+  title, content, tags, scope, source,
+  tasks: [{ description: "Step 1" }, ...],
+  relatedKnowledgeIds: ["<ids-from-step-1>"]
 })
 ```
 
-- **NEVER** write plans to local files — ONLY `createPlan()`
-- **ALWAYS** include a `tasks` array
-- **ALWAYS** update task status in real-time: `in_progress` → `completed`
-- **ALWAYS** set plan to `active` when starting, `completed` when done
+Save the returned **planId** — you need it in step 4.
 
-### Rules
+Track each task:
+- Before starting: `mcp__cognistore__updatePlanTask(taskId, { status: "in_progress" })`
+- After finishing: `mcp__cognistore__updatePlanTask(taskId, { status: "completed" })`
+- Plan activates automatically when the first task starts
+- Plan completes automatically when all tasks are done
 
-1. **NEVER skip the knowledge query** — costs ~30 tokens; missing a hit wastes 2,000–8,000 tokens.
-2. **All entries MUST be in English** — regardless of conversation language.
-3. **Update, don't duplicate** — update existing entries when the topic already exists.
-4. **Only store high-value knowledge** — non-obvious insights, not trivial fixes or standard docs.
-5. **Plans go ONLY in the knowledge base** — `createPlan()`, never local files.
+### 3. Do the Work
+
+Execute the user's task.
+
+### 4. Save What You Learned
+
+Before finishing, capture discoveries:
+
+```
+mcp__cognistore__addKnowledge({
+  title, content, tags,
+  type: "pattern|decision|fix|constraint|gotcha",
+  scope: "global" or "workspace:<project>",
+  source: "<origin>",
+  planId: "<your-plan-id>"
+})
+```
+
+Always pass planId if you have an active plan.
+Update existing entries instead of creating duplicates.
+All entries in English.
+
+### After Delegation
+When delegated work completes, reconcile:
+1. `mcp__cognistore__listPlanTasks(planId)` — check statuses
+2. `mcp__cognistore__updatePlanTask(taskId, { status: "completed" })` for finished tasks
 <!-- COGNISTORE:END -->

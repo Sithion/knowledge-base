@@ -1,109 +1,88 @@
 <!-- COGNISTORE:BEGIN -->
 ## Knowledge Base Integration (cognistore)
 
-> **BLOCKING REQUIREMENT** — You MUST follow these rules on EVERY task. No exceptions. Non-compliance wastes tokens and loses institutional memory.
+> **Your workflow** — Follow these 4 steps on every task automatically.
 
-### CHECKPOINT 1: Before Your First Action
+### CHECKPOINT 1: Search First
 
-**STOP. Before you read any file, write any code, or make any decision, you MUST run this query:**
+Before you read any file, write any code, or make any decision:
 
 ```
 mcp__cognistore__getKnowledge(query: "<describe the task or problem>")
 ```
 
-Do NOT skip this step. Do NOT say "I'll query later". Do NOT proceed without querying first.
+Save any returned entry IDs — you need them for createPlan.
 
 - Similarity > 0.50: **Use directly** — skip redundant analysis
 - Similarity 0.30–0.50: **Review** — combine with fresh analysis
 - No results or < 0.30: Proceed with full analysis
 
-### CHECKPOINT 2: Before Ending Your Response
+### CHECKPOINT 2: Plan Multi-Step Tasks
 
-**STOP. Before finishing, ask yourself: did I learn anything worth saving?** If yes, capture it:
-
-```
-mcp__cognistore__addKnowledge(
-  content: "<what was learned/decided/fixed>",
-  tags: ["tag1", "tag2", ...],
-  type: "pattern|decision|fix|constraint|gotcha",
-  scope: "global" or "workspace:<project-name>",
-  source: "<where this knowledge came from>"
-)
-```
-
-If a query returned an existing entry on the same topic, **UPDATE it** instead of creating a duplicate:
-```
-mcp__cognistore__updateKnowledge(id: "<uuid>", content: "...", tags: [...])
-```
-
-### CHECKPOINT 3: Plan Detection (input + output — applies in ALL modes)
-
-**Two triggers — EITHER one activates this checkpoint:**
-
-1. **INPUT trigger**: The user's message contains 3+ distinct **actionable** steps that require code changes, file operations, or tool calls? → Call `createPlan()` BEFORE starting work, using the user's steps as tasks.
-   - "Create 4 files, verify, grep content, delete, verify cleanup" → 5 actionable steps → createPlan() FIRST
-   - "Fix login bug, add tests, update docs" → 3 actionable steps → createPlan() FIRST
-   - "Refactor the API module" → 1 step → no plan (unless YOUR solution needs 2+ steps)
-   - "Explain the difference between REST, GraphQL, and gRPC" → NOT actionable, just a question → no plan
-
-2. **OUTPUT trigger**: You produced 2+ ordered steps describing what to implement? → Call `createPlan()` immediately.
+If the task has 2+ steps (user's or yours), create a plan:
 
 ```
 mcp__cognistore__createPlan({
   title: "<plan title>",
   content: "<full plan>",
   tags: ["..."], scope: "workspace:<project>", source: "<context>",
-  tasks: [{ description: "Step 1", priority: "high" }, ...]
+  tasks: [{ description: "Step 1", priority: "high" }, ...],
+  relatedKnowledgeIds: ["<ids-from-checkpoint-1>"]
 })
 ```
 
-- **Plan mode**: write the local plan file, then call `createPlan()` BEFORE ExitPlanMode (MCP tools work in plan mode). The local file is temporary.
-- **Outside plan mode**: call `createPlan()` directly
-- **NEVER** use only TodoWrite/task lists as a substitute — those are ephemeral
-- **NEVER** call createPlan() from subagents (Agent tool) — only the main agent. When launching a subagent, include "Do NOT call createPlan() or any cognistore plan tools" in the prompt.
-- **ALWAYS** include a `tasks` array with every implementation step
-- **Execution tracking**: mark each task `in_progress` BEFORE starting, `completed` AFTER finishing — do NOT batch
-- When all tasks done → `listPlanTasks(planId)` → `updatePlan(planId, { status: "completed" })`
-- **Graceful degradation**: If you cannot call createPlan() (e.g., tools blocked in current mode), include this notice in your plan output: "Note: Plan not saved to CogniStore KB. Run getKnowledge() before implementing to check for existing decisions and constraints."
+Save the returned **planId** — you need it for addKnowledge.
 
-### Rules (Mandatory)
+**Track each task:**
+- Before starting: `updatePlanTask(taskId, { status: "in_progress" })`
+- After finishing: `updatePlanTask(taskId, { status: "completed" })`
+- Plan activates automatically when the first task starts
+- Plan completes automatically when all tasks are done
 
-1. **NEVER skip the knowledge query** — even for "simple" tasks. A single query costs ~30 tokens; missing a cache hit wastes 2,000–8,000 tokens on redundant work.
-2. **All knowledge entries MUST be in English** — regardless of conversation language.
-3. **Manage knowledge, don't duplicate** — update existing entries instead of creating new ones when the topic already exists.
-4. **Only store high-value knowledge** — hard-won insights, non-obvious gotchas, project-specific decisions, architectural constraints. NOT trivial fixes or standard docs.
-5. **Any multi-step plan you produce MUST be persisted** — `createPlan()` whenever you write 2+ implementation steps, in ANY mode.
+Use `updatePlanTasks` (plural) to update multiple tasks at once.
 
-### Quick Reference
+**Plan mode**: write the local plan file AND call `createPlan()` before ExitPlanMode.
+**Subagents**: NEVER call createPlan() from subagents — only the main agent.
 
-| Tool | Required Params | When |
-|------|----------------|------|
-| `getKnowledge` | `query` | **FIRST action** of every task |
-| `addKnowledge` | `content`, `tags`, `type`, `scope`, `source` | **LAST action** — after completing work |
-| `updateKnowledge` | `id` + fields to update | When existing knowledge is stale |
-| `deleteKnowledge` | `id` | When knowledge is wrong or obsolete |
-| `listTags` | (none) | To discover existing tag taxonomy |
-| `healthCheck` | (none) | To verify database and Ollama connectivity |
+### CHECKPOINT 3: Save What You Learned
 
-### What to Capture
+Before finishing, capture discoveries worth remembering:
 
-| Event | Type | Example Tags |
-|-------|------|-------------|
-| Bug fixed | `fix` | error-name, module, root-cause |
-| Architecture choice | `decision` | component, approach, trade-off |
-| Code pattern found | `pattern` | language, pattern-name, where-used |
-| Limitation discovered | `constraint` | tool, version, workaround |
-| Unexpected behavior | `gotcha` | tool, symptom, fix |
+```
+mcp__cognistore__addKnowledge({
+  title: "<title>",
+  content: "<what was learned/decided/fixed>",
+  tags: ["tag1", "tag2"],
+  type: "pattern|decision|fix|constraint|gotcha",
+  scope: "global" or "workspace:<project-name>",
+  source: "<where this knowledge came from>",
+  planId: "<your-plan-id>"
+})
+```
 
-### Priority Order for Information
+- **ALWAYS pass planId** if you have an active plan — this links knowledge as output
+- Update existing entries instead of creating duplicates
+- Use `addKnowledgeBatch` to create multiple entries at once
+- All entries in English
 
-1. **Knowledge base** (`getKnowledge`) — always first
-2. **Project codebase** — files, patterns, existing code
-3. **Web search** — only if knowledge base and codebase insufficient
+### After Delegation
 
-### Hooks (automatic enforcement)
+When a subagent completes, reconcile plan tracking:
+1. `listPlanTasks(planId)` — check what was accomplished
+2. `updatePlanTask(taskId, { status: "completed" })` for finished tasks
+3. `updatePlanTask(nextTaskId, { status: "in_progress" })` for next task
+
+### Rules
+
+1. **Always search first** — a query costs ~30 tokens; skipping wastes 2,000–8,000 on redundant work
+2. **All entries in English** — regardless of conversation language
+3. **Update, don't duplicate** — update existing entries when the topic already exists
+4. **Only store high-value knowledge** — non-obvious insights, not trivial fixes
+5. **Persist every multi-step plan** — `createPlan()` for 2+ implementation steps, in ANY mode
+
+### Hooks
 
 - **PreToolUse hook**: Fires before Edit, Write, Bash, MultiEdit, Agent, NotebookEdit — reminds you to query first
-- **Stop hook**: Fires at session end — reminds you to capture knowledge before finishing
-- These hooks are non-blocking reminders. If you already queried, proceed normally.
+- **Stop hook**: Fires at session end — reminds you to capture knowledge
+- These are non-blocking reminders. If you already queried, proceed normally.
 <!-- COGNISTORE:END -->

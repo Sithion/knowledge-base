@@ -42,11 +42,11 @@ test('updatePlanTask changes status pending -> in_progress -> completed', async 
 
   const inProgress = ctx.service.updatePlanTask(task.id, { status: TaskStatus.IN_PROGRESS });
   expect(inProgress).not.toBeNull();
-  expect(inProgress!.status).toBe(TaskStatus.IN_PROGRESS);
+  expect(inProgress!.task.status).toBe(TaskStatus.IN_PROGRESS);
 
   const completed = ctx.service.updatePlanTask(task.id, { status: TaskStatus.COMPLETED });
   expect(completed).not.toBeNull();
-  expect(completed!.status).toBe(TaskStatus.COMPLETED);
+  expect(completed!.task.status).toBe(TaskStatus.COMPLETED);
 });
 
 test('updatePlanTask adds notes', async () => {
@@ -56,7 +56,7 @@ test('updatePlanTask adds notes', async () => {
 
   const updated = ctx.service.updatePlanTask(task.id, { notes: 'Some important notes here' });
   expect(updated).not.toBeNull();
-  expect(updated!.notes).toBe('Some important notes here');
+  expect(updated!.task.notes).toBe('Some important notes here');
 });
 
 test('updatePlanTask changes priority', async () => {
@@ -66,7 +66,7 @@ test('updatePlanTask changes priority', async () => {
 
   const updated = ctx.service.updatePlanTask(task.id, { priority: TaskPriority.LOW });
   expect(updated).not.toBeNull();
-  expect(updated!.priority).toBe(TaskPriority.LOW);
+  expect(updated!.task.priority).toBe(TaskPriority.LOW);
 });
 
 test('listPlanTasks returns ordered by position', async () => {
@@ -133,4 +133,47 @@ test('stats update correctly as tasks change status', async () => {
   const statsAfterComplete = ctx.service.getPlanTaskStats();
   expect(statsAfterComplete.completed).toBe(statsBefore.completed + 1);
   expect(statsAfterComplete.inProgress).toBe(statsBefore.inProgress);
+});
+
+test('auto-activate: plan moves from draft to active when task starts', async () => {
+  const plan = await factory.plan({ title: 'Auto-Activate Plan' });
+  expect(plan.status).toBe('draft');
+  const task = factory.planTask(plan.id, { description: 'First task' });
+
+  const result = ctx.service.updatePlanTask(task.id, { status: TaskStatus.IN_PROGRESS });
+  expect(result).not.toBeNull();
+  expect(result!.planStatus).toBe('active');
+  expect(result!.autoActions).toContainEqual(expect.stringContaining('auto-activated'));
+});
+
+test('auto-complete: plan completes when all tasks are done', async () => {
+  const plan = await factory.plan({ title: 'Auto-Complete Plan' });
+  const t1 = factory.planTask(plan.id, { description: 'Task 1' });
+  const t2 = factory.planTask(plan.id, { description: 'Task 2' });
+
+  ctx.service.updatePlanTask(t1.id, { status: TaskStatus.IN_PROGRESS });
+  ctx.service.updatePlanTask(t1.id, { status: TaskStatus.COMPLETED });
+  const result = ctx.service.updatePlanTask(t2.id, { status: TaskStatus.IN_PROGRESS });
+  expect(result!.planStatus).toBe('active');
+
+  const final = ctx.service.updatePlanTask(t2.id, { status: TaskStatus.COMPLETED });
+  expect(final!.planStatus).toBe('completed');
+  expect(final!.autoActions).toContainEqual(expect.stringContaining('auto-completed'));
+});
+
+test('reactivation: updating task on completed plan reactivates it', async () => {
+  const plan = await factory.plan({ title: 'Reactivation Plan' });
+  const t1 = factory.planTask(plan.id, { description: 'Only task' });
+
+  ctx.service.updatePlanTask(t1.id, { status: TaskStatus.IN_PROGRESS });
+  ctx.service.updatePlanTask(t1.id, { status: TaskStatus.COMPLETED });
+  // Plan should be completed now
+  const completedPlan = ctx.service.getPlanById(plan.id);
+  expect(completedPlan!.status).toBe('completed');
+
+  // Adding new task and starting it should reactivate
+  const t2 = factory.planTask(plan.id, { description: 'New task' });
+  const result = ctx.service.updatePlanTask(t2.id, { status: TaskStatus.IN_PROGRESS });
+  expect(result!.planStatus).toBe('active');
+  expect(result!.autoActions).toContainEqual(expect.stringContaining('auto-activated'));
 });

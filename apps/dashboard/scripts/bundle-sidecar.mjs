@@ -72,8 +72,15 @@ if (runWeb) {
   }
   cpSync(distSrc, resolve(bundleDir, 'dist'), { recursive: true });
 
-  // 4. Copy templates (skills + configs)
-  console.log('\n[web 4/4] Copying templates...');
+  // 4a. Compile platform instructions from base template
+  console.log('\n[web 4/5] Compiling platform instructions...');
+  execSync('node templates/configs/compile-instructions.mjs', {
+    cwd: dashboardRoot,
+    stdio: 'inherit',
+  });
+
+  // 4b. Copy templates (skills + configs)
+  console.log('\n[web 5/5] Copying templates...');
   const templatesSrc = resolve(dashboardRoot, 'templates');
   if (existsSync(templatesSrc)) {
     cpSync(templatesSrc, resolve(bundleDir, 'templates'), { recursive: true });

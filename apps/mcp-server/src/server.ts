@@ -14,22 +14,28 @@ const DESTRUCTIVE = { readOnlyHint: false, destructiveHint: true } as const;
 export function createServer(sdk: KnowledgeSDK): McpServer {
   const server = new McpServer({
     name: 'cognistore',
-    version: '0.1.0',
+    version: '1.0.0',
   });
+
+  // ── Auto-linking state (shared across tool calls within a session) ──
+  let lastSearchResultIds: string[] = [];
+
+  // ─── Knowledge Tools ──────────────────────────────────────────
 
   // addKnowledge
   server.tool(
     'addKnowledge',
-    'Store a new knowledge entry with semantic embedding. Content is vectorized for future semantic search.',
+    'Store a knowledge entry. If you have an active plan, ALWAYS pass planId to auto-link as output.',
     {
-      title: z.string().describe('Short descriptive title for the knowledge entry'),
-      content: z.string().describe('The knowledge content text to store'),
-      tags: z.array(z.string()).describe('Mandatory categorical tags for filtering'),
-      type: z.enum(knowledgeTypeValues).describe('Type of knowledge entry'),
+      title: z.string().describe('Short descriptive title'),
+      content: z.string().describe('The knowledge content text'),
+      tags: z.array(z.string()).describe('Categorical tags for filtering'),
+      type: z.enum(knowledgeTypeValues).describe('Type: decision, pattern, fix, constraint, or gotcha'),
       scope: z.string().describe('Scope: "global" or "workspace:<project-name>"'),
       source: z.string().describe('Source of the knowledge'),
       confidenceScore: z.number().min(0).max(1).optional().describe('Confidence score 0-1'),
       agentId: z.string().optional().describe('ID of the agent that created this'),
+      planId: z.string().optional().describe('Plan ID to auto-link this knowledge as output. ALWAYS pass this if you have an active plan.'),
     },
     WRITE,
     async (params) => {
@@ -43,14 +49,76 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
         confidenceScore: params.confidenceScore,
         agentId: params.agentId,
       });
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+
+      // A6: Transparent auto-linking
+      let linked = false;
+      let linkWarning = '';
+      if (params.planId && result.type !== 'system') {
+        try {
+          await sdk.addPlanRelation(params.planId, result.id, 'output');
+          linked = true;
+        } catch (e) {
+          linkWarning = e instanceof Error ? e.message : 'Unknown linking error';
+        }
+      }
+
+      const response: Record<string, unknown> = { entry: result };
+      if (params.planId) {
+        response.linked = linked;
+        response.planId = params.planId;
+        if (linkWarning) response.linkWarning = linkWarning;
+      }
+      return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
+    }
+  );
+
+  // addKnowledgeBatch (A4)
+  server.tool(
+    'addKnowledgeBatch',
+    'Create multiple knowledge entries at once. Pass planId per entry for output linking. Reduces tool calls.',
+    {
+      entries: z.array(z.object({
+        title: z.string(),
+        content: z.string(),
+        tags: z.array(z.string()),
+        type: z.enum(knowledgeTypeValues),
+        scope: z.string(),
+        source: z.string(),
+        planId: z.string().optional(),
+      })).describe('Array of knowledge entries to create'),
+    },
+    WRITE,
+    async (params) => {
+      const results: Array<{ entry: unknown; linked: boolean; planId?: string; linkWarning?: string }> = [];
+      for (const e of params.entries) {
+        const entry = await sdk.addKnowledge({
+          title: e.title,
+          content: e.content,
+          tags: e.tags,
+          type: e.type as KnowledgeType,
+          scope: e.scope,
+          source: e.source,
+        });
+        let linked = false;
+        let linkWarning = '';
+        if (e.planId && (entry as any).type !== 'system') {
+          try {
+            await sdk.addPlanRelation(e.planId, entry.id, 'output');
+            linked = true;
+          } catch (err) {
+            linkWarning = err instanceof Error ? err.message : 'Unknown linking error';
+          }
+        }
+        results.push({ entry, linked, ...(e.planId ? { planId: e.planId } : {}), ...(linkWarning ? { linkWarning } : {}) });
+      }
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ created: results.length, entries: results }, null, 2) }] };
     }
   );
 
   // getKnowledge
   server.tool(
     'getKnowledge',
-    'Search knowledge semantically. When a specific scope is provided, global knowledge is always included.',
+    'Search knowledge semantically. SAVE returned entry IDs — pass them as relatedKnowledgeIds when calling createPlan.',
     {
       query: z.string().describe('Natural language query to search for'),
       tags: z.array(z.string()).optional().describe('Optional tag filters'),
@@ -68,7 +136,28 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
         limit: params.limit,
         threshold: params.threshold,
       });
-      return { content: [{ type: 'text' as const, text: JSON.stringify(results, null, 2) }] };
+      lastSearchResultIds = results.map(r => r.entry.id);
+
+      const response: Record<string, unknown> = { results };
+
+      // Cross-session continuity: detect existing plans
+      try {
+        const activePlans = sdk.listPlans(1, 'active');
+        const draftPlans = sdk.listPlans(1, 'draft');
+        const currentPlan = activePlans[0] || draftPlans[0];
+        if (currentPlan) {
+          response.activePlan = {
+            id: currentPlan.id,
+            title: currentPlan.title,
+            status: currentPlan.status,
+            hint: 'Pass this planId to addKnowledge calls for output linking.',
+          };
+        }
+      } catch {
+        // Best-effort
+      }
+
+      return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
     }
   );
 
@@ -98,8 +187,9 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
         source: updates.source,
         confidenceScore: updates.confidenceScore,
       });
-      const text = result ? JSON.stringify(result, null, 2) : 'Knowledge entry not found';
-      return { content: [{ type: 'text' as const, text }] };
+      // A7: Consistent error responses
+      if (!result) return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'not_found', type: 'knowledge_entry', id }) }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     }
   );
 
@@ -113,9 +203,8 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
     DESTRUCTIVE,
     async (params) => {
       const deleted = await sdk.deleteKnowledge(params.id);
-      return {
-        content: [{ type: 'text' as const, text: deleted ? 'Deleted successfully' : 'Not found' }],
-      };
+      if (!deleted) return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'not_found', type: 'knowledge_entry', id: params.id }) }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify({ deleted: true, id: params.id }) }] };
     }
   );
 
@@ -143,79 +232,95 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
     }
   );
 
+  // ─── Plan Tools ──────────────────────────────────────────────
+
   // createPlan
   server.tool(
     'createPlan',
-    'Create a new plan in the knowledge base. Plans are the ONLY way to persist implementation plans — never use local files. Status starts as draft.',
+    'Create a plan with tasks. Plan auto-activates when the first task starts. Returns planId — SAVE IT and pass to addKnowledge calls.',
     {
       title: z.string().describe('Plan title (short, descriptive)'),
       content: z.string().describe('Full plan content (steps, approach, considerations)'),
       tags: z.array(z.string()).describe('Tags for categorization'),
       scope: z.string().describe('Scope: "global" or "workspace:<project-name>"'),
       source: z.string().describe('Source/context of the plan'),
-      relatedKnowledgeIds: z.array(z.string()).optional().describe('IDs of knowledge entries consulted during planning (input relations)'),
+      relatedKnowledgeIds: z.array(z.string()).optional().describe('IDs of knowledge entries consulted during planning (auto-linked as input)'),
       tasks: z.array(z.object({
         description: z.string(),
         priority: z.enum(['low', 'medium', 'high']).optional(),
-      })).optional().describe('Initial tasks for the plan todo list'),
+      })).optional().describe('Tasks for the plan. ALWAYS include tasks for multi-step work.'),
     },
     WRITE,
     async (params) => {
+      const inputIds = new Set([
+        ...(params.relatedKnowledgeIds || []),
+        ...lastSearchResultIds,
+      ]);
       const result = await sdk.createPlan({
         title: params.title,
         content: params.content,
         tags: params.tags,
         scope: params.scope,
         source: params.source,
-        relatedKnowledgeIds: params.relatedKnowledgeIds,
+        relatedKnowledgeIds: inputIds.size > 0 ? [...inputIds] : undefined,
         tasks: params.tasks,
       });
-      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+      lastSearchResultIds = [];
+
+      const response = {
+        ...result,
+        reminder: `Your plan ID is "${result.id}". Pass planId: "${result.id}" to every addKnowledge call for output linking. Plan auto-activates when you start the first task.`,
+      };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
     }
   );
 
   // updatePlan
   server.tool(
     'updatePlan',
-    'Update an existing plan. Use to change status (draft → active → completed → archived), title, content, tags, or scope.',
+    'Update a plan. Status lifecycle: draft → active → completed. Plan auto-activates and auto-completes via task updates — usually you do not need to call this manually.',
     {
       planId: z.string().describe('UUID of the plan to update'),
       title: z.string().optional().describe('New title'),
       content: z.string().optional().describe('New content'),
       tags: z.array(z.string()).optional().describe('New tags'),
       scope: z.string().optional().describe('New scope'),
-      status: z.enum(knowledgeStatusValues).optional().describe('New status'),
+      status: z.enum(knowledgeStatusValues).optional().describe('New status (usually auto-managed)'),
       source: z.string().optional().describe('New source'),
     },
     WRITE,
     async (params) => {
       const { planId, ...updates } = params;
       const result = sdk.updatePlan(planId, updates as any);
-      const text = result ? JSON.stringify(result, null, 2) : 'Plan not found';
-      return { content: [{ type: 'text' as const, text }] };
+      if (!result) return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'not_found', type: 'plan', id: planId }) }] };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     }
   );
 
   // addPlanRelation
   server.tool(
     'addPlanRelation',
-    'Link a knowledge entry to a plan. Use "input" for entries consulted during planning, "output" for entries created/updated during execution.',
+    'Link a knowledge entry to a plan. Input = consulted during planning, output = created during execution. Usually auto-handled — use only for manual linking.',
     {
       planId: z.string().describe('UUID of the plan'),
       knowledgeId: z.string().describe('UUID of the knowledge entry to link'),
-      relationType: z.enum(['input', 'output']).describe('"input" = consulted during planning, "output" = created/updated during execution'),
+      relationType: z.enum(['input', 'output']).describe('"input" = consulted, "output" = produced'),
     },
     WRITE,
     async (params) => {
-      sdk.addPlanRelation(params.planId, params.knowledgeId, params.relationType);
-      return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, ...params }) }] };
+      try {
+        sdk.addPlanRelation(params.planId, params.knowledgeId, params.relationType);
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, ...params }) }] };
+      } catch (e) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'link_failed', message: e instanceof Error ? e.message : 'Unknown error', ...params }) }] };
+      }
     }
   );
 
   // addPlanTask
   server.tool(
     'addPlanTask',
-    'Add a task to a plan todo list. Position is auto-calculated.',
+    'Add a task to a plan. Position is auto-calculated.',
     {
       planId: z.string().describe('UUID of the plan'),
       description: z.string().describe('Task description'),
@@ -229,10 +334,10 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
     }
   );
 
-  // updatePlanTask
+  // updatePlanTask (A5: rich response with plan context)
   server.tool(
     'updatePlanTask',
-    'Update a plan task. Mark in_progress when starting, completed when done. Add notes for context.',
+    'Update a task status. Plan auto-activates on first in_progress and auto-completes when all tasks are done.',
     {
       taskId: z.string().describe('UUID of the task'),
       status: z.enum(['pending', 'in_progress', 'completed']).optional().describe('New status'),
@@ -243,34 +348,69 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
     WRITE,
     async (params) => {
       const { taskId, ...updates } = params;
-      const task = sdk.updatePlanTask(taskId, updates);
-      const text = task ? JSON.stringify(task, null, 2) : 'Task not found';
-      return { content: [{ type: 'text' as const, text }] };
+      const result = sdk.updatePlanTask(taskId, updates);
+      if (!result) return { content: [{ type: 'text' as const, text: JSON.stringify({ error: 'not_found', type: 'plan_task', id: taskId }) }] };
+
+      const response = {
+        task: result.task,
+        plan: { id: result.planId, status: result.planStatus, progress: result.progress },
+        ...(result.autoActions.length > 0 ? { autoActions: result.autoActions } : {}),
+        reminder: `Plan ID: "${result.planId}". Pass this planId to addKnowledge calls for output linking.`,
+      };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
+    }
+  );
+
+  // updatePlanTasks (A3: batch)
+  server.tool(
+    'updatePlanTasks',
+    'Update multiple tasks at once. Reduces tool calls. Plan auto-activates and auto-completes automatically.',
+    {
+      updates: z.array(z.object({
+        taskId: z.string().describe('UUID of the task'),
+        status: z.enum(['pending', 'in_progress', 'completed']).optional(),
+        notes: z.string().nullable().optional(),
+      })).describe('Array of task updates'),
+    },
+    WRITE,
+    async (params) => {
+      const results = sdk.updatePlanTasks(params.updates);
+      const allAutoActions = results.flatMap(r => r.autoActions);
+      const lastResult = results[results.length - 1];
+
+      const response = {
+        updated: results.length,
+        tasks: results.map(r => ({ id: r.task.id, status: r.task.status, description: r.task.description })),
+        plan: lastResult ? { id: lastResult.planId, status: lastResult.planStatus, progress: lastResult.progress } : undefined,
+        ...(allAutoActions.length > 0 ? { autoActions: allAutoActions } : {}),
+        reminder: lastResult ? `Plan ID: "${lastResult.planId}". Pass this planId to addKnowledge calls.` : undefined,
+      };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
     }
   );
 
   // listPlanTasks
   server.tool(
     'listPlanTasks',
-    'List all tasks for a plan, ordered by position. Use to check progress or resume work.',
+    'List all tasks for a plan, ordered by position. Shows progress.',
     {
       planId: z.string().describe('UUID of the plan'),
     },
     READ_ONLY,
     async (params) => {
       const tasks = sdk.listPlanTasks(params.planId);
-      return { content: [{ type: 'text' as const, text: JSON.stringify(tasks, null, 2) }] };
+      const completed = tasks.filter(t => t.status === 'completed').length;
+      const response = {
+        tasks,
+        progress: `${completed}/${tasks.length} completed`,
+        reminder: `Plan ID: "${params.planId}". Pass this planId to addKnowledge calls for output linking.`,
+      };
+      return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
     }
   );
 
   // ─── MCP Resources ──────────────────────────────────────────
 
-  // Scope-aware knowledge context resource
-  // Provides auto-loaded KB context for agents — useful when tools can't be called (e.g., plan mode)
-  // STATUS: Future-proofing. As of 2026-03, Claude Code and Copilot don't fully support MCP resources
-  // in plan mode. Revisit when MCP resource support matures in client implementations.
-  // URI: cognistore://context/{scope} where scope is a project name (e.g., "knowledge-base")
-  // Fallback: if scope is empty or "global", returns unscoped results
   server.resource(
     'knowledge-context',
     new ResourceTemplate('cognistore://context/{scope}', { list: undefined }),
@@ -279,17 +419,9 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
       const scope = variables.scope as string || 'global';
       const scopeFilter = scope === 'global' ? undefined : `workspace:${scope}`;
 
-      // Fetch recent knowledge entries for this scope
-      // NOTE: Using '*' as query with threshold 0 is a workaround — the SDK lacks a listRecent() method.
-      // This computes an embedding for '*' but returns everything above 0 similarity, effectively listing entries.
-      // TODO: Add a dedicated listRecentEntries() SDK method in a future release.
       let knowledgeSection = '';
       try {
-        const results = await sdk.getKnowledge('*', {
-          scope: scopeFilter,
-          limit: 10,
-          threshold: 0,
-        });
+        const results = await sdk.getKnowledge('*', { scope: scopeFilter, limit: 10, threshold: 0 });
         if (results.length > 0) {
           knowledgeSection = '## Recent Knowledge\n\n' + results.map(r =>
             `- **${r.entry.title}** (${r.entry.type}, ${r.entry.scope})\n  ${r.entry.content.slice(0, 200)}${r.entry.content.length > 200 ? '...' : ''}`
@@ -301,10 +433,8 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
         knowledgeSection = '## Recent Knowledge\n\nUnable to fetch entries.';
       }
 
-      // Fetch active plans
       let plansSection = '';
       try {
-        // NOTE: listPlans/listPlanTasks are synchronous (SQLite). If they become async, update this handler.
         const plans = sdk.listPlans(10, 'active');
         const scopedPlans = scopeFilter
           ? plans.filter(p => p.scope === scopeFilter || p.scope === 'global')
@@ -323,7 +453,6 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
         plansSection = '## Active Plans\n\nUnable to fetch plans.';
       }
 
-      // Fetch top tags
       let tagsSection = '';
       try {
         const tags = await sdk.listTags();
