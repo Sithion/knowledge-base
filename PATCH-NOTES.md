@@ -1,5 +1,12 @@
 # Patch Notes
 
+## v1.0.2
+
+### Fixes
+- **Crash on launch (SIGABRT)**: app crashed on machines without Node.js v20 due to setup errors propagating through the macOS FFI boundary (`panic_cannot_unwind` in `did_finish_launching`). Setup errors are now caught and displayed in the webview instead of panicking
+- **Auto-install Node.js v20**: when Node.js v20 is not found, the app now automatically installs nvm and Node.js v20 before spawning the sidecar, removing the need for users to pre-install Node
+- **Window destroy handler**: use `try_state()` instead of `state()` to avoid panic if sidecar was never managed (e.g., setup failed)
+
 ## v1.0.1
 
 ### Fixes
