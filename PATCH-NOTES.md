@@ -1,5 +1,10 @@
 # Patch Notes
 
+## v1.0.1
+
+### Fixes
+- **Plan stats donut charts**: fix visual gap in single-segment donuts (`paddingAngle` now conditional), add center label showing total count
+
 ## v1.0.0
 
 ### Milestone
