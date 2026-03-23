@@ -2,7 +2,7 @@
 
 <img src="assets/logo-banner.png" alt="CogniStore" width="500" />
 
-**v1.0.0 — Knowledge & Plan Management for AI Agents**
+**Knowledge & Plan Management for AI Agents**
 
 Store, search, and retrieve knowledge using local vector embeddings — directly from your AI assistant.
 
