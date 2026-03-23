@@ -693,7 +693,7 @@ export function PlansPage() {
               {t('plans.tasks')}
             </h3>
             <ProgressBar completed={completedTasks} total={tasks.length} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 400, overflowY: 'auto' }}>
               {tasks.map((task) => (
                 <TaskItem
                   key={task.id}
@@ -860,7 +860,7 @@ export function PlansPage() {
                   {planTasks.length > 0 && (
                     <>
                       <ProgressBar completed={done} total={planTasks.length} />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflowY: 'auto' }}>
                         {planTasks.map((task) => (
                           <div key={task.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
                             <TaskStatusIcon status={task.status} />
@@ -946,6 +946,9 @@ export function PlansPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
                       <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
                         {new Date(plan.createdAt).toLocaleDateString()}
+                        {plan.updatedAt && plan.updatedAt !== plan.createdAt && (
+                          <> • updated {new Date(plan.updatedAt).toLocaleDateString()}</>
+                        )}
                       </span>
                       {planTasks.length > 0 && <MiniProgress completed={done} total={planTasks.length} />}
                     </div>

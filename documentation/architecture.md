@@ -140,8 +140,8 @@ Task Flow: addPlanTask / updatePlanTask / listPlanTasks
   - Status: pending → in_progress → completed
   - Priority: low / medium / high
 
-Batch: addKnowledgeBatch / updatePlanTasks
-  - addKnowledgeBatch: create multiple entries at once (each with optional planId)
+Batch: addKnowledge (array) / updatePlanTasks
+  - addKnowledge: accepts a single entry or an array of entries (each with optional planId)
   - updatePlanTasks: update multiple tasks at once (batch status changes)
 ```
 

@@ -221,8 +221,11 @@ export function KnowledgeCard({
 
       <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
         v{entry.version as number} •{' '}
-        {entry.agentId ? `Agent: ${entry.agentId}` : ''} •{' '}
+        {entry.agentId ? `Agent: ${entry.agentId} • ` : ''}
         {new Date(entry.createdAt as string).toLocaleDateString()}
+        {entry.updatedAt && entry.updatedAt !== entry.createdAt && (
+          <> • updated {new Date(entry.updatedAt as string).toLocaleDateString()}</>
+        )}
       </div>
       </div>
     </div>

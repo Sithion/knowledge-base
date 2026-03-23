@@ -2,7 +2,7 @@
 
 <img src="assets/logo-banner.png" alt="CogniStore" width="500" />
 
-**v1.0.0 — Knowledge & Plan Management for AI Agents**
+**Knowledge & Plan Management for AI Agents**
 
 Store, search, and retrieve knowledge using local vector embeddings — directly from your AI assistant.
 
@@ -108,7 +108,7 @@ If you prefer to configure the MCP server manually:
 
 | Tool | Description | Key Parameters |
 |------|-------------|----------------|
-| `addKnowledge` | Store a knowledge entry with automatic semantic embedding | `title`, `content`, `tags`, `type`, `scope`, `source` |
+| `addKnowledge` | Store one or multiple knowledge entries (single object or array) | `entries` (object or object[]) |
 | `getKnowledge` | Search across entries using natural language queries | `query`, `tags`, `type`, `scope`, `limit`, `threshold` |
 | `updateKnowledge` | Update an existing entry (re-embeds if tags change) | `id`, `title`, `content`, `tags` |
 | `deleteKnowledge` | Remove an entry by ID (rejects system entries) | `id` |
@@ -120,7 +120,6 @@ If you prefer to configure the MCP server manually:
 | `addPlanTask` | Add a task to a plan's todo list | `planId`, `description`, `priority` |
 | `updatePlanTask` | Mark task in_progress/completed, add notes | `taskId`, `status`, `notes` |
 | `listPlanTasks` | List tasks for a plan ordered by position | `planId` |
-| `addKnowledgeBatch` | Create multiple knowledge entries at once | `entries[]` (each with title, content, tags, type, scope, source, planId?) |
 | `updatePlanTasks` | Update multiple plan tasks at once | `updates[]` (each with taskId, status?) |
 
 ### Knowledge Types

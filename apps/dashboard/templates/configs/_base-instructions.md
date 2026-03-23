@@ -65,7 +65,7 @@ mcp__cognistore__addKnowledge({
 
 - **ALWAYS pass planId** if you have an active plan — this links knowledge as output
 - Update existing entries instead of creating duplicates
-- Use `addKnowledgeBatch` to create multiple entries at once
+- Pass an array to `addKnowledge` to create multiple entries at once
 - All entries in English
 
 ### After Delegation

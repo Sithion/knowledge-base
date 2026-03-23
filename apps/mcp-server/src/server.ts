@@ -22,94 +22,72 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
 
   // ─── Knowledge Tools ──────────────────────────────────────────
 
-  // addKnowledge
+  // Shared schema for a single knowledge entry
+  const knowledgeEntrySchema = z.object({
+    title: z.string().describe('Short descriptive title'),
+    content: z.string().describe('The knowledge content text'),
+    tags: z.array(z.string()).describe('Categorical tags for filtering'),
+    type: z.enum(knowledgeTypeValues).describe('Type: decision, pattern, fix, constraint, or gotcha'),
+    scope: z.string().describe('Scope: "global" or "workspace:<project-name>"'),
+    source: z.string().describe('Source of the knowledge'),
+    confidenceScore: z.number().min(0).max(1).optional().describe('Confidence score 0-1'),
+    agentId: z.string().optional().describe('ID of the agent that created this'),
+    planId: z.string().optional().describe('Plan ID to auto-link this knowledge as output. ALWAYS pass this if you have an active plan.'),
+  });
+
+  // Helper: create one entry and auto-link to plan
+  async function createEntry(params: z.infer<typeof knowledgeEntrySchema>) {
+    const entry = await sdk.addKnowledge({
+      title: params.title,
+      content: params.content,
+      tags: params.tags,
+      type: params.type as KnowledgeType,
+      scope: params.scope,
+      source: params.source,
+      confidenceScore: params.confidenceScore,
+      agentId: params.agentId,
+    });
+
+    let linked = false;
+    let linkWarning = '';
+    if (params.planId && entry.type !== 'system') {
+      try {
+        await sdk.addPlanRelation(params.planId, entry.id, 'output');
+        linked = true;
+      } catch (e) {
+        linkWarning = e instanceof Error ? e.message : 'Unknown linking error';
+      }
+    }
+
+    const result: Record<string, unknown> = { entry };
+    if (params.planId) {
+      result.linked = linked;
+      result.planId = params.planId;
+      if (linkWarning) result.linkWarning = linkWarning;
+    }
+    return result;
+  }
+
+  // addKnowledge — accepts a single entry OR an array of entries
   server.tool(
     'addKnowledge',
-    'Store a knowledge entry. If you have an active plan, ALWAYS pass planId to auto-link as output.',
+    'Store one or multiple knowledge entries. Pass a single object or an array. If you have an active plan, ALWAYS pass planId to auto-link as output.',
     {
-      title: z.string().describe('Short descriptive title'),
-      content: z.string().describe('The knowledge content text'),
-      tags: z.array(z.string()).describe('Categorical tags for filtering'),
-      type: z.enum(knowledgeTypeValues).describe('Type: decision, pattern, fix, constraint, or gotcha'),
-      scope: z.string().describe('Scope: "global" or "workspace:<project-name>"'),
-      source: z.string().describe('Source of the knowledge'),
-      confidenceScore: z.number().min(0).max(1).optional().describe('Confidence score 0-1'),
-      agentId: z.string().optional().describe('ID of the agent that created this'),
-      planId: z.string().optional().describe('Plan ID to auto-link this knowledge as output. ALWAYS pass this if you have an active plan.'),
+      entries: z.union([
+        knowledgeEntrySchema,
+        z.array(knowledgeEntrySchema),
+      ]).describe('A single knowledge entry object, or an array of entries'),
     },
     WRITE,
     async (params) => {
-      const result = await sdk.addKnowledge({
-        title: params.title,
-        content: params.content,
-        tags: params.tags,
-        type: params.type as KnowledgeType,
-        scope: params.scope,
-        source: params.source,
-        confidenceScore: params.confidenceScore,
-        agentId: params.agentId,
-      });
-
-      // A6: Transparent auto-linking
-      let linked = false;
-      let linkWarning = '';
-      if (params.planId && result.type !== 'system') {
-        try {
-          await sdk.addPlanRelation(params.planId, result.id, 'output');
-          linked = true;
-        } catch (e) {
-          linkWarning = e instanceof Error ? e.message : 'Unknown linking error';
-        }
+      const items = Array.isArray(params.entries) ? params.entries : [params.entries];
+      const results = [];
+      for (const item of items) {
+        results.push(await createEntry(item));
       }
 
-      const response: Record<string, unknown> = { entry: result };
-      if (params.planId) {
-        response.linked = linked;
-        response.planId = params.planId;
-        if (linkWarning) response.linkWarning = linkWarning;
-      }
-      return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
-    }
-  );
-
-  // addKnowledgeBatch (A4)
-  server.tool(
-    'addKnowledgeBatch',
-    'Create multiple knowledge entries at once. Pass planId per entry for output linking. Reduces tool calls.',
-    {
-      entries: z.array(z.object({
-        title: z.string(),
-        content: z.string(),
-        tags: z.array(z.string()),
-        type: z.enum(knowledgeTypeValues),
-        scope: z.string(),
-        source: z.string(),
-        planId: z.string().optional(),
-      })).describe('Array of knowledge entries to create'),
-    },
-    WRITE,
-    async (params) => {
-      const results: Array<{ entry: unknown; linked: boolean; planId?: string; linkWarning?: string }> = [];
-      for (const e of params.entries) {
-        const entry = await sdk.addKnowledge({
-          title: e.title,
-          content: e.content,
-          tags: e.tags,
-          type: e.type as KnowledgeType,
-          scope: e.scope,
-          source: e.source,
-        });
-        let linked = false;
-        let linkWarning = '';
-        if (e.planId && (entry as any).type !== 'system') {
-          try {
-            await sdk.addPlanRelation(e.planId, entry.id, 'output');
-            linked = true;
-          } catch (err) {
-            linkWarning = err instanceof Error ? err.message : 'Unknown linking error';
-          }
-        }
-        results.push({ entry, linked, ...(e.planId ? { planId: e.planId } : {}), ...(linkWarning ? { linkWarning } : {}) });
+      if (results.length === 1) {
+        return { content: [{ type: 'text' as const, text: JSON.stringify(results[0], null, 2) }] };
       }
       return { content: [{ type: 'text' as const, text: JSON.stringify({ created: results.length, entries: results }, null, 2) }] };
     }

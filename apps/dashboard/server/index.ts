@@ -117,7 +117,7 @@ mcp__cognistore__addKnowledge({
 })
 Types: fix, decision, pattern, constraint, gotcha. All entries in English.
 Update existing entries instead of creating duplicates.
-Use addKnowledgeBatch to create multiple entries at once.
+Pass an array to addKnowledge to create multiple entries at once.
 
 ### Rules
 - Follow this workflow on every task — steps 1 and 4 always apply, even for simple tasks

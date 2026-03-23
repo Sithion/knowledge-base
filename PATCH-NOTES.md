@@ -1,5 +1,13 @@
 # Patch Notes
 
+## v1.0.3
+
+### Improvements
+- **Unified `addKnowledge` tool**: merged `addKnowledgeBatch` into `addKnowledge` — now accepts a single entry object or an array of entries. One tool, no ambiguity. `addKnowledgeBatch` is removed.
+- **Updated date on cards**: knowledge and plan cards now show "updated" date when it differs from the created date
+- **Scrollable plan tasks**: plan detail task list and active plans grid task list are now scrollable, supporting plans with many tasks
+- **README cleanup**: removed hardcoded version below logo since npm and release badges already show the version
+
 ## v1.0.2
 
 ### Fixes
