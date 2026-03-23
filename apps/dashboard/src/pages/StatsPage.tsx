@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback, type ReactNode, type CSSPrope
 import { api } from '../api/client.js';
 import { useTranslation } from 'react-i18next';
 import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Label,
   AreaChart, Area, ResponsiveContainer, Legend, Line, LineChart,
 } from 'recharts';
 import { useAppDispatch, useAppSelector } from '../store/index.js';
@@ -697,13 +697,21 @@ export function PlanStatsPage() {
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         {/* Plan Status Distribution */}
         {planDistribution.length > 0 && (
-          <WidgetCard title={t('stats.planStatus')} state="loaded">
+          <WidgetCard title={t('stats.planStatus')} state="loaded" style={{ flex: 1, minWidth: 200 }}>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
+                <Pie data={planDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={planDistribution.length > 1 ? 3 : 0} stroke="none" startAngle={90} endAngle={-270} dataKey="value" label={({ name, value, cx, cy, midAngle, outerRadius: or }) => {
+                  if (planDistribution.length <= 1) return null;
+                  const RADIAN = Math.PI / 180;
+                  const radius = or + 16;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return <text x={x} y={y} fill="var(--text-secondary)" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={10}>{value}</text>;
+                }}>
                   {planDistribution.map((d) => (
                     <Cell key={d.name} fill={PLAN_STATUS_COLORS[d.name] || '#6b7280'} />
                   ))}
+                  <Label value={data.plans.total} position="center" fill="var(--text-primary)" fontSize={20} fontWeight={700} />
                 </Pie>
                 <Tooltip
                   contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)' }}
@@ -725,13 +733,21 @@ export function PlanStatsPage() {
 
         {/* Task Completion Rate */}
         {taskDistribution.length > 0 && (
-          <WidgetCard title={t('stats.taskStatus')} state="loaded">
+          <WidgetCard title={t('stats.taskStatus')} state="loaded" style={{ flex: 1, minWidth: 200 }}>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={taskDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={3} dataKey="value">
+                <Pie data={taskDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={70} paddingAngle={taskDistribution.length > 1 ? 3 : 0} stroke="none" startAngle={90} endAngle={-270} dataKey="value" label={({ name, value, cx, cy, midAngle, outerRadius: or }) => {
+                  if (taskDistribution.length <= 1) return null;
+                  const RADIAN = Math.PI / 180;
+                  const radius = or + 16;
+                  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                  return <text x={x} y={y} fill="var(--text-secondary)" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={10}>{value}</text>;
+                }}>
                   {taskDistribution.map((d) => (
                     <Cell key={d.name} fill={TASK_STATUS_COLORS[d.name] || '#6b7280'} />
                   ))}
+                  <Label value={data.tasks.total} position="center" fill="var(--text-primary)" fontSize={20} fontWeight={700} />
                 </Pie>
                 <Tooltip
                   contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-primary)' }}
