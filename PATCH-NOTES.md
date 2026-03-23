@@ -1,5 +1,10 @@
 # Patch Notes
 
+## v1.0.3
+
+### Improvements
+- **Unified `addKnowledge` tool**: merged `addKnowledgeBatch` into `addKnowledge` — now accepts a single entry object or an array of entries. One tool, no ambiguity. `addKnowledgeBatch` is removed.
+
 ## v1.0.2
 
 ### Fixes

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The MCP server (`@cognistore/mcp-server`) is the primary interface for AI coding agents. It exposes 14 tools via the [Model Context Protocol](https://modelcontextprotocol.io/) stdio transport. Published to npm as a standalone package.
+The MCP server (`@cognistore/mcp-server`) is the primary interface for AI coding agents. It exposes 13 tools via the [Model Context Protocol](https://modelcontextprotocol.io/) stdio transport. Published to npm as a standalone package.
 
 **System knowledge guard:** Several tools enforce protection of system entries (`type=system`). System entries are seeded during setup and contain mandatory protocol instructions. They cannot be deleted or modified through MCP tools, and `addPlanRelation` silently skips them.
 
@@ -18,9 +18,15 @@ The server is launched by AI clients via `npx -y @cognistore/mcp-server`. Commun
 
 ### addKnowledge
 
-Store a new knowledge entry with automatic semantic embedding. If `planId` is provided, an output relation is automatically created linking this entry to the plan (skipped for system entries).
+Store one or multiple knowledge entries with automatic semantic embedding. Accepts a single entry object or an array of entries. If `planId` is provided, an output relation is automatically created linking each entry to the plan (skipped for system entries).
 
 | Parameter | Type | Required | Default | Description |
+|-----------|------|----------|---------|-------------|
+| `entries` | object \| object[] | Yes | — | A single entry object or an array of entry objects |
+
+Each entry object has the following fields:
+
+| Field | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
 | `title` | string | Yes | — | Short descriptive title |
 | `content` | string | Yes | — | The knowledge content text |
@@ -31,6 +37,8 @@ Store a new knowledge entry with automatic semantic embedding. If `planId` is pr
 | `confidenceScore` | number | No | 1.0 | 0.0–1.0 confidence rating |
 | `agentId` | string | No | — | ID of the creating agent |
 | `planId` | string | No | — | Active plan ID — auto-creates an output relation linking this entry to the plan |
+
+When a single entry is passed, returns the entry directly. When an array is passed, returns `{ created: number, entries: [...] }`.
 
 > **Note:** The `system` type is reserved for mandatory protocol entries seeded during setup. Agents should not create entries with `type=system` — these are managed exclusively by the setup wizard.
 
@@ -146,16 +154,6 @@ List all tasks for a plan, ordered by position. Use to check progress or resume 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `planId` | string | Yes | UUID of the plan |
-
-### addKnowledgeBatch
-
-Create multiple knowledge entries at once. Each entry supports the same parameters as `addKnowledge`, including optional `planId` for auto-linking entries as plan outputs.
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `entries` | object[] | Yes | Array of entry objects, each with: `title`, `content`, `tags`, `type`, `scope`, `source`, and optionally `planId`, `confidenceScore` |
-
-Each entry in the array follows the same schema as `addKnowledge`. Returns an array of created entries.
 
 ### updatePlanTasks
 
