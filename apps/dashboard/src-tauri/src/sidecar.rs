@@ -99,10 +99,9 @@ pub fn find_node() -> Result<PathBuf, String> {
         }
     }
 
-    Err(format!(
-        "Node.js v{} not found. The app will install it automatically via nvm during setup.",
-        REQUIRED_NODE_MAJOR
-    ))
+    // 6. Auto-install: nvm + Node.js v20
+    eprintln!("Node.js v{} not found — installing via nvm...", REQUIRED_NODE_MAJOR);
+    install_node_via_nvm(REQUIRED_NODE_MAJOR)
 }
 
 /// Find a Node.js binary in nvm matching the required major version.
@@ -124,6 +123,61 @@ fn find_nvm_node(nvm_dir: &PathBuf, major: u32) -> Result<PathBuf, String> {
 
     matches.sort();
     matches.last().cloned().ok_or_else(|| format!("No Node.js v{} found in nvm", major))
+}
+
+/// Install nvm (if missing) and Node.js via nvm, returning the path to the node binary.
+fn install_node_via_nvm(major: u32) -> Result<PathBuf, String> {
+    let home = dirs::home_dir().ok_or("Cannot resolve home directory")?;
+    let nvm_dir = home.join(".nvm");
+    let nvm_sh = nvm_dir.join("nvm.sh");
+
+    // Install nvm if not present
+    if !nvm_sh.exists() {
+        eprintln!("Installing nvm...");
+        let status = Command::new("bash")
+            .arg("-c")
+            .arg(format!(
+                "curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | NVM_DIR=\"{}\" bash",
+                nvm_dir.display()
+            ))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .status()
+            .map_err(|e| format!("Failed to run nvm installer: {}", e))?;
+
+        if !status.success() {
+            return Err("nvm installation failed".to_string());
+        }
+
+        if !nvm_sh.exists() {
+            return Err("nvm installed but nvm.sh not found".to_string());
+        }
+    }
+
+    // Install Node.js via nvm
+    eprintln!("Installing Node.js v{} via nvm...", major);
+    let install_cmd = format!(
+        "export NVM_DIR=\"{}\" && . \"$NVM_DIR/nvm.sh\" && nvm install {} --lts",
+        nvm_dir.display(),
+        major
+    );
+    let output = Command::new("bash")
+        .arg("-c")
+        .arg(&install_cmd)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("Failed to run nvm install: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("nvm install failed: {}", stderr));
+    }
+
+    // Find the installed binary
+    let node_dir = nvm_dir.join("versions").join("node");
+    find_nvm_node(&node_dir, major)
+        .map_err(|_| format!("Node.js v{} was installed but binary not found", major))
 }
 
 /// Check if a Node.js binary is the required major version.
