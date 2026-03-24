@@ -69,22 +69,7 @@ pub fn find_node() -> Result<PathBuf, String> {
         }
     }
 
-    // 4. Any system node as absolute fallback (may cause native module mismatch)
-    if let Ok(output) = Command::new("which").arg("node").output() {
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !path.is_empty() {
-                eprintln!(
-                    "WARNING: Node.js v{} not found. Falling back to system node ({}). \
-                     Native modules may fail if it's a different major version.",
-                    REQUIRED_NODE_MAJOR, path
-                );
-                return Ok(PathBuf::from(path));
-            }
-        }
-    }
-
-    // 5. Auto-install: nvm + Node.js v20
+    // 4. Auto-install: nvm + Node.js v20
     eprintln!("Node.js v{} not found — installing via nvm...", REQUIRED_NODE_MAJOR);
     install_node_via_nvm(REQUIRED_NODE_MAJOR)
 }
