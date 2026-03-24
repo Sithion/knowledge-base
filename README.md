@@ -157,9 +157,12 @@ The desktop app includes a full dashboard with four main pages:
 
 - Semantic search with natural language queries
 - Filter by type, scope, and tags
-- Knowledge cards with title, tag chips, type badges, and similarity scores
+- Knowledge cards with title, tag chips, type badges, related plans, and similarity scores
+- Inline icon buttons for edit (pencil) and delete (trash) on each card
+- Bulk select mode for multi-delete with floating action bar
 - Add new knowledge entries via modal form
-- Auto-refresh with polling for new entries
+- Edit entries with full modal form and related plans display
+- Auto-refresh polling every 5 seconds for cross-process change detection
 
 ### Plans
 
@@ -180,10 +183,12 @@ The desktop app includes a full dashboard with four main pages:
 
 ### Settings
 
-- Service health monitoring (Database, Ollama)
-- Real-time status polling every 5 seconds
-- Maintenance section with cleanup orphan embeddings button
-- Uninstall wizard with 3-step confirmation (removes all data, configs, and dependencies)
+- Service health monitoring (Database, Ollama) with real-time status polling
+- Check for updates (auto-updates in desktop, GitHub release link in dev mode)
+- Language selection (English, Spanish, Portuguese)
+- Unified data export/import — single JSON file with selectable knowledge and plans via modal
+- Maintenance: re-deploy configurations, remove unused embeddings
+- Uninstall wizard with confirmation (removes all data, configs, and dependencies)
 
 ## Architecture
 
@@ -197,7 +202,8 @@ cognistore/
 │   ├── core/               # SQLite + sqlite-vec, data repositories
 │   ├── embeddings/         # Ollama embedding client
 │   ├── sdk/                # Public SDK (main entry point for consumers)
-│   └── config/             # Config injection (Claude, Copilot, OpenCode)
+│   ├── config/             # Config injection (Claude, Copilot, OpenCode)
+│   └── tests/              # Playwright end-to-end tests
 └── scripts/
     ├── bump-version.sh     # Version bump script for all packages
     └── test-agents.sh      # Agent test battery (builds, spins up Docker Ollama, tests all clients)

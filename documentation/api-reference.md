@@ -241,6 +241,49 @@ Run the upgrade pipeline. Compares `~/.cognistore/.version` with the running app
 }
 ```
 
+## Export & Import
+
+### GET /api/export
+
+Unified data export. Returns a JSON file with selected data types.
+
+| Query Param | Type | Default | Description |
+|-------------|------|---------|-------------|
+| `include` | string | `knowledge,plans` | Comma-separated data types to include |
+
+**Response:** JSON file download (`cognistore-export.json`)
+```json
+{
+  "version": "1.0.5",
+  "exportedAt": "2026-03-24T12:00:00.000Z",
+  "knowledge": [{ "title": "...", "content": "...", "tags": [...], ... }],
+  "plans": [{ "title": "...", "content": "...", "tasks": [...], ... }]
+}
+```
+
+### POST /api/import
+
+Unified data import. Accepts the export format and selectively imports data.
+
+**Body:**
+```json
+{
+  "include": ["knowledge", "plans"],
+  "knowledge": [{ "title": "...", "content": "...", "tags": [...], ... }],
+  "plans": [{ "title": "...", "content": "...", "tasks": [...], ... }]
+}
+```
+
+**Response:**
+```json
+{
+  "knowledge": { "imported": 10, "skipped": 2, "errors": [] },
+  "plans": { "imported": 3, "skipped": 0, "errors": [] }
+}
+```
+
+System-type entries are automatically converted to `pattern` type on import.
+
 ## Uninstall
 
 ### POST /api/uninstall

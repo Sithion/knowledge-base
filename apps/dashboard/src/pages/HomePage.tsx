@@ -387,18 +387,12 @@ export function HomePage() {
             cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap',
           }}
         >
-          {bulkMode ? t('actions.cancel') : '☐'}
-        </button>
-        <button
-          onClick={() => api.exportKnowledge('json')}
-          title={t('actions.export')}
-          style={{
-            padding: '8px 14px', borderRadius: 8,
-            border: '1px solid var(--border)', backgroundColor: 'transparent',
-            color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13,
-          }}
-        >
-          ↓
+          {bulkMode ? t('actions.cancel') : (
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="12" height="12" rx="2" />
+              <path d="M5.5 8l2 2 3.5-3.5" />
+            </svg>
+          )}
         </button>
       </div>
 

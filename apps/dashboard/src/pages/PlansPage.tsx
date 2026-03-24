@@ -816,17 +816,6 @@ export function PlansPage() {
         <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h1 style={{ fontSize: 20, fontWeight: 700 }}>{t('plans.title')}</h1>
-        <button
-          onClick={() => api.exportPlans()}
-          title={t('actions.export')}
-          style={{
-            padding: '6px 12px', borderRadius: 8,
-            border: '1px solid var(--border)', backgroundColor: 'transparent',
-            color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 13,
-          }}
-        >
-          ↓ {t('actions.export')}
-        </button>
       </div>
 
       {/* ── Active Plans Section ── */}

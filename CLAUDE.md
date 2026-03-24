@@ -1,6 +1,6 @@
 # CogniStore - Agent Rules
 
-## Architecture (v0.6.0 — App-first, Docker-free)
+## Architecture (v1.0.4 — App-first, Docker-free)
 
 - **Entry point**: Tauri desktop app (macOS .dmg, Linux .AppImage/.deb)
 - **Database**: SQLite + sqlite-vec (file at `~/.cognistore/knowledge.db`)

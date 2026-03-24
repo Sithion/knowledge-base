@@ -36,9 +36,6 @@ export function SettingsPage() {
       } else if (state === 'error') {
         setCheckResult('error');
         setTimeout(() => setCheckResult(null), 5000);
-      } else if (state === 'unavailable') {
-        setCheckResult('unavailable');
-        setTimeout(() => setCheckResult(null), 5000);
       }
     });
   }, []);
@@ -154,7 +151,6 @@ export function SettingsPage() {
           {checkResult === 'upToDate' && <span style={{ fontSize: 13, color: 'var(--success)' }}>{t('update.upToDate')}</span>}
           {checkResult === 'available' && <span style={{ fontSize: 13, color: 'var(--accent)' }}>{t('update.available')}</span>}
           {checkResult === 'error' && <span style={{ fontSize: 13, color: 'var(--error)' }}>{t('update.checkFailed')}</span>}
-          {checkResult === 'unavailable' && <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{t('update.desktopOnly')}</span>}
         </div>
       </div>
 
@@ -357,53 +353,83 @@ function MaintenanceSection() {
 
 function DataManagementSection() {
   const { t } = useTranslation();
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportKnowledge, setExportKnowledge] = useState(true);
+  const [exportPlans, setExportPlans] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<{
+    knowledgeCount: number; plansCount: number;
+    knowledge?: any[]; plans?: any[];
+  } | null>(null);
+  const [importKnowledge, setImportKnowledge] = useState(true);
+  const [importPlansFlag, setImportPlansFlag] = useState(true);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const handleFileImport = async (type: 'knowledge' | 'plans') => {
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const include: ('knowledge' | 'plans')[] = [];
+      if (exportKnowledge) include.push('knowledge');
+      if (exportPlans) include.push('plans');
+      await api.exportUnified(include);
+    } catch (err) {
+      console.error('Export failed:', err);
+    }
+    setExporting(false);
+    setShowExportModal(false);
+  };
+
+  const handleImportClick = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = type === 'knowledge' ? '.json,.csv' : '.json';
+    input.accept = '.json';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-
-      setImporting(true);
-      setImportResult(null);
-
       try {
-        const text = await file.text();
-
-        if (type === 'knowledge') {
-          if (file.name.endsWith('.csv')) {
-            const result = await api.importKnowledge({ csv: text });
-            setImportResult({
-              type: 'success',
-              text: `${result.imported} imported, ${result.skipped} skipped${result.errors.length > 0 ? `, ${result.errors.length} errors` : ''}`,
-            });
-          } else {
-            const data = JSON.parse(text);
-            const result = await api.importKnowledge({ entries: data.entries || data });
-            setImportResult({
-              type: 'success',
-              text: `${result.imported} imported, ${result.skipped} skipped${result.errors.length > 0 ? `, ${result.errors.length} errors` : ''}`,
-            });
-          }
-        } else {
-          const data = JSON.parse(text);
-          const result = await api.importPlans({ plans: data.plans || data });
-          setImportResult({
-            type: 'success',
-            text: `${result.imported} imported, ${result.skipped} skipped${result.errors.length > 0 ? `, ${result.errors.length} errors` : ''}`,
-          });
-        }
-      } catch (err) {
-        setImportResult({ type: 'error', text: `Import failed: ${err instanceof Error ? err.message : String(err)}` });
+        const parsed = await api.parseExportFile(file);
+        setImportFile(parsed);
+        setImportKnowledge(parsed.knowledgeCount > 0);
+        setImportPlansFlag(parsed.plansCount > 0);
+        setShowImportModal(true);
+      } catch {
+        setImportResult({ type: 'error', text: t('settings.importParseError') });
+        setTimeout(() => setImportResult(null), 5000);
       }
-      setImporting(false);
-      setTimeout(() => setImportResult(null), 8000);
     };
     input.click();
+  };
+
+  const handleImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const include: string[] = [];
+      const body: Record<string, any> = { include };
+      if (importKnowledge && importFile.knowledge) {
+        include.push('knowledge');
+        body.knowledge = importFile.knowledge;
+      }
+      if (importPlansFlag && importFile.plans) {
+        include.push('plans');
+        body.plans = importFile.plans;
+      }
+      const result = await api.importUnified(body as any);
+      const parts: string[] = [];
+      if (result.knowledge) parts.push(`Knowledge: ${result.knowledge.imported} imported, ${result.knowledge.skipped} skipped`);
+      if (result.plans) parts.push(`Plans: ${result.plans.imported} imported, ${result.plans.skipped} skipped`);
+      setImportResult({ type: 'success', text: parts.join(' · ') });
+    } catch (err) {
+      setImportResult({ type: 'error', text: `Import failed: ${err instanceof Error ? err.message : String(err)}` });
+    }
+    setImporting(false);
+    setShowImportModal(false);
+    setImportFile(null);
+    setTimeout(() => setImportResult(null), 8000);
   };
 
   const btnStyle: React.CSSProperties = {
@@ -413,49 +439,118 @@ function DataManagementSection() {
     border: '1px solid var(--border)', cursor: 'pointer',
   };
 
+  const modalBackdrop: React.CSSProperties = {
+    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+    backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+  };
+
+  const modalCard: React.CSSProperties = {
+    backgroundColor: 'var(--bg-card)', borderRadius: 12, border: '1px solid var(--border)',
+    padding: 24, maxWidth: 400, width: '90%',
+  };
+
+  const checkboxRow: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', fontSize: 13,
+  };
+
   return (
     <div style={{ borderTop: '1px solid var(--border)', marginTop: 32, paddingTop: 24 }}>
       <h2 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-secondary)', marginBottom: 16 }}>
         {t('settings.dataManagement')}
       </h2>
 
-      {/* Export */}
-      <div style={{ marginBottom: 16 }}>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>{t('settings.exportDesc')}</p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button onClick={() => api.exportKnowledge('json')} style={btnStyle}>
-            ↓ {t('settings.exportKnowledgeJson')}
-          </button>
-          <button onClick={() => api.exportKnowledge('csv')} style={btnStyle}>
-            ↓ {t('settings.exportKnowledgeCsv')}
-          </button>
-          <button onClick={() => api.exportPlans()} style={btnStyle}>
-            ↓ {t('settings.exportPlansJson')}
-          </button>
-        </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <button onClick={() => { setExportKnowledge(true); setExportPlans(true); setShowExportModal(true); }} style={btnStyle}>
+          {t('settings.exportBtn')}
+        </button>
+        <button onClick={handleImportClick} style={btnStyle}>
+          {t('settings.importBtn')}
+        </button>
+        {importResult && (
+          <span style={{ fontSize: 12, color: importResult.type === 'success' ? 'var(--success)' : 'var(--error)' }}>
+            {importResult.text}
+          </span>
+        )}
       </div>
 
-      {/* Import */}
-      <div>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>{t('settings.importDesc')}</p>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button onClick={() => handleFileImport('knowledge')} disabled={importing} style={{ ...btnStyle, opacity: importing ? 0.5 : 1 }}>
-            {importing ? (
-              <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid var(--text-secondary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
-            ) : '↑'} {t('settings.importKnowledge')}
-          </button>
-          <button onClick={() => handleFileImport('plans')} disabled={importing} style={{ ...btnStyle, opacity: importing ? 0.5 : 1 }}>
-            {importing ? (
-              <span style={{ display: 'inline-block', width: 14, height: 14, border: '2px solid var(--text-secondary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />
-            ) : '↑'} {t('settings.importPlans')}
-          </button>
-          {importResult && (
-            <span style={{ fontSize: 12, color: importResult.type === 'success' ? 'var(--success)' : 'var(--error)' }}>
-              {importResult.text}
-            </span>
-          )}
+      {/* Export Modal */}
+      {showExportModal && (
+        <div onClick={(e) => { if (e.target === e.currentTarget) setShowExportModal(false); }} style={modalBackdrop}>
+          <div onClick={(e) => e.stopPropagation()} style={modalCard}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{t('settings.exportModalTitle')}</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>{t('settings.exportModalDesc')}</p>
+            <div style={{ marginBottom: 20 }}>
+              <label style={checkboxRow}>
+                <input type="checkbox" checked={exportKnowledge} onChange={(e) => setExportKnowledge(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
+                {t('settings.knowledgeEntries')}
+              </label>
+              <label style={checkboxRow}>
+                <input type="checkbox" checked={exportPlans} onChange={(e) => setExportPlans(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
+                {t('settings.planEntries')}
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowExportModal(false)} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                {t('actions.cancel')}
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={exporting || (!exportKnowledge && !exportPlans)}
+                style={{
+                  padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                  border: 'none', backgroundColor: 'var(--accent)', color: '#fff',
+                  cursor: (!exportKnowledge && !exportPlans) ? 'not-allowed' : 'pointer',
+                  opacity: (!exportKnowledge && !exportPlans) ? 0.5 : 1,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                {exporting && <span style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />}
+                {t('settings.exportBtn')}
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && importFile && (
+        <div onClick={(e) => { if (e.target === e.currentTarget) { setShowImportModal(false); setImportFile(null); } }} style={modalBackdrop}>
+          <div onClick={(e) => e.stopPropagation()} style={modalCard}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 8 }}>{t('settings.importModalTitle')}</h3>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>{t('settings.importModalDesc')}</p>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ ...checkboxRow, opacity: importFile.knowledgeCount === 0 ? 0.4 : 1 }}>
+                <input type="checkbox" checked={importKnowledge} disabled={importFile.knowledgeCount === 0} onChange={(e) => setImportKnowledge(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
+                {t('settings.knowledgeEntries')} ({importFile.knowledgeCount})
+              </label>
+              <label style={{ ...checkboxRow, opacity: importFile.plansCount === 0 ? 0.4 : 1 }}>
+                <input type="checkbox" checked={importPlansFlag} disabled={importFile.plansCount === 0} onChange={(e) => setImportPlansFlag(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
+                {t('settings.planEntries')} ({importFile.plansCount})
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button onClick={() => { setShowImportModal(false); setImportFile(null); }} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, border: '1px solid var(--border)', backgroundColor: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                {t('actions.cancel')}
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={importing || (!importKnowledge && !importPlansFlag)}
+                style={{
+                  padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                  border: 'none', backgroundColor: 'var(--accent)', color: '#fff',
+                  cursor: (!importKnowledge && !importPlansFlag) ? 'not-allowed' : 'pointer',
+                  opacity: (!importKnowledge && !importPlansFlag) ? 0.5 : 1,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+              >
+                {importing && <span style={{ display: 'inline-block', width: 12, height: 12, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.6s linear infinite' }} />}
+                {t('settings.importBtn')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

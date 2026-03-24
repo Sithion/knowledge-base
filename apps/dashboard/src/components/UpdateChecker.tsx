@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+
+declare const __APP_VERSION__: string;
 
 /** How often to check for updates (30 minutes) */
 const CHECK_INTERVAL_MS = 30 * 60 * 1000;
 
-type UpdateState = 'idle' | 'checking' | 'upToDate' | 'available' | 'downloading' | 'ready' | 'error' | 'unavailable';
+const GITHUB_RELEASES_URL = 'https://api.github.com/repos/Sithion/cognistore/releases/latest';
+
+type UpdateState = 'idle' | 'checking' | 'upToDate' | 'available' | 'downloading' | 'ready' | 'error';
 
 /** Global event target for cross-component communication */
 const updateEvents = new EventTarget();
@@ -24,64 +29,32 @@ export function onUpdateState(cb: (state: UpdateState) => void) {
   return () => updateEvents.removeEventListener('state', handler);
 }
 
+/** Simple semver comparison: returns true if a > b */
+function isNewerVersion(a: string, b: string): boolean {
+  const pa = a.replace(/^v/, '').split('.').map(Number);
+  const pb = b.replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return true;
+    if ((pa[i] || 0) < (pb[i] || 0)) return false;
+  }
+  return false;
+}
+
 export function UpdateChecker() {
+  const { t } = useTranslation();
   const [state, setState] = useState<UpdateState>('idle');
   const [version, setVersion] = useState('');
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [dismissed, setDismissed] = useState(false);
+  const [downloadUrl, setDownloadUrl] = useState('');
   const manualRef = useRef(false);
+  const isTauri = !!(window as any).__TAURI__;
 
   const broadcastState = useCallback((s: UpdateState) => {
     setState(s);
     updateEvents.dispatchEvent(new CustomEvent('state', { detail: s }));
   }, []);
-
-  const checkForUpdate = useCallback(async () => {
-    const manual = isManualCheck;
-    isManualCheck = false;
-    manualRef.current = manual;
-
-    // Outside Tauri — report unavailable for manual checks
-    if (!(window as any).__TAURI__) {
-      if (manual) {
-        broadcastState('unavailable');
-        setTimeout(() => broadcastState('idle'), 3000);
-      }
-      return;
-    }
-
-    try {
-      broadcastState('checking');
-      const { check } = await import('@tauri-apps/plugin-updater');
-      const update = await check();
-
-      if (update) {
-        setVersion(update.version);
-        broadcastState('available');
-        setDismissed(false);
-        (window as any).__pendingUpdate = update;
-      } else {
-        // No update available
-        if (manual) {
-          broadcastState('upToDate');
-          setTimeout(() => broadcastState('idle'), 3000);
-        } else {
-          broadcastState('idle');
-        }
-      }
-    } catch (err: any) {
-      console.warn('Update check failed:', err);
-      if (manual) {
-        // Manual check — show error to user
-        setError(err?.message || 'Check failed');
-        broadcastState('error');
-      } else {
-        // Automatic check — fail silently
-        broadcastState('idle');
-      }
-    }
-  }, [broadcastState]);
 
   const downloadAndInstall = useCallback(async () => {
     const update = (window as any).__pendingUpdate;
@@ -121,6 +94,72 @@ export function UpdateChecker() {
     }
   }, [broadcastState]);
 
+  const checkForUpdate = useCallback(async () => {
+    const manual = isManualCheck;
+    isManualCheck = false;
+    manualRef.current = manual;
+
+    if (isTauri) {
+      // Tauri path: use plugin-updater
+      try {
+        broadcastState('checking');
+        const { check } = await import('@tauri-apps/plugin-updater');
+        const update = await check();
+
+        if (update) {
+          setVersion(update.version);
+          broadcastState('available');
+          setDismissed(false);
+          (window as any).__pendingUpdate = update;
+
+          // Auto-download in background for automatic checks
+          if (!manual) {
+            setTimeout(() => downloadAndInstall(), 500);
+          }
+        } else {
+          if (manual) {
+            broadcastState('upToDate');
+            setTimeout(() => broadcastState('idle'), 3000);
+          } else {
+            broadcastState('idle');
+          }
+        }
+      } catch (err: any) {
+        console.warn('Update check failed:', err);
+        if (manual) {
+          setError(err?.message || 'Check failed');
+          broadcastState('error');
+        } else {
+          broadcastState('idle');
+        }
+      }
+    } else {
+      // Non-Tauri path: check GitHub Releases API
+      if (!manual) return; // Silent auto-checks skip in non-Tauri
+      try {
+        broadcastState('checking');
+        const res = await fetch(GITHUB_RELEASES_URL);
+        if (!res.ok) throw new Error('GitHub API error');
+        const release = await res.json();
+        const latestTag = (release.tag_name || '').replace(/^v/, '');
+        const currentVersion = (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0').replace(/^v/, '');
+
+        if (latestTag && isNewerVersion(latestTag, currentVersion)) {
+          setVersion(latestTag);
+          setDownloadUrl(release.html_url || '');
+          broadcastState('available');
+          setDismissed(false);
+        } else {
+          broadcastState('upToDate');
+          setTimeout(() => broadcastState('idle'), 3000);
+        }
+      } catch (err: any) {
+        setError(err?.message || 'Check failed');
+        broadcastState('error');
+      }
+    }
+  }, [broadcastState, isTauri, downloadAndInstall]);
+
   // Check on mount + every 30 minutes (automatic, silent)
   useEffect(() => {
     const initial = setTimeout(checkForUpdate, 5000);
@@ -135,8 +174,8 @@ export function UpdateChecker() {
     return () => updateEvents.removeEventListener('check', handler);
   }, [checkForUpdate]);
 
-  // Don't render banner for idle/checking/upToDate/unavailable or if dismissed
-  if (state === 'idle' || state === 'checking' || state === 'upToDate' || state === 'unavailable' || dismissed) return null;
+  // Don't render banner for idle/checking/upToDate or if dismissed
+  if (state === 'idle' || state === 'checking' || state === 'upToDate' || dismissed) return null;
 
   return (
     <div
@@ -155,11 +194,17 @@ export function UpdateChecker() {
       {state === 'available' && (
         <>
           <span style={{ color: '#c4b5fd' }}>
-            Version <strong style={{ color: '#e9d5ff' }}>v{version}</strong> is available
+            Version <strong style={{ color: '#e9d5ff' }}>v{version}</strong> {t('update.available').toLowerCase()}
           </span>
-          <button onClick={downloadAndInstall} style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-            Update now
-          </button>
+          {isTauri ? (
+            <button onClick={downloadAndInstall} style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+              Update now
+            </button>
+          ) : (
+            <a href={downloadUrl} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
+              {t('update.viewRelease')}
+            </a>
+          )}
           <button onClick={() => setDismissed(true)} style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', fontSize: 16, padding: '0 4px', lineHeight: 1 }} title="Dismiss">×</button>
         </>
       )}
@@ -175,7 +220,7 @@ export function UpdateChecker() {
       )}
 
       {state === 'ready' && (
-        <span style={{ color: '#a3e635' }}>Update installed — restarting...</span>
+        <span style={{ color: '#a3e635' }}>{t('update.restartToApply')}</span>
       )}
 
       {state === 'error' && (
