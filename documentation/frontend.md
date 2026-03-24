@@ -25,10 +25,12 @@ Knowledge management interface with search, filters, and CRUD.
 
 **Components:**
 - Search bar with natural language query input
+- Bulk select toggle (SVG checkbox icon) for multi-delete with floating action bar
 - Filter dropdowns: type (decision/pattern/fix/constraint/gotcha), scope, tags
-- Knowledge cards grid with title, tag chips, type badges, and similarity scores
+- Knowledge cards grid with title, tag chips, type badges, related plans, and similarity scores
+- Inline icon buttons: pencil (amber) for edit, trash (red) for delete
 - Floating action button (FAB) → add knowledge modal (confidence score step: 0.01 for fine granularity)
-- Auto-refresh polling (detects new entries every 10 seconds)
+- Auto-refresh polling (detects new entries every 5 seconds)
 
 ### PlansPage (`/plans`)
 
@@ -61,14 +63,16 @@ Analytics dashboard with charts and metrics.
 
 ### SettingsPage (`/settings`)
 
-System health monitoring, maintenance, and uninstall. (Renamed from InfrastructurePage/Monitoring in v0.8.1.)
+System health monitoring, updates, data management, maintenance, and uninstall.
 
 **Components:**
 - Service status cards: Database (connected/path), Ollama (connected/host)
-- Overall health indicator (green/red)
-- Health polling every 5 seconds
-- Maintenance section: cleanup orphan embeddings button (moved from StatsPage)
-- Danger Zone: uninstall button with 3-step confirmation dialog
+- Overall health indicator (green/red) with polling every 5 seconds
+- Check for updates: auto-update in Tauri, GitHub Releases API fallback in dev mode
+- Language selection (English, Spanish, Portuguese)
+- Maintenance: re-deploy configurations, remove unused embeddings
+- Data Management: unified Export/Import with modal-based flows (checkboxes for knowledge/plans selection, single JSON file)
+- Danger Zone: uninstall button with confirmation dialog
 
 ### SetupPage (conditional, first launch)
 

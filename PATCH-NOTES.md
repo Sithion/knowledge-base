@@ -1,5 +1,24 @@
 # Patch Notes
 
+## v1.0.5
+
+### Improvements
+- **Simplified search screen**: removed export button from the Knowledge page; replaced broken ☐ Unicode with SVG checkbox icon for bulk select
+- **Icon buttons on knowledge cards**: replaced text Edit/Delete buttons with colored icon buttons (pencil on amber, trash on red)
+- **Unified export/import**: replaced 5 separate buttons in Settings with 2 modal-based flows (Export and Import) supporting selective knowledge and plans in a single JSON file
+- **Background auto-update**: in Tauri, updates download and install automatically in background with a restart prompt; outside Tauri, checks GitHub Releases API and shows download link
+- **Documentation refresh**: expanded README Settings and Knowledge sections, added packages/tests to architecture tree, fixed version references
+
+### Fixes
+- **Export version**: export files now include the actual app version instead of hardcoded "0.9.5"
+- **CLAUDE.md version**: updated architecture section version from v0.6.0 to v1.0.4
+
+### Removed
+- Old separate export endpoints (GET /api/export/knowledge, GET /api/export/plans)
+- Old separate import endpoints (POST /api/import/knowledge, POST /api/import/plans)
+- CSV export/import support (JSON-only now)
+- "Only available in desktop app" update checker message
+
 ## v1.0.4
 
 ### Fixes

@@ -106,37 +106,49 @@ export const api = {
   bulkDeleteKnowledge: (ids: string[]) =>
     request<{ deleted: number; errors: string[] }>('/api/knowledge/bulk', { method: 'DELETE', body: JSON.stringify({ ids }) }),
 
-  // Export
-  exportKnowledge: async (format: 'json' | 'csv' = 'json') => {
-    const response = await fetch(`${API_BASE}/api/export/knowledge?format=${format}`);
+  // Export (unified)
+  exportUnified: async (include: ('knowledge' | 'plans')[] = ['knowledge', 'plans']) => {
+    const response = await fetch(`${API_BASE}/api/export?include=${include.join(',')}`);
     if (!response.ok) throw new Error(`Export failed: ${response.statusText}`);
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = format === 'csv' ? 'knowledge-export.csv' : 'knowledge-export.json';
+    a.download = 'cognistore-export.json';
     a.click();
     URL.revokeObjectURL(url);
   },
 
-  exportPlans: async () => {
-    const response = await fetch(`${API_BASE}/api/export/plans?format=json`);
-    if (!response.ok) throw new Error(`Export failed: ${response.statusText}`);
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'plans-export.json';
-    a.click();
-    URL.revokeObjectURL(url);
+  // Parse export file client-side (preview before import)
+  parseExportFile: async (file: File): Promise<{
+    version?: string;
+    knowledgeCount: number;
+    plansCount: number;
+    knowledge?: any[];
+    plans?: any[];
+  }> => {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const knowledge = data.knowledge ?? data.entries;
+    const plans = data.plans;
+    return {
+      version: data.version,
+      knowledgeCount: Array.isArray(knowledge) ? knowledge.length : 0,
+      plansCount: Array.isArray(plans) ? plans.length : 0,
+      knowledge,
+      plans,
+    };
   },
 
-  // Import
-  importKnowledge: (data: { entries?: any[]; csv?: string }) =>
-    request<{ imported: number; skipped: number; errors: string[] }>('/api/import/knowledge', { method: 'POST', body: JSON.stringify(data) }),
-
-  importPlans: (data: { plans: any[] }) =>
-    request<{ imported: number; skipped: number; errors: string[] }>('/api/import/plans', { method: 'POST', body: JSON.stringify(data) }),
+  // Import (unified)
+  importUnified: (data: {
+    include: string[];
+    knowledge?: any[];
+    plans?: any[];
+  }) => request<{
+    knowledge?: { imported: number; skipped: number; errors: string[] };
+    plans?: { imported: number; skipped: number; errors: string[] };
+  }>('/api/import', { method: 'POST', body: JSON.stringify(data) }),
 
   // Plans
   createPlan: (data: { title: string; content: string; tags?: string[]; scope?: string; source?: string; tasks?: { description: string; priority?: string }[] }) =>
