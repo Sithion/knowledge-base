@@ -1,5 +1,10 @@
 # Patch Notes
 
+## v1.0.7
+
+### Improvements
+- **Auto-download on manual update check**: clicking "Check for updates" in Settings now auto-downloads and installs when an update is found (same as automatic background checks). Added "Update now" button and download progress directly in the Settings page
+
 ## v1.0.6
 
 ### Fixes
@@ -7,7 +12,6 @@
 
 ### Improvements
 - **Remove edit button from knowledge cards**: clicking the card already opens the edit modal; the amber pencil button was redundant
-- **Auto-download on manual update check**: clicking "Check for updates" in Settings now auto-downloads and installs when an update is found (same as automatic background checks). Added "Update now" button and download progress directly in the Settings page
 
 ## v1.0.5
 

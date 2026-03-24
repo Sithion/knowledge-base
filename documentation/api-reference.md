@@ -254,7 +254,7 @@ Unified data export. Returns a JSON file with selected data types.
 **Response:** JSON file download (`cognistore-export.json`)
 ```json
 {
-  "version": "1.0.6",
+  "version": "1.0.7",
   "exportedAt": "2026-03-24T12:00:00.000Z",
   "knowledge": [{ "title": "...", "content": "...", "tags": [...], ... }],
   "plans": [{ "title": "...", "content": "...", "tasks": [...], ... }]
