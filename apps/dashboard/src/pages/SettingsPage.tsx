@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client.js';
-import { triggerUpdateCheck, onUpdateState } from '../components/UpdateChecker.js';
+import { triggerUpdateCheck, triggerUpdateDownload, onUpdateState } from '../components/UpdateChecker.js';
 import { ConfirmModal } from '../components/ConfirmModal.js';
 
 interface Health {
@@ -149,7 +149,19 @@ export function SettingsPage() {
             )}
           </button>
           {checkResult === 'upToDate' && <span style={{ fontSize: 13, color: 'var(--success)' }}>{t('update.upToDate')}</span>}
-          {checkResult === 'available' && <span style={{ fontSize: 13, color: 'var(--accent)' }}>{t('update.available')}</span>}
+          {checkResult === 'available' && updateState !== 'downloading' && updateState !== 'ready' && (
+            <button
+              onClick={triggerUpdateDownload}
+              style={{
+                padding: '8px 16px', borderRadius: 6, border: 'none',
+                backgroundColor: '#8b5cf6', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              {t('update.updateNow')}
+            </button>
+          )}
+          {updateState === 'downloading' && <span style={{ fontSize: 13, color: 'var(--accent)' }}>{t('update.downloading')}</span>}
+          {updateState === 'ready' && <span style={{ fontSize: 13, color: 'var(--success)' }}>{t('update.restartToApply')}</span>}
           {checkResult === 'error' && <span style={{ fontSize: 13, color: 'var(--error)' }}>{t('update.checkFailed')}</span>}
         </div>
       </div>
