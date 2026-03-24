@@ -69,37 +69,7 @@ pub fn find_node() -> Result<PathBuf, String> {
         }
     }
 
-    // 4. Last resort: any nvm version (pick latest)
-    if let Some(home) = dirs::home_dir() {
-        let nvm_dir = home.join(".nvm").join("versions").join("node");
-        if nvm_dir.exists() {
-            if let Ok(entries) = std::fs::read_dir(&nvm_dir) {
-                let mut versions: Vec<PathBuf> = entries
-                    .filter_map(|e| e.ok())
-                    .map(|e| e.path())
-                    .collect();
-                versions.sort();
-                if let Some(latest) = versions.last() {
-                    let node_bin = latest.join("bin").join("node");
-                    if node_bin.exists() {
-                        return Ok(node_bin);
-                    }
-                }
-            }
-        }
-    }
-
-    // 5. Any system node as absolute fallback
-    if let Ok(output) = Command::new("which").arg("node").output() {
-        if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !path.is_empty() {
-                return Ok(PathBuf::from(path));
-            }
-        }
-    }
-
-    // 6. Auto-install: nvm + Node.js v20
+    // 4. Auto-install: nvm + Node.js v20
     eprintln!("Node.js v{} not found — installing via nvm...", REQUIRED_NODE_MAJOR);
     install_node_via_nvm(REQUIRED_NODE_MAJOR)
 }
