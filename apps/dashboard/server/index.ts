@@ -44,6 +44,16 @@ function saveDeployedVersion(): void {
   writeFileSync(VERSION_FILE, APP_VERSION);
 }
 
+/** Compare two semver strings. Returns positive if a > b, negative if a < b, zero if equal. */
+function compareSemver(a: string, b: string): number {
+  const pa = a.replace(/^v/, '').split('.').map(Number);
+  const pb = b.replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) - (pb[i] ?? 0);
+  }
+  return 0;
+}
+
 async function start() {
   const sdk = new KnowledgeSDK();
   const configManager = new ConfigManager();
@@ -675,7 +685,7 @@ Pass an array to addKnowledge to create multiple entries at once.
   app.get('/api/upgrade/check', async () => {
     const deployed = getDeployedVersion();
     const current = APP_VERSION;
-    const needsUpgrade = deployed !== null && deployed !== current;
+    const needsUpgrade = deployed !== null && compareSemver(current, deployed) > 0;
     return {
       needsUpgrade,
       fromVersion: deployed,

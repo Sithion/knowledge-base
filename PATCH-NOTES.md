@@ -1,5 +1,10 @@
 # Patch Notes
 
+## v1.0.8
+
+### Fixes
+- **Prevent upgrade on downgrade**: upgrade check now uses semver comparison instead of string inequality, so the upgrade flow only triggers when the running app version is strictly greater than the deployed version — never on downgrades
+
 ## v1.0.7
 
 ### Improvements
