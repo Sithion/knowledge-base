@@ -251,6 +251,73 @@ Pass an array to addKnowledge to create multiple entries at once.
   // Node.js v20 LTS — required for native module compatibility (better-sqlite3)
   const REQUIRED_NODE_MAJOR = 20;
 
+  /**
+   * Find the nvm-installed Node 20 bin directory, or return null if system node is v20.
+   * Returns the absolute path to the bin/ dir (e.g. ~/.nvm/versions/node/v20.x.x/bin)
+   * so that `npx` can be resolved from it, or null when system node is already v20.
+   */
+  function findNode20BinDir(): string | null {
+    const nvmNodeDir = resolve(homedir(), '.nvm', 'versions', 'node');
+    if (existsSync(nvmNodeDir)) {
+      const versions = readdirSync(nvmNodeDir)
+        .filter(v => v.startsWith(`v${REQUIRED_NODE_MAJOR}.`))
+        .sort();
+      if (versions.length > 0) {
+        const binDir = resolve(nvmNodeDir, versions[versions.length - 1], 'bin');
+        if (existsSync(resolve(binDir, 'node'))) return binDir;
+      }
+    }
+    // Check if system node is already v20
+    try {
+      const version = execSync('node --version', { stdio: 'pipe' }).toString().trim();
+      const major = parseInt(version.replace('v', '').split('.')[0], 10);
+      if (major === REQUIRED_NODE_MAJOR) return null; // system npx is fine
+    } catch { /* no system node */ }
+    return null;
+  }
+
+  /** Clear npx caches containing @cognistore/mcp-server so better-sqlite3
+   *  gets recompiled for the correct Node version on next npx run. */
+  function clearNpxMcpCache() {
+    try {
+      const npxCacheDir = resolve(homedir(), '.npm', '_npx');
+      if (!existsSync(npxCacheDir)) return;
+      for (const entry of readdirSync(npxCacheDir)) {
+        const pkgJson = resolve(npxCacheDir, entry, 'node_modules', '@cognistore', 'mcp-server', 'package.json');
+        if (existsSync(pkgJson)) {
+          rmSync(resolve(npxCacheDir, entry), { recursive: true, force: true });
+        }
+      }
+    } catch { /* best effort */ }
+  }
+
+  /** Build the MCP server entry with the correct Node 20 npx path.
+   *  When nvm Node 20 is found, we:
+   *  1. Use its `npx` binary as the command
+   *  2. Prepend its bin dir to PATH so `node` also resolves to v20
+   *     (npx delegates to whatever `node` is in PATH, not its own binary)
+   */
+  function buildMcpEntry() {
+    const binDir = findNode20BinDir();
+    const env: Record<string, string> = {
+      SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
+      OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
+      OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'all-minilm',
+      EMBEDDING_DIMENSIONS: process.env.EMBEDDING_DIMENSIONS || '384',
+    };
+    if (binDir) {
+      // Prepend Node 20 bin dir so `node` resolves to v20 at runtime.
+      // Use a broad fallback PATH to cover common executable locations.
+      env.PATH = `${binDir}:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin`;
+    }
+    return {
+      type: 'stdio',
+      command: binDir ? resolve(binDir, 'npx') : 'npx',
+      args: ['-y', '@cognistore/mcp-server'],
+      env,
+    };
+  }
+
   app.post('/api/setup/node', async () => {
     try {
       const nvmDir = resolve(homedir(), '.nvm');
@@ -516,18 +583,9 @@ Pass an array to addKnowledge to create multiple entries at once.
         }
       } catch (e) { console.warn('[CogniStore] OpenCode inject error:', e); results.push('OpenCode config error'); }
 
-      // Setup MCP configs
-      const mcpEntry = {
-        type: 'stdio',
-        command: 'npx',
-        args: ['-y', '@cognistore/mcp-server'],
-        env: {
-          SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
-          OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
-          OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'all-minilm',
-          EMBEDDING_DIMENSIONS: process.env.EMBEDDING_DIMENSIONS || '384',
-        },
-      };
+      // Clear stale npx caches + setup MCP configs (uses Node 20 npx path)
+      clearNpxMcpCache();
+      const mcpEntry = buildMcpEntry();
 
       await configManager.setupMcpConfig(ConfigManager.MCP_CONFIG, mcpEntry);
       results.push('Claude MCP config set');
@@ -682,17 +740,10 @@ Pass an array to addKnowledge to create multiple entries at once.
       results.push({ step: 'instructions-opencode', status: 'error', message: e.message });
     }
 
-    // Step 3: Re-setup MCP configs
+    // Step 3: Clear stale npx caches + re-setup MCP configs (uses Node 20 npx path)
     try {
-      const mcpEntry = {
-        type: 'stdio', command: 'npx', args: ['-y', '@cognistore/mcp-server'],
-        env: {
-          SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
-          OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
-          OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'all-minilm',
-          EMBEDDING_DIMENSIONS: process.env.EMBEDDING_DIMENSIONS || '384',
-        },
-      };
+      clearNpxMcpCache();
+      const mcpEntry = buildMcpEntry();
       await configManager.setupMcpConfig(ConfigManager.MCP_CONFIG, mcpEntry);
       try { await configManager.setupMcpConfig(ConfigManager.CLAUDE_JSON, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); } catch { /* optional */ }
@@ -799,17 +850,10 @@ Pass an array to addKnowledge to create multiple entries at once.
       results.push({ step: 'instructions-opencode', status: 'success' });
     } catch (e: any) { results.push({ step: 'instructions-opencode', status: 'error', message: e.message }); }
 
-    // 2. Re-setup MCP configs
+    // 2. Clear stale npx caches + re-setup MCP configs (uses Node 20 npx path)
     try {
-      const mcpEntry = {
-        type: 'stdio', command: 'npx', args: ['-y', '@cognistore/mcp-server'],
-        env: {
-          SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
-          OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
-          OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'all-minilm',
-          EMBEDDING_DIMENSIONS: process.env.EMBEDDING_DIMENSIONS || '384',
-        },
-      };
+      clearNpxMcpCache();
+      const mcpEntry = buildMcpEntry();
       await configManager.setupMcpConfig(ConfigManager.MCP_CONFIG, mcpEntry);
       try { await configManager.setupMcpConfig(ConfigManager.CLAUDE_JSON, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); } catch { /* optional */ }
@@ -928,11 +972,14 @@ Pass an array to addKnowledge to create multiple entries at once.
         results.push('Ollama removed');
       }
 
-      // 6. Close SDK and remove database
+      // 6. Clear npx cache for @cognistore/mcp-server
+      await step('npx cache cleaned', () => clearNpxMcpCache(), results, errors);
+
+      // 7. Close SDK and remove database
       if (sdkReady) { await sdk.close(); sdkReady = false; }
       if (existsSync(INSTALL_DIR)) { rmSync(INSTALL_DIR, { recursive: true, force: true }); results.push('Install dir removed'); }
 
-      // 7. Clean backup files
+      // 8. Clean backup files
       const backupTargets = [
         { dir: resolve(home, '.claude'), prefix: 'CLAUDE.md.bak.' },
         { dir: resolve(home, '.claude'), prefix: 'mcp-config.json.bak.' },
@@ -951,7 +998,7 @@ Pass an array to addKnowledge to create multiple entries at once.
       }
       results.push('Backup files cleaned');
 
-      // 8. Self-delete app (increased timeout for response flush)
+      // 9. Self-delete app (increased timeout for response flush)
       reply.send({ success: true, results, errors: errors.length > 0 ? errors : undefined });
 
       setTimeout(() => {

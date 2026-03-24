@@ -120,22 +120,6 @@ export function KnowledgeCard({
           </span>
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          {onEdit && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(entry); }}
-              title={t('actions.edit')}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 28, height: 28, borderRadius: 6, border: 'none',
-                backgroundColor: '#f59e0b', cursor: 'pointer',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                <path d="m15 5 4 4" />
-              </svg>
-            </button>
-          )}
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(entry.id as string); }}
             title={t('actions.delete')}

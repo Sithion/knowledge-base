@@ -1,5 +1,13 @@
 # Patch Notes
 
+## v1.0.6
+
+### Fixes
+- **MCP server Node.js version mismatch**: setup/upgrade/reinstall now write the absolute path to the nvm Node 20 `npx` binary in MCP configs and prepend its bin dir to `PATH`, preventing `NODE_MODULE_VERSION` errors when the system Node is a different version. Stale npx caches are also cleared to force recompilation of native modules. Uninstall cleans up the npx cache as well
+
+### Improvements
+- **Remove edit button from knowledge cards**: clicking the card already opens the edit modal; the amber pencil button was redundant
+
 ## v1.0.5
 
 ### Improvements
