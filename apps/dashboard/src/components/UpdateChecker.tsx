@@ -22,6 +22,11 @@ export function triggerUpdateCheck() {
   updateEvents.dispatchEvent(new Event('check'));
 }
 
+/** Trigger download of a pending update from anywhere */
+export function triggerUpdateDownload() {
+  updateEvents.dispatchEvent(new Event('download'));
+}
+
 /** Subscribe to update state changes */
 export function onUpdateState(cb: (state: UpdateState) => void) {
   const handler = (e: Event) => cb((e as CustomEvent).detail);
@@ -112,10 +117,8 @@ export function UpdateChecker() {
           setDismissed(false);
           (window as any).__pendingUpdate = update;
 
-          // Auto-download in background for automatic checks
-          if (!manual) {
-            setTimeout(() => downloadAndInstall(), 500);
-          }
+          // Auto-download in background (both automatic and manual checks)
+          setTimeout(() => downloadAndInstall(), 500);
         } else {
           if (manual) {
             broadcastState('upToDate');
@@ -173,6 +176,13 @@ export function UpdateChecker() {
     updateEvents.addEventListener('check', handler);
     return () => updateEvents.removeEventListener('check', handler);
   }, [checkForUpdate]);
+
+  // Listen for external download triggers
+  useEffect(() => {
+    const handler = () => downloadAndInstall();
+    updateEvents.addEventListener('download', handler);
+    return () => updateEvents.removeEventListener('download', handler);
+  }, [downloadAndInstall]);
 
   // Don't render banner for idle/checking/upToDate or if dismissed
   if (state === 'idle' || state === 'checking' || state === 'upToDate' || dismissed) return null;
