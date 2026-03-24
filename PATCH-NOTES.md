@@ -1,5 +1,10 @@
 # Patch Notes
 
+## v1.0.4
+
+### Fixes
+- **Node.js version mismatch crash**: removed unsafe fallback in `find_node()` that picked the latest nvm-installed Node regardless of major version. When Node 20 was missing, the app would use e.g. Node 23, causing a `NODE_MODULE_VERSION` mismatch with the bundled `better-sqlite3` native module. The fallback now skips incompatible versions and auto-installs Node 20 via nvm instead
+
 ## v1.0.3
 
 ### Improvements
