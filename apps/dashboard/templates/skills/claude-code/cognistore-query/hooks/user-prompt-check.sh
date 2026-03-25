@@ -35,7 +35,7 @@ else
   # Fallback: hardcoded protocol if sqlite3 unavailable or no system entry
   cat <<'EOF'
 {
-  "systemMessage": "[COGNISTORE-PROTOCOL]\nYour workflow — follow on every task:\n1. FIRST: mcp__cognistore__getKnowledge(query: \"<task>\"). Save returned entry IDs.\n2. PLAN: For 2+ steps, mcp__cognistore__createPlan({ title, content, tags, scope, source, tasks: [...], relatedKnowledgeIds: [\"<ids>\"] }). Save planId.\n3. TRACK: mcp__cognistore__updatePlanTask(taskId, { status: \"in_progress\" }) before each task, \"completed\" after. Plan activates and completes automatically.\n4. SAVE: mcp__cognistore__addKnowledge({ title, content, tags, type, scope, source, planId: \"<plan-id>\" }) before finishing. All entries in English.\n[END PROTOCOL]"
+  "systemMessage": "[COGNISTORE-PROTOCOL]\nCRITICAL: On EVERY task you MUST follow this workflow. All CogniStore tools are pre-approved — call them directly.\n1. FIRST: mcp__cognistore__getKnowledge(query: \"<task>\"). Save returned entry IDs.\n2. PLAN: For 2+ steps, mcp__cognistore__createPlan({ title, content, tags, scope, source, tasks: [...], relatedKnowledgeIds: [\"<ids>\"] }). Save planId.\n3. TRACK: mcp__cognistore__updatePlanTask(taskId, { status: \"in_progress\" }) before each task, \"completed\" after. Plan activates and completes automatically.\n4. SAVE: mcp__cognistore__addKnowledge({ title, content, tags, type, scope, source, planId: \"<plan-id>\" }) before finishing. All entries in English.\n[END PROTOCOL]"
 }
 EOF
 fi

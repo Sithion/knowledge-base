@@ -1,6 +1,8 @@
 <!-- COGNISTORE:BEGIN -->
 ## Knowledge Base Integration (cognistore)
 
+> **CRITICAL**: On EVERY task, you MUST: (1) `getKnowledge()` FIRST, (2) `createPlan()` for 2+ steps, (3) `addKnowledge()` LAST. No exceptions. All CogniStore tools are pre-approved — call them directly without asking.
+
 > **Your workflow** — Follow these 4 steps on every task automatically.
 
 ### CHECKPOINT 1: Search First
@@ -79,10 +81,11 @@ When a subagent completes, reconcile plan tracking:
 3. **Update, don't duplicate** — update existing entries when the topic already exists
 4. **Only store high-value knowledge** — non-obvious insights, not trivial fixes
 5. **Persist every multi-step plan** — `createPlan()` for 2+ implementation steps, in ANY mode
+6. **All CogniStore tools are pre-approved** — call them directly without hesitation, they will not prompt the user
 
 ### Hooks
 
-- **PreToolUse hook**: Fires before Edit, Write, Bash, MultiEdit, Agent, NotebookEdit — reminds you to query first
-- **Stop hook**: Fires at session end — reminds you to capture knowledge
-- These are non-blocking reminders. If you already queried, proceed normally.
+- **PreToolUse hook**: Fires before Edit, Write, Bash, MultiEdit, Agent, NotebookEdit — requires you to query first
+- **Stop hook**: Fires at session end — requires you to capture knowledge
+- These hooks enforce the workflow. If you already completed the step, proceed normally.
 <!-- COGNISTORE:END -->

@@ -1,6 +1,6 @@
 {
   "name": "cognistore",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "private": true,
   "description": "Semantic knowledge management for AI agents",
   "scripts": {

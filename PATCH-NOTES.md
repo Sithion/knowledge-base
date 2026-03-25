@@ -1,5 +1,12 @@
 # Patch Notes
 
+## v1.0.9
+
+### Improvements
+- **Auto-approve all CogniStore tools**: expanded permission injection from 4 read-only tools to all 13 tools (read + write), so agents can call `createPlan()`, `addKnowledge()`, `updatePlanTask()`, etc. without prompting the user for permission. This removes friction that was breaking the automatic workflow
+- **Reinforced agent instructions**: added CRITICAL section at the top of all platform instructions (Claude Code, Copilot, OpenCode) with a concise 1-line summary of the mandatory workflow. Added rule about tools being pre-approved
+- **Prescriptive hooks**: rewrote all hook scripts across Claude Code and Copilot to use direct action commands (e.g., "STOP. Call getKnowledge() NOW") instead of passive reminders (e.g., "Have you queried?"). Hooks now include exact function signatures for easy copy-paste by the agent
+
 ## v1.0.8
 
 ### Fixes

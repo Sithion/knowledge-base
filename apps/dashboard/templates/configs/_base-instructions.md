@@ -1,6 +1,8 @@
 <!-- COGNISTORE:BEGIN -->
 ## Knowledge Base Integration (cognistore)
 
+> **CRITICAL**: On EVERY task, you MUST: (1) `getKnowledge()` FIRST, (2) `createPlan()` for 2+ steps, (3) `addKnowledge()` LAST. No exceptions. All CogniStore tools are pre-approved — call them directly without asking.
+
 > **Your workflow** — Follow these 4 steps on every task automatically.
 <!-- IF:copilot,opencode -->
 > Tools are provided by the `cognistore` MCP server.
@@ -82,27 +84,28 @@ When a subagent completes, reconcile plan tracking:
 3. **Update, don't duplicate** — update existing entries when the topic already exists
 4. **Only store high-value knowledge** — non-obvious insights, not trivial fixes
 5. **Persist every multi-step plan** — `createPlan()` for 2+ implementation steps, in ANY mode
+6. **All CogniStore tools are pre-approved** — call them directly without hesitation, they will not prompt the user
 
 <!-- IF:claude-code -->
 ### Hooks
 
-- **PreToolUse hook**: Fires before Edit, Write, Bash, MultiEdit, Agent, NotebookEdit — reminds you to query first
-- **Stop hook**: Fires at session end — reminds you to capture knowledge
-- These are non-blocking reminders. If you already queried, proceed normally.
+- **PreToolUse hook**: Fires before Edit, Write, Bash, MultiEdit, Agent, NotebookEdit — requires you to query first
+- **Stop hook**: Fires at session end — requires you to capture knowledge
+- These hooks enforce the workflow. If you already completed the step, proceed normally.
 <!-- ENDIF -->
 <!-- IF:copilot -->
 ### Hooks
 
-- **preToolUse hook**: Fires before tool use — reminds you to query first
-- **sessionEnd hook**: Fires at session end — reminds you to capture knowledge
-- These are non-blocking reminders. If you already performed the step, proceed normally.
+- **preToolUse hook**: Fires before tool use — requires you to query first
+- **sessionEnd hook**: Fires at session end — requires you to capture knowledge
+- These hooks enforce the workflow. If you already completed the step, proceed normally.
 <!-- ENDIF -->
 <!-- IF:opencode -->
 ### Skills
 
-- **cognistore-query**: Auto-triggered — reminds you to search first
-- **cognistore-plan**: Auto-triggered — reminds you to create and track plans
-- **cognistore-capture**: Auto-triggered — reminds you to capture knowledge
-- These are non-blocking reminders. If you already performed the step, proceed normally.
+- **cognistore-query**: Auto-triggered — requires you to search first
+- **cognistore-plan**: Auto-triggered — requires you to create and track plans
+- **cognistore-capture**: Auto-triggered — requires you to capture knowledge
+- These enforce the workflow. If you already completed the step, proceed normally.
 <!-- ENDIF -->
 <!-- COGNISTORE:END -->

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+set -euo pipefail
 cat <<'EOF'
 {
-  "systemMessage": "🛑 Session ending — two checks:\n\n1. Plan Completion: listPlanTasks(planId), mark incomplete tasks completed\n2. Knowledge Capture: addKnowledge() for new insights (pass planId)\n\nDo NOT end with an active plan or uncaptured knowledge."
+  "systemMessage": "[CogniStore] SESSION ENDING — REQUIRED: 1) If you have an active plan, mark remaining tasks completed via updatePlanTask(). 2) Call mcp__cognistore__addKnowledge({ title: \"<what you learned>\", content: \"<details>\", tags: [...], type: \"fix|decision|pattern|constraint|gotcha\", scope: \"workspace:<project>\", source: \"<context>\", planId: \"<your-plan-id>\" }) for any non-trivial discoveries. All CogniStore tools are pre-approved."
 }
 EOF
+exit 0
