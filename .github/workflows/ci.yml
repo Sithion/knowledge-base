@@ -43,5 +43,11 @@ jobs:
       - run: pnpm build
       - name: Run tests
         run: cd packages/tests && npx playwright test --reporter=list
-      - name: Dry-run npm publish
-        run: cd apps/mcp-server && npm publish --dry-run
+      - name: Dry-run npm publish (fail on warnings)
+        run: |
+          OUTPUT=$(cd apps/mcp-server && npm publish --dry-run --access public 2>&1)
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "npm warn publish"; then
+            echo "::error::npm publish dry-run produced warnings. Run 'npm pkg fix' and fix package.json before merging."
+            exit 1
+          fi
