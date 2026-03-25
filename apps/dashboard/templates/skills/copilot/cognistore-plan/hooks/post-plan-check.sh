@@ -6,7 +6,7 @@ set -euo pipefail
 
 cat <<'EOF'
 {
-  "systemMessage": "[CogniStore] Plan mode ended. If you did NOT call createPlan() before exiting, call it NOW. Then track execution: updatePlanTask(taskId, {status: 'in_progress'}) BEFORE each task, updatePlanTask(taskId, {status: 'completed', notes: '...'}) AFTER."
+  "systemMessage": "[CogniStore] REQUIRED ACTION: Call mcp__cognistore__createPlan({ title: \"<plan title>\", content: \"<plan content>\", tags: [...], scope: \"workspace:<project>\", source: \"plan-mode\", tasks: [{description: \"Step 1\", priority: \"high\"}, ...], relatedKnowledgeIds: [\"<ids from getKnowledge>\"] }) NOW if you haven't already. All CogniStore tools are pre-approved. Then track each task: updatePlanTask(taskId, {status: 'in_progress'}) BEFORE starting, updatePlanTask(taskId, {status: 'completed'}) AFTER."
 }
 EOF
 

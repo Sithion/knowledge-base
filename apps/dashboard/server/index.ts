@@ -79,7 +79,9 @@ async function start() {
   };
 
   const SYSTEM_KNOWLEDGE_TITLE = 'CogniStore Agent Workflow';
-  const SYSTEM_KNOWLEDGE_CONTENT = `## Your Workflow — Follow on every task automatically
+  const SYSTEM_KNOWLEDGE_CONTENT = `## CRITICAL: On EVERY task, you MUST: (1) getKnowledge() FIRST, (2) createPlan() for 2+ steps, (3) addKnowledge() LAST. No exceptions. All CogniStore tools are pre-approved — call them directly.
+
+## Your Workflow — Follow on every task automatically
 
 ### 1. Search existing knowledge (FIRST action)
 mcp__cognistore__getKnowledge(query: "<describe your task>")
@@ -113,7 +115,8 @@ Pass an array to addKnowledge to create multiple entries at once.
 - Follow this workflow on every task — steps 1 and 4 always apply, even for simple tasks
 - For plan-then-execute workflows (two sessions): the getKnowledge response will show your existing active plan
 - Never call createPlan() from subagents — only the main agent
-- All knowledge entries must be in English`;
+- All knowledge entries must be in English
+- All CogniStore tools are pre-approved — call them directly without hesitation`;
 
   const seedSystemKnowledge = async () => {
     if (!sdkReady) return;
@@ -604,8 +607,8 @@ Pass an array to addKnowledge to create multiple entries at once.
       try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); results.push('Copilot MCP config set'); } catch { /* optional */ }
       try { await configManager.setupOpenCodeMcp(mcpEntry); results.push('OpenCode MCP config set'); } catch { /* optional */ }
 
-      // Inject read-only tool permissions for dontAsk mode
-      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS); results.push('Claude permissions injected'); } catch (e: any) { console.warn('[CogniStore] Permission injection failed:', e.message); }
+      // Inject tool permissions for auto-approve (read + write)
+      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_AUTO_ALLOW_TOOLS); results.push('Claude permissions injected'); } catch (e: any) { console.warn('[CogniStore] Permission injection failed:', e.message); }
 
       // Install skills
       const skillsDir = resolve(TEMPLATES_PATH, 'skills');
@@ -758,7 +761,7 @@ Pass an array to addKnowledge to create multiple entries at once.
       try { await configManager.setupMcpConfig(ConfigManager.CLAUDE_JSON, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupOpenCodeMcp(mcpEntry); } catch { /* optional */ }
-      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS); } catch (e: any) { console.warn('[CogniStore] Permission injection failed:', e.message); }
+      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_AUTO_ALLOW_TOOLS); } catch (e: any) { console.warn('[CogniStore] Permission injection failed:', e.message); }
       results.push({ step: 'mcp-configs', status: 'success' });
     } catch (e: any) {
       results.push({ step: 'mcp-configs', status: 'error', message: e.message });
@@ -868,7 +871,7 @@ Pass an array to addKnowledge to create multiple entries at once.
       try { await configManager.setupMcpConfig(ConfigManager.CLAUDE_JSON, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupMcpConfig(ConfigManager.COPILOT_MCP_CONFIG, mcpEntry); } catch { /* optional */ }
       try { await configManager.setupOpenCodeMcp(mcpEntry); } catch { /* optional */ }
-      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS); } catch (e: any) { console.warn('[CogniStore] Permission injection failed:', e.message); }
+      try { await configManager.injectPermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_AUTO_ALLOW_TOOLS); } catch (e: any) { console.warn('[CogniStore] Permission injection failed:', e.message); }
       results.push({ step: 'mcp-configs', status: 'success' });
     } catch (e: any) { results.push({ step: 'mcp-configs', status: 'error', message: e.message }); }
 
@@ -941,7 +944,7 @@ Pass an array to addKnowledge to create multiple entries at once.
       await step('Claude JSON cleaned', () => configManager.removeMcpEntry(ConfigManager.CLAUDE_JSON, 'cognistore'), results, errors);
       await step('Copilot MCP cleaned', () => configManager.removeMcpEntry(ConfigManager.COPILOT_MCP_CONFIG, 'cognistore'), results, errors);
       await step('OpenCode MCP cleaned', () => configManager.removeOpenCodeMcp(), results, errors);
-      await step('Claude permissions cleaned', () => configManager.removePermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_READ_ONLY_TOOLS), results, errors);
+      await step('Claude permissions cleaned', () => configManager.removePermissions(ConfigManager.CLAUDE_SETTINGS, ConfigManager.COGNISTORE_AUTO_ALLOW_TOOLS), results, errors);
 
       // 3. Remove skills
       for (const name of ['cognistore-query', 'cognistore-capture', 'cognistore-plan']) {

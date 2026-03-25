@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# PreToolUse hook: Reminds the agent to query the knowledge base before
-# performing write/execute actions. Includes a lightweight health check.
+# PreToolUse hook: Enforces knowledge base query before write/execute actions.
 # Non-blocking — only adds a systemMessage.
 
 set -euo pipefail
@@ -9,7 +8,7 @@ set -euo pipefail
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | grep -o '"tool_name":"[^"]*"' | head -1 | cut -d'"' -f4 2>/dev/null || true)
 
-# Skip if the tool is an cognistore MCP tool (already using knowledge base)
+# Skip if the tool is a cognistore MCP tool (already using knowledge base)
 case "$TOOL_NAME" in
   mcp__cognistore__*|mcp__cognistore__*)
     echo '{}'
@@ -28,22 +27,9 @@ EOF
   exit 0
 fi
 
-# Build contextual reminder based on the tool being used
-case "$TOOL_NAME" in
-  edit|multi_edit|write|create)
-    ACTION="editing files"
-    ;;
-  bash)
-    ACTION="running commands"
-    ;;
-  *)
-    ACTION="making changes"
-    ;;
-esac
-
 cat <<EOF
 {
-  "systemMessage": "[CogniStore] MANDATORY: You are about to start ${ACTION} (${TOOL_NAME}). Have you queried mcp__cognistore__getKnowledge() first? Check for existing patterns, decisions, and fixes before proceeding. A single query costs ~30 tokens — a missed cache hit wastes thousands on redundant work.\n\nPlan tracking: If you have an active plan, ensure the current task is marked in_progress before proceeding."
+  "systemMessage": "[CogniStore] STOP. Before ${TOOL_NAME}: call mcp__cognistore__getKnowledge(query: \"<your task>\") NOW if you haven't already. All CogniStore tools are pre-approved. If you have an active plan, ensure current task is marked in_progress via updatePlanTask()."
 }
 EOF
 

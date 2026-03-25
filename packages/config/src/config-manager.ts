@@ -357,16 +357,27 @@ export class ConfigManager {
   // Well-known path for Claude settings
   static readonly CLAUDE_SETTINGS = join(homedir(), '.claude', 'settings.json');
 
-  // Read-only CogniStore tools that should be auto-allowed
-  static readonly COGNISTORE_READ_ONLY_TOOLS = [
+  // CogniStore tools that should be auto-allowed (read + write)
+  static readonly COGNISTORE_AUTO_ALLOW_TOOLS = [
+    // Read
     'mcp__cognistore__getKnowledge',
     'mcp__cognistore__listTags',
     'mcp__cognistore__healthCheck',
     'mcp__cognistore__listPlanTasks',
+    // Write
+    'mcp__cognistore__addKnowledge',
+    'mcp__cognistore__updateKnowledge',
+    'mcp__cognistore__deleteKnowledge',
+    'mcp__cognistore__createPlan',
+    'mcp__cognistore__updatePlan',
+    'mcp__cognistore__addPlanTask',
+    'mcp__cognistore__updatePlanTask',
+    'mcp__cognistore__updatePlanTasks',
+    'mcp__cognistore__addPlanRelation',
   ];
 
   /**
-   * Inject permission allow rules for read-only CogniStore tools into a settings.json file.
+   * Inject permission allow rules for CogniStore tools into a settings.json file.
    * Merge-only: never overwrites existing rules, never removes user entries.
    * If the file doesn't exist, creates a minimal { permissions: { allow: [...] } } — Claude Code
    * will extend this with its own keys on next run. The format is compatible.
