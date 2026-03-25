@@ -1,5 +1,14 @@
 # Patch Notes
 
+## v1.0.11
+
+### Fixes
+- **Fix npm publish repository.url format**: corrected `repository.url` to use `git+https://...git` format, preventing npm auto-correction that breaks provenance attestation
+
+### CI
+- **Fail CI on npm publish warnings**: `npm publish --dry-run` in both CI and publish workflows now captures output and fails if any `npm warn publish` messages are detected, catching manifest issues before merge
+- **Package.json validation tests**: new Playwright test validates bin paths start with `./`, repository URL has correct `git+https` format, required fields exist, and package is correctly scoped
+
 ## v1.0.10
 
 ### Features

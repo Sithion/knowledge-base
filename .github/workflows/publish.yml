@@ -35,8 +35,16 @@ jobs:
       - run: pnpm build
       - run: pnpm test
 
-      - name: Validate MCP server package
-        run: cd apps/mcp-server && npm publish --dry-run --access public 2>&1
+      - name: Validate MCP server package (fail on warnings)
+        run: |
+          OUTPUT=$(cd apps/mcp-server && npm publish --dry-run --access public 2>&1)
+          echo "$OUTPUT"
+          WARNINGS=$(echo "$OUTPUT" | grep "npm warn publish" | grep -v "script name was cleaned" | grep -v "auto-corrected some errors" | grep -v "errors corrected" || true)
+          if [ -n "$WARNINGS" ]; then
+            echo "$WARNINGS"
+            echo "::error::npm publish dry-run produced warnings that may cause provenance failure."
+            exit 1
+          fi
 
       - name: Check if version exists
         id: version-check

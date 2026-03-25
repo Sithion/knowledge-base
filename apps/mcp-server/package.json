@@ -1,13 +1,13 @@
 {
   "name": "@cognistore/mcp-server",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "private": false,
   "type": "module",
   "description": "MCP server for CogniStore — integrates with Claude Code and GitHub Copilot",
   "license": "BUSL-1.1",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Sithion/cognistore",
+    "url": "git+https://github.com/Sithion/cognistore.git",
     "directory": "apps/mcp-server"
   },
   "main": "./dist/index.js",
