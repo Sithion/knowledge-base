@@ -51,3 +51,42 @@ export function searchKnn(
     k
   ) as KnnResult[];
 }
+
+// ─── Plans embeddings ────────────────────────────────────────
+
+const PLANS_TABLE_NAME = 'plans_embeddings';
+
+export function insertPlanEmbedding(sqlite: Database.Database, id: string, embedding: number[]) {
+  sqlite.prepare(`INSERT INTO ${PLANS_TABLE_NAME}(id, embedding) VALUES (?, ?)`).run(
+    id,
+    Buffer.from(new Float32Array(embedding).buffer),
+  );
+}
+
+export function updatePlanEmbedding(sqlite: Database.Database, id: string, embedding: number[]) {
+  sqlite.prepare(`UPDATE ${PLANS_TABLE_NAME} SET embedding = ? WHERE id = ?`).run(
+    Buffer.from(new Float32Array(embedding).buffer),
+    id,
+  );
+}
+
+export function deletePlanEmbedding(sqlite: Database.Database, id: string) {
+  sqlite.prepare(`DELETE FROM ${PLANS_TABLE_NAME} WHERE id = ?`).run(id);
+}
+
+export function searchPlansKnn(
+  sqlite: Database.Database,
+  queryEmbedding: number[],
+  k: number
+): KnnResult[] {
+  const stmt = sqlite.prepare(`
+    SELECT id, distance
+    FROM ${PLANS_TABLE_NAME}
+    WHERE embedding MATCH ?
+      AND k = ?
+  `);
+  return stmt.all(
+    Buffer.from(new Float32Array(queryEmbedding).buffer),
+    k
+  ) as KnnResult[];
+}

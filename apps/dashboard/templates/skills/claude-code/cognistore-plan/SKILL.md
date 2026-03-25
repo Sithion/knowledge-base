@@ -60,6 +60,15 @@ mcp__cognistore__createPlan({
 
 **Important**: Always include a `tasks` array when creating a plan.
 
+## Automatic Deduplication
+
+`createPlan()` prevents duplicates automatically:
+- **Active plan in same scope** → your tasks are added to the existing plan (no new plan created)
+- **Similar draft plan** → the draft is updated with your new content and tasks
+- **No match** → a new plan is created normally
+
+You do NOT need to check for duplicates manually. Just call `createPlan()` — the response will include `deduplicated: true` if an existing plan was reused.
+
 ## Task Management During Execution (MANDATORY — Real-Time Tracking)
 
 **You MUST update task status as you work. Do NOT batch updates at the end.**

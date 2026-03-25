@@ -6,6 +6,10 @@ import {
   updateEmbedding,
   deleteEmbedding,
   searchKnn,
+  insertPlanEmbedding,
+  updatePlanEmbedding,
+  deletePlanEmbedding,
+  searchPlansKnn,
 } from '../db/schema/sqlite-vec.js';
 import type { CreateKnowledgeInput, UpdateKnowledgeInput, SearchOptions } from '@cognistore/shared';
 import { DEFAULT_SEARCH_LIMIT, DEFAULT_SIMILARITY_THRESHOLD } from '@cognistore/shared';
@@ -277,9 +281,7 @@ export class KnowledgeRepository {
 
     // Insert embedding into plans_embeddings
     try {
-      this.sqlite.prepare('INSERT INTO plans_embeddings (id, embedding) VALUES (?, ?)').run(
-        id, new Float32Array(input.embedding).buffer
-      );
+      insertPlanEmbedding(this.sqlite, id, input.embedding);
     } catch { /* vec table may not exist yet */ }
 
     return this.getPlanById(id);
@@ -312,7 +314,7 @@ export class KnowledgeRepository {
   deletePlan(id: string): boolean {
     // Cascade deletes plan_relations and plan_tasks via FK
     const result = this.sqlite.prepare('DELETE FROM plans WHERE id = ?').run(id);
-    try { this.sqlite.prepare('DELETE FROM plans_embeddings WHERE id = ?').run(id); } catch { /* silent */ }
+    try { deletePlanEmbedding(this.sqlite, id); } catch { /* silent */ }
     return result.changes > 0;
   }
 
@@ -325,6 +327,36 @@ export class KnowledgeRepository {
       return this.sqlite.prepare('SELECT * FROM plans WHERE status = ? ORDER BY created_at DESC LIMIT ?').all(status, limit) as any[];
     }
     return this.sqlite.prepare('SELECT * FROM plans ORDER BY created_at DESC LIMIT ?').all(limit) as any[];
+  }
+
+  findSimilarActivePlans(embedding: number[], scope: string, threshold = 0.5): { plan: any; similarity: number }[] {
+    try {
+      const candidates = searchPlansKnn(this.sqlite, embedding, 5);
+      if (!candidates.length) return [];
+
+      const distanceMap = new Map(candidates.map(c => [c.id, c.distance]));
+      const ids = candidates.map(c => c.id);
+      const placeholders = ids.map(() => '?').join(',');
+
+      const plans = this.sqlite.prepare(
+        `SELECT * FROM plans WHERE id IN (${placeholders}) AND scope = ? AND status IN ('draft', 'active') ORDER BY updated_at DESC`
+      ).all(...ids, scope) as any[];
+
+      return plans
+        .map(plan => ({ plan, similarity: 1 - (distanceMap.get(plan.id) ?? 1) }))
+        .filter(r => r.similarity >= threshold)
+        .sort((a, b) => b.similarity - a.similarity);
+    } catch {
+      return [];
+    }
+  }
+
+  deletePlanTasks(planId: string): number {
+    return this.sqlite.prepare('DELETE FROM plan_tasks WHERE plan_id = ?').run(planId).changes;
+  }
+
+  updatePlanEmbeddingById(id: string, embedding: number[]): void {
+    try { updatePlanEmbedding(this.sqlite, id, embedding); } catch { /* silent */ }
   }
 
   // ─── Plan Relations ─────────────────────────────────────────

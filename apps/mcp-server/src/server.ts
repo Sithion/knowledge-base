@@ -124,11 +124,16 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
         const draftPlans = sdk.listPlans(1, 'draft');
         const currentPlan = activePlans[0] || draftPlans[0];
         if (currentPlan) {
+          const tasks = sdk.listPlanTasks(currentPlan.id);
+          const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
           response.activePlan = {
             id: currentPlan.id,
             title: currentPlan.title,
             status: currentPlan.status,
-            hint: 'Pass this planId to addKnowledge calls for output linking.',
+            scope: currentPlan.scope,
+            taskCount: tasks.length,
+            completedTasks,
+            hint: `You have an active plan (${completedTasks}/${tasks.length} tasks done). Use updatePlan(planId, ...) to modify it or updatePlanTask() to track progress. Do NOT call createPlan() — it will auto-deduplicate into this plan.`,
           };
         }
       } catch {
@@ -245,9 +250,14 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
       });
       lastSearchResultIds = [];
 
+      const deduplicated = (result as any).deduplicated === true;
+      const deduplicatedAction = (result as any).deduplicatedAction;
+      const reminder = deduplicated
+        ? `Existing plan "${result.title}" was reused (${deduplicatedAction === 'tasks_added_to_active_plan' ? 'new tasks added to active plan' : 'draft plan updated'}). Plan ID: "${result.id}". Pass this planId to addKnowledge calls.`
+        : `Your plan ID is "${result.id}". Pass planId: "${result.id}" to every addKnowledge call for output linking. Plan auto-activates when you start the first task.`;
       const response = {
         ...result,
-        reminder: `Your plan ID is "${result.id}". Pass planId: "${result.id}" to every addKnowledge call for output linking. Plan auto-activates when you start the first task.`,
+        reminder,
       };
       return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
     }

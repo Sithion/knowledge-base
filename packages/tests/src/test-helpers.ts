@@ -69,6 +69,7 @@ export function createFactory(service: KnowledgeService) {
         scope: overrides.scope ?? 'global',
         source: overrides.source ?? 'test',
         tasks: overrides.tasks,
+        skipDedup: true,
       });
     },
     planTask(planId: string, overrides: Partial<{ description: string; priority: string; notes: string }> = {}) {
