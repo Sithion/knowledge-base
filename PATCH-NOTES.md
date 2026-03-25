@@ -1,5 +1,15 @@
 # Patch Notes
 
+## v1.0.10
+
+### Features
+- **Automatic plan deduplication**: `createPlan()` now uses semantic search (via sqlite-vec embeddings) to detect existing plans before creating new ones. If an active plan exists in the same scope, new tasks are added to it. If a semantically similar draft exists, it is updated instead of duplicated. Response includes `deduplicated: true` flag when an existing plan was reused
+- **Enriched activePlan in getKnowledge**: the `activePlan` object now includes `scope`, `taskCount`, `completedTasks`, and a dedup-aware hint guiding the agent to use updatePlan instead of creating duplicates
+
+### Improvements
+- **Centralized plan embedding operations**: refactored inline SQL for plan embeddings into dedicated functions (`insertPlanEmbedding`, `updatePlanEmbedding`, `deletePlanEmbedding`, `searchPlansKnn`) in sqlite-vec.ts, consistent with knowledge embedding pattern
+- **Updated agent instructions**: added dedup note to CHECKPOINT 2 in all platform instructions and "Automatic Deduplication" section to plan SKILL.md (Claude Code + Copilot)
+
 ## v1.0.9
 
 ### Improvements

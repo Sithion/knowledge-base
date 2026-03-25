@@ -94,6 +94,7 @@ mcp__cognistore__createPlan({
   relatedKnowledgeIds: ["<ids-from-step-1>"]
 })
 Save the returned planId — you need it in step 4.
+Dedup is automatic: active plan in same scope gets tasks added, similar drafts get updated.
 Plan activates automatically when you start the first task.
 Plan completes automatically when all tasks are done.
 

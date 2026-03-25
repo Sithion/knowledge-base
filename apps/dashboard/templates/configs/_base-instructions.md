@@ -38,6 +38,8 @@ mcp__cognistore__createPlan({
 
 Save the returned **planId** — you need it for addKnowledge.
 
+**Dedup is automatic**: if an active plan exists in the same scope, `createPlan()` adds your tasks to it instead of creating a duplicate. If a similar draft exists, it updates it. Just call `createPlan()` normally — the server handles dedup.
+
 **Track each task:**
 - Before starting: `updatePlanTask(taskId, { status: "in_progress" })`
 - After finishing: `updatePlanTask(taskId, { status: "completed" })`

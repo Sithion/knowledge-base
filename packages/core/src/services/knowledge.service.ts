@@ -165,9 +165,49 @@ export class KnowledgeService {
 
   // ─── Plans (separate entity) ────────────────────────────────
 
-  async createPlan(input: CreatePlanInput & { tasks?: { description: string; priority?: string }[] }): Promise<Plan> {
-    const { tasks, ...planInput } = input;
-    const embedding = await this.embeddingProvider.embed(input.tags.join(' '));
+  async createPlan(input: CreatePlanInput & { tasks?: { description: string; priority?: string }[]; skipDedup?: boolean }): Promise<Plan & { deduplicated?: boolean; deduplicatedAction?: string }> {
+    const { tasks, skipDedup, ...planInput } = input;
+    const embedding = await this.embeddingProvider.embed(`${input.title} ${input.content}`);
+
+    // ─── Dedup: check for semantically similar active/draft plans in same scope ───
+    const similarPlans = skipDedup ? [] : this.repository.findSimilarActivePlans(embedding, input.scope, 0.5);
+    if (similarPlans.length > 0) {
+      const { plan: existingRow } = similarPlans[0];
+      const isActive = (existingRow as any).status === 'active';
+
+      if (isActive) {
+        // Active plan: add tasks to it (don't overwrite content)
+        if (tasks && tasks.length > 0) {
+          for (const task of tasks) {
+            this.repository.createPlanTask({ planId: existingRow.id, description: task.description, priority: task.priority });
+          }
+        }
+        const plan = this.toPlan(existingRow);
+        return { ...plan, deduplicated: true, deduplicatedAction: 'tasks_added_to_active_plan' };
+      } else {
+        // Draft plan: update content and replace tasks
+        this.repository.updatePlan(existingRow.id, {
+          title: input.title,
+          content: input.content,
+          tags: input.tags,
+          source: input.source,
+        });
+        if (tasks && tasks.length > 0) {
+          this.repository.deletePlanTasks(existingRow.id);
+          for (let i = 0; i < tasks.length; i++) {
+            this.repository.createPlanTask({ planId: existingRow.id, description: tasks[i].description, priority: tasks[i].priority, position: i });
+          }
+        }
+        try {
+          this.repository.updatePlanEmbeddingById(existingRow.id, embedding);
+        } catch { /* silent */ }
+        const updated = this.repository.getPlanById(existingRow.id);
+        const plan = this.toPlan(updated);
+        return { ...plan, deduplicated: true, deduplicatedAction: 'draft_plan_updated' };
+      }
+    }
+
+    // 3. No duplicates found — create normally
     const row = this.repository.createPlan({ ...planInput, embedding });
     const plan = this.toPlan(row);
 
@@ -177,7 +217,6 @@ export class KnowledgeService {
           this.repository.createPlanTask({ planId: plan.id, description: tasks[i].description, priority: tasks[i].priority, position: i });
         }
       } catch (err) {
-        // Rollback: delete the plan if task creation fails
         this.repository.deletePlan(plan.id);
         throw err;
       }
