@@ -30,8 +30,8 @@
   },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": "v2Compatible",
-    "targets": ["dmg", "appimage", "deb"],
+    "createUpdaterArtifacts": true,
+    "targets": ["app", "dmg", "appimage", "deb"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
