@@ -3,6 +3,14 @@
 ## v1.0.12
 
 ### Fixes
+- **Fix auto-update system (3 root causes)**: The entire auto-update pipeline was broken:
+  1. `window.__TAURI__` was undefined because the WebView loads from `http://localhost:{port}` (Node.js sidecar) without IPC access configured — added `remote.urls` to `capabilities/default.json`
+  2. `createUpdaterArtifacts` was missing from `tauri.conf.json` — no `.tar.gz`/`.sig` files were generated, so `latest.json` was never uploaded (confirmed 404 on all releases v1.0.7–v1.0.11)
+  3. Non-Tauri fallback path skipped auto-checks on launch and "Update Now" silently did nothing when `__pendingUpdate` was null
+- **Fix isTauri detection**: Now checks both `__TAURI_INTERNALS__` (Tauri v2) and `__TAURI__` (legacy) for reliable environment detection
+- **Add CSP for GitHub CDN**: Added `objects.githubusercontent.com` to `connect-src` for update artifact downloads
+- **Improve update error handling**: Tauri updater failures now fall back to GitHub API check instead of silently failing; all errors logged with `[UpdateChecker]` prefix
+- **Fix "Update Now" button in Settings**: When native Tauri update is unavailable, button now opens GitHub release page instead of doing nothing
 - **Fix plan dedup KNN saturation**: rewrote `findSimilarActivePlans()` to use pre-filter approach — query `plans` table for draft/active IDs first, then compute cosine similarity in JS. The old KNN approach returned from ALL plans (including completed), saturating results and hiding active duplicates. Now works correctly even with 15+ completed plans
 - **Fix knowledge embedding quality**: embeddings were generated from tags only (`tags.join(' ')`), making semantic search unreliable. Now uses full text: `${title} ${content} ${tags.join(' ')}`
 - **Scope-filter activePlan hint in getKnowledge**: the `activePlan` returned by `getKnowledge` now filters by the caller's `scope` parameter, preventing cross-workspace plan hints

@@ -16,6 +16,12 @@ const updateEvents = new EventTarget();
 /** Whether the check was triggered manually (shows error/upToDate feedback) */
 let isManualCheck = false;
 
+/** Cached latest release URL for fallback download */
+let latestReleaseUrl = '';
+
+/** Detect Tauri environment — check both v2 internals and legacy global */
+const isTauri = !!(window as any).__TAURI_INTERNALS__ || !!(window as any).__TAURI__;
+
 /** Trigger an update check from anywhere (manual = shows feedback) */
 export function triggerUpdateCheck() {
   isManualCheck = true;
@@ -32,6 +38,16 @@ export function onUpdateState(cb: (state: UpdateState) => void) {
   const handler = (e: Event) => cb((e as CustomEvent).detail);
   updateEvents.addEventListener('state', handler);
   return () => updateEvents.removeEventListener('state', handler);
+}
+
+/** Get whether we're running inside Tauri */
+export function getIsTauri() {
+  return isTauri;
+}
+
+/** Get the latest release URL (for fallback) */
+export function getLatestReleaseUrl() {
+  return latestReleaseUrl;
 }
 
 /** Simple semver comparison: returns true if a > b */
@@ -54,7 +70,6 @@ export function UpdateChecker() {
   const [dismissed, setDismissed] = useState(false);
   const [downloadUrl, setDownloadUrl] = useState('');
   const manualRef = useRef(false);
-  const isTauri = !!(window as any).__TAURI__;
 
   const broadcastState = useCallback((s: UpdateState) => {
     setState(s);
@@ -63,7 +78,12 @@ export function UpdateChecker() {
 
   const downloadAndInstall = useCallback(async () => {
     const update = (window as any).__pendingUpdate;
-    if (!update) return;
+    if (!update) {
+      // Fallback: no native update object — open release page in browser
+      const url = latestReleaseUrl || 'https://github.com/Sithion/cognistore/releases/latest';
+      window.open(url, '_blank');
+      return;
+    }
 
     try {
       broadcastState('downloading');
@@ -94,6 +114,7 @@ export function UpdateChecker() {
         }
       }, 1500);
     } catch (err: any) {
+      console.error('[UpdateChecker] downloadAndInstall failed:', err);
       setError(err?.message || 'Download failed');
       broadcastState('error');
     }
@@ -105,7 +126,7 @@ export function UpdateChecker() {
     manualRef.current = manual;
 
     if (isTauri) {
-      // Tauri path: use plugin-updater
+      // Tauri path: use plugin-updater for native binary updates
       try {
         broadcastState('checking');
         const { check } = await import('@tauri-apps/plugin-updater');
@@ -117,7 +138,7 @@ export function UpdateChecker() {
           setDismissed(false);
           (window as any).__pendingUpdate = update;
 
-          // Auto-download in background (both automatic and manual checks)
+          // Auto-download in background
           setTimeout(() => downloadAndInstall(), 500);
         } else {
           if (manual) {
@@ -128,44 +149,55 @@ export function UpdateChecker() {
           }
         }
       } catch (err: any) {
-        console.warn('Update check failed:', err);
+        console.error('[UpdateChecker] Tauri check() failed:', err);
+        // Fallback: try GitHub API when native updater fails
+        await checkGitHub(manual);
+      }
+    } else {
+      // Non-Tauri path: check GitHub Releases API
+      await checkGitHub(manual);
+    }
+  }, [broadcastState, downloadAndInstall]);
+
+  const checkGitHub = useCallback(async (manual: boolean) => {
+    try {
+      if (!manual && state !== 'idle') return; // Don't interrupt active states
+      broadcastState('checking');
+      const res = await fetch(GITHUB_RELEASES_URL);
+      if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+      const release = await res.json();
+      const latestTag = (release.tag_name || '').replace(/^v/, '');
+      const currentVersion = (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0').replace(/^v/, '');
+
+      if (latestTag && isNewerVersion(latestTag, currentVersion)) {
+        setVersion(latestTag);
+        const url = release.html_url || 'https://github.com/Sithion/cognistore/releases/latest';
+        setDownloadUrl(url);
+        latestReleaseUrl = url;
+        broadcastState('available');
+        setDismissed(false);
+      } else {
         if (manual) {
-          setError(err?.message || 'Check failed');
-          broadcastState('error');
+          broadcastState('upToDate');
+          setTimeout(() => broadcastState('idle'), 3000);
         } else {
           broadcastState('idle');
         }
       }
-    } else {
-      // Non-Tauri path: check GitHub Releases API
-      if (!manual) return; // Silent auto-checks skip in non-Tauri
-      try {
-        broadcastState('checking');
-        const res = await fetch(GITHUB_RELEASES_URL);
-        if (!res.ok) throw new Error('GitHub API error');
-        const release = await res.json();
-        const latestTag = (release.tag_name || '').replace(/^v/, '');
-        const currentVersion = (typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0').replace(/^v/, '');
-
-        if (latestTag && isNewerVersion(latestTag, currentVersion)) {
-          setVersion(latestTag);
-          setDownloadUrl(release.html_url || '');
-          broadcastState('available');
-          setDismissed(false);
-        } else {
-          broadcastState('upToDate');
-          setTimeout(() => broadcastState('idle'), 3000);
-        }
-      } catch (err: any) {
+    } catch (err: any) {
+      console.error('[UpdateChecker] GitHub check failed:', err);
+      if (manual) {
         setError(err?.message || 'Check failed');
         broadcastState('error');
+      } else {
+        broadcastState('idle');
       }
     }
-  }, [broadcastState, isTauri, downloadAndInstall]);
+  }, [broadcastState, state]);
 
-  // Check on mount + every 30 minutes (automatic, silent)
+  // Check on mount + every 30 minutes
   useEffect(() => {
-    const initial = setTimeout(checkForUpdate, 5000);
+    const initial = setTimeout(checkForUpdate, 2000);
     const interval = setInterval(checkForUpdate, CHECK_INTERVAL_MS);
     return () => { clearTimeout(initial); clearInterval(interval); };
   }, [checkForUpdate]);
@@ -206,12 +238,12 @@ export function UpdateChecker() {
           <span style={{ color: '#c4b5fd' }}>
             Version <strong style={{ color: '#e9d5ff' }}>v{version}</strong> {t('update.available').toLowerCase()}
           </span>
-          {isTauri ? (
+          {isTauri && (window as any).__pendingUpdate ? (
             <button onClick={downloadAndInstall} style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
               Update now
             </button>
           ) : (
-            <a href={downloadUrl} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
+            <a href={downloadUrl || 'https://github.com/Sithion/cognistore/releases/latest'} target="_blank" rel="noopener noreferrer" style={{ backgroundColor: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', textDecoration: 'none' }}>
               {t('update.viewRelease')}
             </a>
           )}
