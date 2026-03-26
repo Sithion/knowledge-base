@@ -213,9 +213,8 @@ test('archiveStaleDrafts archives old drafts and keeps recent ones', async () =>
 
   // Backdate the stale plan to 48 hours ago
   const oldDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  ctx.repository.updatePlan(stalePlan.id, { });
   // Directly update via sqlite to backdate
-  (ctx as any).sqlite.prepare('UPDATE plans SET updated_at = ? WHERE id = ?').run(oldDate, stalePlan.id);
+  ctx.sqlite.prepare('UPDATE plans SET updated_at = ? WHERE id = ?').run(oldDate, stalePlan.id);
 
   const archived = ctx.service.archiveStaleDrafts(24);
   expect(archived).toBeGreaterThanOrEqual(1);
@@ -278,4 +277,85 @@ test('createPlan dedup does NOT merge across different scopes', async () => {
 
   // Different scopes → different plans
   expect(plan2.id).not.toBe(plan1.id);
+});
+
+test('dedup finds draft even with 15+ completed plans (KNN saturation test)', async () => {
+  const scope = 'workspace:knn-saturation';
+
+  // Create 15 completed plans to saturate old KNN approach
+  for (let i = 0; i < 15; i++) {
+    const p = await ctx.service.createPlan({
+      title: `Completed plan about auth ${i}`,
+      content: `Implement authentication system variant ${i}`,
+      tags: ['auth', 'knn-test'],
+      scope,
+      source: 'test',
+      skipDedup: true,
+    });
+    ctx.service.updatePlan(p.id, { status: KnowledgeStatus.ACTIVE });
+    ctx.service.updatePlan(p.id, { status: KnowledgeStatus.COMPLETED });
+  }
+
+  // Create 1 draft plan that should be found by dedup
+  const draft = await ctx.service.createPlan({
+    title: 'Implement authentication system',
+    content: 'Add JWT-based auth to the API',
+    tags: ['auth'],
+    scope,
+    source: 'test',
+    skipDedup: true,
+  });
+  expect(draft.status).toBe(KnowledgeStatus.DRAFT);
+
+  // New plan with similar content should dedup into the draft
+  const duplicate = await ctx.service.createPlan({
+    title: 'Implement auth system for API',
+    content: 'Add JWT authentication to the API',
+    tags: ['auth'],
+    scope,
+    source: 'test',
+  });
+
+  expect(duplicate.id).toBe(draft.id);
+  expect((duplicate as any).deduplicated).toBe(true);
+});
+
+test('archiveStaleDrafts skips active and completed plans', async () => {
+  const activePlan = await factory.plan({ title: 'Active Should Not Archive' });
+  ctx.service.updatePlan(activePlan.id, { status: KnowledgeStatus.ACTIVE });
+
+  const completedPlan = await factory.plan({ title: 'Completed Should Not Archive' });
+  ctx.service.updatePlan(completedPlan.id, { status: KnowledgeStatus.ACTIVE });
+  ctx.service.updatePlan(completedPlan.id, { status: KnowledgeStatus.COMPLETED });
+
+  // Backdate both to 48 hours ago
+  const oldDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  ctx.sqlite.prepare('UPDATE plans SET updated_at = ? WHERE id = ?').run(oldDate, activePlan.id);
+  ctx.sqlite.prepare('UPDATE plans SET updated_at = ? WHERE id = ?').run(oldDate, completedPlan.id);
+
+  ctx.service.archiveStaleDrafts(24);
+
+  const activeAfter = ctx.service.getPlanById(activePlan.id);
+  expect(activeAfter!.status).toBe(KnowledgeStatus.ACTIVE);
+
+  const completedAfter = ctx.service.getPlanById(completedPlan.id);
+  expect(completedAfter!.status).toBe(KnowledgeStatus.COMPLETED);
+});
+
+test('archiveStaleDrafts returns 0 on empty database', async () => {
+  // Create fresh context with empty db
+  const freshCtx = createTestContext();
+  const archived = freshCtx.service.archiveStaleDrafts(24);
+  expect(archived).toBe(0);
+  destroyTestContext(freshCtx);
+});
+
+test('listPlans with undefined scope returns all plans (backward compat)', async () => {
+  const p1 = await factory.plan({ title: 'Compat Plan A', scope: 'workspace:compat-a' });
+  const p2 = await factory.plan({ title: 'Compat Plan B', scope: 'workspace:compat-b' });
+
+  const all = ctx.service.listPlans(50, undefined, undefined);
+  const ids = all.map((p) => p.id);
+  expect(ids).toContain(p1.id);
+  expect(ids).toContain(p2.id);
 });

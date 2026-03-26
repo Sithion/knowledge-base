@@ -62,7 +62,7 @@ description: >
 ```
 mcp__cognistore__createPlan({
   title: "Short descriptive title",
-  content: "Full plan content with steps, approach, considerations",
+  content: "<structured plan — see Required Plan Structure below>",
   tags: ["feature-name", "component", "approach"],
   scope: "workspace:<project-name>",
   source: "planning session for <task description>",
@@ -74,6 +74,34 @@ mcp__cognistore__createPlan({
   ]
 })
 ```
+
+## Required Plan Structure (MANDATORY)
+
+The `content` field MUST follow this structure. Plans without these sections are **incomplete**.
+
+```markdown
+## Context
+Why this change is needed — the problem, what prompted it, intended outcome.
+
+## Approach
+How the change will be implemented — architecture decisions, data flow, key logic.
+
+## Files to Modify
+| File | Change |
+|------|--------|
+| `path/to/file.ts` | Description of what changes |
+
+## Reusable Code
+Existing functions/utilities to reuse (with file paths and line numbers).
+
+## Edge Cases & Risks
+Known edge cases, potential issues, mitigation.
+
+## Verification
+How to test — specific commands, expected results, manual checks.
+```
+
+**Minimum quality rule**: The `content` MUST include **Context**, **Approach**, **Files to Modify**, and **Verification** sections. Include file paths, function names, and specific technical details — not generic descriptions.
 
 ## Automatic Deduplication
 

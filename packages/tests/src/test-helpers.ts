@@ -57,6 +57,7 @@ export function createFactory(service: KnowledgeService) {
         type: overrides.type ?? KnowledgeType.PATTERN,
         scope: overrides.scope ?? 'global',
         source: overrides.source ?? 'test',
+        skipDedup: true,
         ...overrides,
       });
     },

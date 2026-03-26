@@ -27,14 +27,18 @@ argument-hint: <knowledge content to store>
 
 ```
 mcp__cognistore__addKnowledge({
+  title: "Descriptive title for semantic search",
   content: "Description of what was learned",
   type: "fix" | "decision" | "pattern" | "constraint" | "gotcha",
   scope: "global" | "workspace:<project-name>",
   source: "Where this was discovered",
   tags: ["relevant", "tags"],
-  confidenceScore: 0.9
+  confidenceScore: 0.9,
+  planId: "<your-plan-id>"
 })
 ```
+
+**Important**: Always include a descriptive `title` — it powers semantic search. Always pass `planId` if you have an active plan.
 
 ### Examples
 
@@ -111,12 +115,29 @@ Not everything deserves a knowledge entry. **Only store knowledge that saves sig
 
 Duplicates pollute search results and waste tokens on redundant entries. One well-maintained entry is worth more than three stale duplicates.
 
+## Automatic Deduplication
+
+`addKnowledge()` checks for semantically similar entries in the same scope+type (threshold 0.85). If a match is found, it **updates the existing entry** instead of creating a duplicate. You still get the entry back — with `deduplicated: true` in the response.
+
+This means you can call `addKnowledge()` freely without worrying about creating duplicates. The system handles it.
+
 ## Scope Guidelines
 
 | Scope | When |
 |-------|------|
-| `workspace:<project>` | Knowledge specific to one project |
-| `global` | Cross-project knowledge (language patterns, tools, conventions) |
+| `workspace:<project>` | Knowledge specific to one project — architecture decisions, project-specific patterns |
+| `global` | Cross-project knowledge (language patterns, tools, conventions, framework gotchas) |
+
+### Prefer Global Scope for Reusable Knowledge
+
+**Actively create `scope: "global"` entries** for insights about:
+- **Languages** — TypeScript quirks, Go idioms, Python gotchas
+- **Frameworks** — React patterns, Express middleware, Tauri lifecycle
+- **Libraries** — sqlite-vec limitations, Zod patterns, better-sqlite3 gotchas
+- **Tools** — Git workflows, npm/pnpm behaviors, CI/CD patterns
+- **General patterns** — error handling strategies, testing approaches, API design
+
+These entries benefit ALL future projects, not just the current one. If it took investigation to discover and applies beyond this codebase, make it global.
 
 ## Other Available Tools
 

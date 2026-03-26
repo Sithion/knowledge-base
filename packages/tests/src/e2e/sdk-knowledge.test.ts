@@ -200,3 +200,65 @@ test('entry version increments on each update', async () => {
   const v4 = await ctx.service.update(entry.id, { title: 'Version Test v4' });
   expect(v4!.version).toBe(4);
 });
+
+// ─── Fix v1.0.12: Knowledge dedup + scope validation ─────
+
+test('addKnowledge dedup updates existing entry with same scope+type', async () => {
+  const original = await ctx.service.add({
+    title: 'sqlite-vec KNN limitations and query restrictions',
+    content: 'sqlite-vec vec0 table only supports MATCH and k= in WHERE clauses, no JOINs or status filters allowed',
+    tags: ['sqlite-vec', 'knn'],
+    type: KnowledgeType.CONSTRAINT,
+    scope: 'workspace:dedup-knowledge-test',
+    source: 'test',
+  });
+
+  // Nearly identical content in same scope+type should dedup
+  const duplicate = await ctx.service.add({
+    title: 'sqlite-vec KNN limitations and query restrictions',
+    content: 'sqlite-vec vec0 table only supports MATCH and k= in WHERE clauses, no JOINs or status filters allowed in queries',
+    tags: ['sqlite-vec', 'knn'],
+    type: KnowledgeType.CONSTRAINT,
+    scope: 'workspace:dedup-knowledge-test',
+    source: 'test',
+  });
+
+  expect(duplicate.id).toBe(original.id);
+  expect((duplicate as any).deduplicated).toBe(true);
+});
+
+test('addKnowledge does NOT dedup across different scopes', async () => {
+  const entry1 = await ctx.service.add({
+    title: 'Cross-scope knowledge test',
+    content: 'This knowledge should not be deduped across scopes',
+    tags: ['cross-scope'],
+    type: KnowledgeType.PATTERN,
+    scope: 'workspace:knowledge-scope-a',
+    source: 'test',
+  });
+
+  const entry2 = await ctx.service.add({
+    title: 'Cross-scope knowledge test',
+    content: 'This knowledge should not be deduped across scopes',
+    tags: ['cross-scope'],
+    type: KnowledgeType.PATTERN,
+    scope: 'workspace:knowledge-scope-b',
+    source: 'test',
+  });
+
+  expect(entry2.id).not.toBe(entry1.id);
+});
+
+test('addKnowledge with global scope works', async () => {
+  const entry = await ctx.service.add({
+    title: 'TypeScript generic constraint pattern',
+    content: 'Use extends keyword for generic type constraints in TypeScript',
+    tags: ['typescript', 'generics'],
+    type: KnowledgeType.PATTERN,
+    scope: 'global',
+    source: 'test',
+  });
+
+  expect(entry.id).toBeTruthy();
+  expect(entry.scope).toBe('global');
+});

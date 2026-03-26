@@ -45,7 +45,7 @@ argument-hint: <plan title and description>
 ```
 mcp__cognistore__createPlan({
   title: "Short descriptive title",
-  content: "Full plan content with steps, approach, considerations",
+  content: "<structured plan — see Required Plan Structure below>",
   tags: ["feature-name", "component", "approach"],
   scope: "workspace:<project-name>",
   source: "planning session for <task description>",
@@ -59,6 +59,66 @@ mcp__cognistore__createPlan({
 ```
 
 **Important**: Always include a `tasks` array when creating a plan.
+
+## Required Plan Structure (MANDATORY)
+
+The `content` field MUST follow this structure. Plans without these sections are **incomplete and will be rejected**.
+
+```markdown
+## Context
+Why this change is needed — the problem, what prompted it, intended outcome.
+
+## Approach
+How the change will be implemented — architecture decisions, data flow, key logic.
+
+## Files to Modify
+| File | Change |
+|------|--------|
+| `path/to/file.ts` | Description of what changes |
+
+## Reusable Code
+Existing functions/utilities to reuse (with file paths and line numbers).
+
+## Edge Cases & Risks
+Known edge cases, potential issues, mitigation.
+
+## Verification
+How to test — specific commands, expected results, manual checks.
+```
+
+### Example
+
+```
+content: `## Context
+Users report duplicate plans when multiple sessions run concurrently. The root cause is that KNN search returns completed plans, saturating the k-nearest results and hiding active duplicates.
+
+## Approach
+Replace KNN-based dedup with a pre-filter strategy: query the plans table for draft/active plans in the same scope first, then compute cosine similarity in JS for those candidates only. This avoids sqlite-vec WHERE clause limitations.
+
+## Files to Modify
+| File | Change |
+|------|--------|
+| \`packages/core/src/repositories/knowledge.repository.ts:332-352\` | Rewrite findSimilarActivePlans() to pre-filter by status/scope |
+| \`packages/core/src/services/knowledge.service.ts:173\` | Throttle archiveStaleDrafts to once per hour |
+| \`packages/tests/src/e2e/sdk-plans.test.ts\` | Add KNN saturation test with 15+ completed plans |
+
+## Reusable Code
+- \`cosineSimilarity()\` helper already exists in \`knowledge.repository.ts:450\`
+- \`archiveStaleDrafts()\` at \`knowledge.repository.ts:380\`
+
+## Edge Cases & Risks
+- Empty embedding buffer from sqlite-vec → guard with length check
+- Zero-magnitude vectors → return 0 similarity instead of NaN
+- Concurrent createPlan calls → dedup is best-effort, not transactional
+
+## Verification
+- \`pnpm test\` — all plan dedup tests pass
+- Create 15+ completed plans + 1 draft → verify dedup finds the draft
+- \`pnpm --filter @cognistore/mcp-server build\` — no type errors
+`
+```
+
+**Minimum quality rule**: The `content` MUST include **Context**, **Approach**, **Files to Modify**, and **Verification** sections. Include file paths, function names, and specific technical details — not generic descriptions.
 
 ## Automatic Deduplication
 

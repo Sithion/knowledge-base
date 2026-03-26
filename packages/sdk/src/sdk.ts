@@ -241,13 +241,13 @@ export class KnowledgeSDK {
 
   async createPlan(input: CreatePlanInput & { relatedKnowledgeIds?: string[]; tasks?: { description: string; priority?: string }[] }): Promise<Plan> {
     this.ensureInitialized();
-    const { relatedKnowledgeIds, tasks, ...rest } = input;
+    const { relatedKnowledgeIds, ...rest } = input;
     const parsed = createPlanSchema.safeParse(rest);
     if (!parsed.success) {
       throw new ValidationError(`Invalid plan input: ${parsed.error.message}`);
     }
     try {
-      const plan = await this.service!.createPlan({ ...parsed.data as CreatePlanInput, tasks });
+      const plan = await this.service!.createPlan(parsed.data as CreatePlanInput & { tasks?: { description: string; priority?: string }[] });
       if (relatedKnowledgeIds) {
         for (const kid of relatedKnowledgeIds) {
           try { this.service!.addPlanRelation(plan.id, kid, 'input'); } catch { /* silent */ }

@@ -25,14 +25,18 @@ description: >
 
 ```
 mcp__cognistore__addKnowledge({
+  title: "Descriptive title for semantic search",
   content: "Description of what was learned",
   type: "fix" | "decision" | "pattern" | "constraint" | "gotcha",
   scope: "global" | "workspace:<project-name>",
   source: "Where this was discovered",
   tags: ["relevant", "tags"],
-  confidenceScore: 0.9
+  confidenceScore: 0.9,
+  planId: "<your-plan-id>"
 })
 ```
+
+**Important**: Always include a descriptive `title` — it powers semantic search. Always pass `planId` if you have an active plan.
 
 ## What NOT to Capture
 
@@ -59,12 +63,20 @@ Only store knowledge that **saves significant time in future sessions**. Do NOT 
 - **All entries in English** — regardless of conversation language
 - **Be concise but complete** — full context without re-investigation needed
 
+## Automatic Deduplication
+
+`addKnowledge()` checks for semantically similar entries (threshold 0.85). If a match is found, it updates the existing entry instead of creating a duplicate. The response includes `deduplicated: true`.
+
 ## Scope Guidelines
 
 | Scope | When |
 |-------|------|
-| `workspace:<project>` | Knowledge specific to one project |
-| `global` | Cross-project knowledge |
+| `workspace:<project>` | Knowledge specific to one project — architecture decisions, project-specific patterns |
+| `global` | Cross-project knowledge (language patterns, tools, conventions, framework gotchas) |
+
+### Prefer Global Scope for Reusable Knowledge
+
+**Actively create `scope: "global"` entries** for insights about languages, frameworks, libraries, tools, and general patterns. If it took investigation to discover and applies beyond this codebase, make it global.
 
 ## Pre-Capture: Plan Completion Check
 

@@ -3,18 +3,27 @@
 ## v1.0.12
 
 ### Fixes
-- **Fix plan deduplication KNN saturation**: increased KNN k from 5 to 50 in `findSimilarActivePlans()`. With many completed plans, the top-5 nearest neighbors were all completed — after status filtering, 0 draft/active candidates survived, causing dedup to miss obvious duplicates
-- **Scope-filter activePlan hint in getKnowledge**: the `activePlan` returned by `getKnowledge` now filters by the caller's `scope` parameter, preventing cross-workspace plan hints (e.g., showing a grid-terminal plan while working in knowledge-base)
+- **Fix plan dedup KNN saturation**: rewrote `findSimilarActivePlans()` to use pre-filter approach — query `plans` table for draft/active IDs first, then compute cosine similarity in JS. The old KNN approach returned from ALL plans (including completed), saturating results and hiding active duplicates. Now works correctly even with 15+ completed plans
+- **Fix knowledge embedding quality**: embeddings were generated from tags only (`tags.join(' ')`), making semantic search unreliable. Now uses full text: `${title} ${content} ${tags.join(' ')}`
+- **Scope-filter activePlan hint in getKnowledge**: the `activePlan` returned by `getKnowledge` now filters by the caller's `scope` parameter, preventing cross-workspace plan hints
 - **Add tasks to createPlan MCP tool schema**: the `tasks` property was missing from the MCP tool's input schema, causing inline tasks passed by agents to be silently dropped
+- **Refactor listPlans**: replaced 4-branch if/else with single dynamic parameterized query supporting status, scope, or both filters
 
 ### Features
-- **Auto-archive stale draft plans**: `createPlan()` now runs `archiveStaleDrafts(24)` before dedup, automatically archiving draft plans older than 24 hours. Prevents accumulation of abandoned drafts from prior sessions
+- **Auto-archive stale draft plans**: `createPlan()` now runs `archiveStaleDrafts(24)` with 1-hour throttle, automatically archiving draft plans older than 24 hours
 - **Scope parameter for listPlans**: `listPlans()` now accepts an optional `scope` parameter across repository, service, and SDK layers
+- **Knowledge semantic dedup**: `addKnowledge()` checks for similar entries in the same scope+type (threshold 0.85). If a match is found, updates the existing entry instead of creating a duplicate. Response includes `deduplicated: true`
+- **Scope regex validation**: scope field now enforced as `"global"` or `"workspace:<project-name>"` (alphanumeric, dots, hyphens, underscores) via Zod schema across all create/update/search schemas
+- **Structured plan content requirement**: all plan skill templates (Claude Code, Copilot, OpenCode) now require `content` to include Context, Approach, Files to Modify, and Verification sections. New `pre-create-plan-check.sh` hook enforces this before `createPlan()` calls
+- **Global knowledge encouragement**: capture skill templates and base instructions now actively encourage `scope: "global"` for language/framework/tool insights that apply beyond the current project
+- **Plan card timestamps**: plan card dates in the dashboard now show full date+time (hours, minutes, seconds) instead of date-only
 
 ### Tests
-- **Plan scope filtering tests**: validates `listPlans` with scope filter and combined status+scope filter
-- **Stale draft archival test**: verifies old drafts are archived while recent ones are preserved
-- **Dedup accuracy tests**: validates dedup merges similar plans in same scope and keeps plans separate across scopes
+- **KNN saturation test**: creates 15+ completed plans then verifies dedup still finds a draft in the same scope
+- **archiveStaleDrafts edge cases**: verifies active/completed plans are not archived, returns 0 on empty database
+- **listPlans backward compat**: undefined scope returns all plans
+- **Knowledge dedup**: validates dedup merges similar entries in same scope+type, keeps entries separate across different scopes
+- **Global scope knowledge**: validates knowledge creation with `scope: "global"`
 
 ## v1.0.11
 
