@@ -118,10 +118,11 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
 
       const response: Record<string, unknown> = { results };
 
-      // Cross-session continuity: detect existing plans
+      // Cross-session continuity: detect existing plans (scope-filtered)
       try {
-        const activePlans = sdk.listPlans(1, 'active');
-        const draftPlans = sdk.listPlans(1, 'draft');
+        const planScope = params.scope;
+        const activePlans = sdk.listPlans(1, 'active', planScope);
+        const draftPlans = sdk.listPlans(1, 'draft', planScope);
         const currentPlan = activePlans[0] || draftPlans[0];
         if (currentPlan) {
           const tasks = sdk.listPlanTasks(currentPlan.id);

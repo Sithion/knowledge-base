@@ -175,3 +175,107 @@ test('multiple plans can exist', async () => {
   expect(ids).toContain(p2.id);
   expect(ids).toContain(p3.id);
 });
+
+// ─── Fix v1.0.12: Plan dedup + scope filter + stale archive ─────
+
+test('listPlans with scope filter', async () => {
+  const planA = await factory.plan({ title: 'Scope Plan A', scope: 'workspace:project-a' });
+  const planB = await factory.plan({ title: 'Scope Plan B', scope: 'workspace:project-b' });
+
+  const scopeA = ctx.service.listPlans(50, undefined, 'workspace:project-a');
+  const scopeAIds = scopeA.map((p) => p.id);
+  expect(scopeAIds).toContain(planA.id);
+  expect(scopeAIds).not.toContain(planB.id);
+
+  const scopeB = ctx.service.listPlans(50, undefined, 'workspace:project-b');
+  const scopeBIds = scopeB.map((p) => p.id);
+  expect(scopeBIds).toContain(planB.id);
+  expect(scopeBIds).not.toContain(planA.id);
+});
+
+test('listPlans with status + scope filter combined', async () => {
+  const draft = await factory.plan({ title: 'Combo Draft', scope: 'workspace:combo-test' });
+  const active = await factory.plan({ title: 'Combo Active', scope: 'workspace:combo-test' });
+  ctx.service.updatePlan(active.id, { status: KnowledgeStatus.ACTIVE });
+  const other = await factory.plan({ title: 'Combo Other Scope', scope: 'workspace:other' });
+
+  const result = ctx.service.listPlans(50, KnowledgeStatus.DRAFT, 'workspace:combo-test');
+  const ids = result.map((p) => p.id);
+  expect(ids).toContain(draft.id);
+  expect(ids).not.toContain(active.id);
+  expect(ids).not.toContain(other.id);
+});
+
+test('archiveStaleDrafts archives old drafts and keeps recent ones', async () => {
+  // Create a draft and manually backdate it via repository
+  const stalePlan = await factory.plan({ title: 'Stale Draft Plan' });
+  const recentPlan = await factory.plan({ title: 'Recent Draft Plan' });
+
+  // Backdate the stale plan to 48 hours ago
+  const oldDate = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  ctx.repository.updatePlan(stalePlan.id, { });
+  // Directly update via sqlite to backdate
+  (ctx as any).sqlite.prepare('UPDATE plans SET updated_at = ? WHERE id = ?').run(oldDate, stalePlan.id);
+
+  const archived = ctx.service.archiveStaleDrafts(24);
+  expect(archived).toBeGreaterThanOrEqual(1);
+
+  const staleAfter = ctx.service.getPlanById(stalePlan.id);
+  expect(staleAfter!.status).toBe(KnowledgeStatus.ARCHIVED);
+
+  const recentAfter = ctx.service.getPlanById(recentPlan.id);
+  expect(recentAfter!.status).toBe(KnowledgeStatus.DRAFT);
+});
+
+test('createPlan dedup merges into existing draft in same scope', async () => {
+  const scope = 'workspace:dedup-test';
+
+  // Create initial plan (skip dedup to establish it)
+  const original = await ctx.service.createPlan({
+    title: 'Implement user authentication',
+    content: 'Add JWT-based auth to the API',
+    tags: ['auth'],
+    scope,
+    source: 'test',
+    tasks: [{ description: 'Setup JWT middleware' }],
+    skipDedup: true,
+  });
+  expect(original.status).toBe(KnowledgeStatus.DRAFT);
+
+  // Create similar plan WITHOUT skipDedup — should dedup into the original
+  const duplicate = await ctx.service.createPlan({
+    title: 'Implement user authentication system',
+    content: 'Add JWT-based authentication to the API',
+    tags: ['auth'],
+    scope,
+    source: 'test',
+    tasks: [{ description: 'Add auth routes' }, { description: 'Add auth tests' }],
+  });
+
+  // Should return the same plan ID (deduped)
+  expect(duplicate.id).toBe(original.id);
+  expect((duplicate as any).deduplicated).toBe(true);
+  expect((duplicate as any).deduplicatedAction).toBe('draft_plan_updated');
+});
+
+test('createPlan dedup does NOT merge across different scopes', async () => {
+  const plan1 = await ctx.service.createPlan({
+    title: 'Cross-scope dedup test plan',
+    content: 'This plan should not dedup across scopes',
+    tags: ['dedup'],
+    scope: 'workspace:scope-x',
+    source: 'test',
+    skipDedup: true,
+  });
+
+  const plan2 = await ctx.service.createPlan({
+    title: 'Cross-scope dedup test plan',
+    content: 'This plan should not dedup across scopes',
+    tags: ['dedup'],
+    scope: 'workspace:scope-y',
+    source: 'test',
+  });
+
+  // Different scopes → different plans
+  expect(plan2.id).not.toBe(plan1.id);
+});

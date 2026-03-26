@@ -1,5 +1,21 @@
 # Patch Notes
 
+## v1.0.12
+
+### Fixes
+- **Fix plan deduplication KNN saturation**: increased KNN k from 5 to 50 in `findSimilarActivePlans()`. With many completed plans, the top-5 nearest neighbors were all completed — after status filtering, 0 draft/active candidates survived, causing dedup to miss obvious duplicates
+- **Scope-filter activePlan hint in getKnowledge**: the `activePlan` returned by `getKnowledge` now filters by the caller's `scope` parameter, preventing cross-workspace plan hints (e.g., showing a grid-terminal plan while working in knowledge-base)
+- **Add tasks to createPlan MCP tool schema**: the `tasks` property was missing from the MCP tool's input schema, causing inline tasks passed by agents to be silently dropped
+
+### Features
+- **Auto-archive stale draft plans**: `createPlan()` now runs `archiveStaleDrafts(24)` before dedup, automatically archiving draft plans older than 24 hours. Prevents accumulation of abandoned drafts from prior sessions
+- **Scope parameter for listPlans**: `listPlans()` now accepts an optional `scope` parameter across repository, service, and SDK layers
+
+### Tests
+- **Plan scope filtering tests**: validates `listPlans` with scope filter and combined status+scope filter
+- **Stale draft archival test**: verifies old drafts are archived while recent ones are preserved
+- **Dedup accuracy tests**: validates dedup merges similar plans in same scope and keeps plans separate across scopes
+
 ## v1.0.11
 
 ### Fixes

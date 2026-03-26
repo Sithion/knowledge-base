@@ -169,6 +169,9 @@ export class KnowledgeService {
     const { tasks, skipDedup, ...planInput } = input;
     const embedding = await this.embeddingProvider.embed(`${input.title} ${input.content}`);
 
+    // ─── Housekeeping: archive stale drafts before dedup ───
+    try { this.repository.archiveStaleDrafts(24); } catch { /* best-effort */ }
+
     // ─── Dedup: check for semantically similar active/draft plans in same scope ───
     const similarPlans = skipDedup ? [] : this.repository.findSimilarActivePlans(embedding, input.scope, 0.5);
     if (similarPlans.length > 0) {
@@ -256,9 +259,13 @@ export class KnowledgeService {
     return rows.map((r) => this.toPlan(r));
   }
 
-  listPlans(limit = 20, status?: string): Plan[] {
-    const rows = this.repository.listPlans(limit, status);
+  listPlans(limit = 20, status?: string, scope?: string): Plan[] {
+    const rows = this.repository.listPlans(limit, status, scope);
     return rows.map((r) => this.toPlan(r));
+  }
+
+  archiveStaleDrafts(maxAgeHours = 24): number {
+    return this.repository.archiveStaleDrafts(maxAgeHours);
   }
 
   async importPlans(plans: (CreatePlanInput & { tasks?: { description: string; status?: string; priority?: string; notes?: string | null }[] })[]): Promise<{ imported: number; skipped: number; errors: string[] }> {

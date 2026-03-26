@@ -322,16 +322,22 @@ export class KnowledgeRepository {
     return this.sqlite.prepare('SELECT * FROM plans ORDER BY created_at DESC').all() as any[];
   }
 
-  listPlans(limit = 20, status?: string): any[] {
+  listPlans(limit = 20, status?: string, scope?: string): any[] {
+    if (status && scope) {
+      return this.sqlite.prepare('SELECT * FROM plans WHERE status = ? AND scope = ? ORDER BY created_at DESC LIMIT ?').all(status, scope, limit) as any[];
+    }
     if (status) {
       return this.sqlite.prepare('SELECT * FROM plans WHERE status = ? ORDER BY created_at DESC LIMIT ?').all(status, limit) as any[];
+    }
+    if (scope) {
+      return this.sqlite.prepare('SELECT * FROM plans WHERE scope = ? ORDER BY created_at DESC LIMIT ?').all(scope, limit) as any[];
     }
     return this.sqlite.prepare('SELECT * FROM plans ORDER BY created_at DESC LIMIT ?').all(limit) as any[];
   }
 
   findSimilarActivePlans(embedding: number[], scope: string, threshold = 0.5): { plan: any; similarity: number }[] {
     try {
-      const candidates = searchPlansKnn(this.sqlite, embedding, 5);
+      const candidates = searchPlansKnn(this.sqlite, embedding, 50);
       if (!candidates.length) return [];
 
       const distanceMap = new Map(candidates.map(c => [c.id, c.distance]));
@@ -349,6 +355,13 @@ export class KnowledgeRepository {
     } catch {
       return [];
     }
+  }
+
+  archiveStaleDrafts(maxAgeHours = 24): number {
+    const cutoff = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000).toISOString();
+    return this.sqlite.prepare(
+      "UPDATE plans SET status = 'archived', updated_at = ? WHERE status = 'draft' AND updated_at < ?"
+    ).run(new Date().toISOString(), cutoff).changes;
   }
 
   deletePlanTasks(planId: string): number {

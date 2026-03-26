@@ -274,9 +274,9 @@ export class KnowledgeSDK {
     return this.service!.deletePlan(id);
   }
 
-  listPlans(limit = 20, status?: string): Plan[] {
+  listPlans(limit = 20, status?: string, scope?: string): Plan[] {
     this.ensureInitialized();
-    return this.service!.listPlans(limit, status);
+    return this.service!.listPlans(limit, status, scope);
   }
 
   async addPlanRelation(planId: string, knowledgeId: string, relationType: 'input' | 'output'): Promise<void> {
