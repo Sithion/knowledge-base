@@ -49,13 +49,13 @@ fn run_setup(app: &mut tauri::App) -> Result<(), String> {
         .ok_or_else(|| "Main window not found".to_string())?;
 
     tauri::async_runtime::spawn(async move {
-        let ready = sidecar::wait_for_ready(port, &token, Duration::from_secs(15)).await;
+        let ready = sidecar::wait_for_ready(port, &token, Duration::from_secs(30)).await;
         if ready {
             let url = format!("http://localhost:{}", port);
             let _ = window.navigate(url.parse().unwrap());
         } else {
             let _ = window.eval(&format!(
-                "document.body.innerHTML = '<div style=\"display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;font-family:sans-serif;color:#ef4444;background:#0a0a1a\"><h2>Failed to start server</h2><p>Make sure Node.js is installed and Ollama is running.</p><p>Port: {}</p></div>'",
+                "document.body.innerHTML = '<div style=\"display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;font-family:sans-serif;color:#ef4444;background:#0a0a1a;padding:32px;text-align:center\"><h2>Failed to start server</h2><p>The server did not respond within 30 seconds on port {}.</p><p style=\"color:#fca5a5\">Try restarting the app. If the issue persists, check that Node.js v20 is installed.</p></div>'",
                 port
             ));
         }

@@ -145,17 +145,7 @@ Pass an array to addKnowledge to create multiple entries at once.
     }
   };
 
-  const initOk = await tryInitSDK();
-  if (initOk) await seedSystemKnowledge();
-  if (!initOk) {
-    console.warn(`SDK initialization failed (degraded mode): ${sdkError}`);
-    retryInterval = setInterval(async () => {
-      await tryInitSDK();
-      if (sdkReady) {
-        console.log('SDK initialized successfully (recovered from degraded mode)');
-      }
-    }, 10000);
-  }
+  // SDK initialization moved after app.listen() — see bottom of start()
 
   // Periodic maintenance every 6 hours: cleanup old ops log + WAL checkpoint
   setInterval(() => {
@@ -1553,7 +1543,28 @@ Pass an array to addKnowledge to create multiple entries at once.
   // ─── Start server ──────────────────────────────────────────────
 
   await app.listen({ port: PORT, host: '127.0.0.1' });
-  console.log(`Dashboard API running at http://localhost:${PORT}${sdkReady ? '' : ' (degraded mode)'}`);
+  console.log(`Dashboard API running at http://localhost:${PORT} (initializing SDK...)`);
+
+  // Initialize SDK in background — don't block server startup.
+  // On fresh installs, ensureModel() pulls the Ollama model (streaming download)
+  // which can take minutes. The health endpoint returns 200+token regardless of
+  // SDK state, and all data routes guard with ensureReady() (503).
+  (async () => {
+    const initOk = await tryInitSDK();
+    if (initOk) {
+      console.log('SDK initialized successfully');
+      await seedSystemKnowledge();
+    } else {
+      console.warn(`SDK initialization failed (degraded mode): ${sdkError}`);
+      retryInterval = setInterval(async () => {
+        const ok = await tryInitSDK();
+        if (ok) {
+          console.log('SDK initialized (recovered from degraded mode)');
+          await seedSystemKnowledge();
+        }
+      }, 10000);
+    }
+  })();
 
   const shutdown = async () => {
     if (sdkReady) await sdk.close();
