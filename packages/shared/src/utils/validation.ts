@@ -7,6 +7,11 @@ export const knowledgeStatusSchema = z.nativeEnum(KnowledgeStatus);
 export const taskStatusSchema = z.nativeEnum(TaskStatus);
 export const taskPrioritySchema = z.nativeEnum(TaskPriority);
 
+const scopeSchema = z.string().regex(
+  /^(global|workspace:[a-zA-Z0-9._-]+)$/,
+  'Scope must be "global" or "workspace:<project-name>" (alphanumeric, dots, hyphens, underscores)'
+);
+
 // ─── Knowledge ────────────────────────────────────────────────
 
 export const createKnowledgeSchema = z.object({
@@ -14,7 +19,7 @@ export const createKnowledgeSchema = z.object({
   content: z.string().min(1, 'Content is required'),
   tags: z.array(z.string().min(1)).min(1, 'At least one tag is required'),
   type: knowledgeTypeSchema,
-  scope: z.string().min(1, 'Scope is required'),
+  scope: scopeSchema,
   source: z.string().min(1, 'Source is required'),
   confidenceScore: z.number().min(0).max(1).optional().default(1.0),
   expiresAt: z.date().nullable().optional().default(null),
@@ -27,7 +32,7 @@ export const updateKnowledgeSchema = z.object({
   content: z.string().min(1).optional(),
   tags: z.array(z.string().min(1)).min(1).optional(),
   type: knowledgeTypeSchema.optional(),
-  scope: z.string().min(1).optional(),
+  scope: scopeSchema.optional(),
   source: z.string().min(1).optional(),
   confidenceScore: z.number().min(0).max(1).optional(),
   expiresAt: z.date().nullable().optional(),
@@ -38,7 +43,7 @@ export const updateKnowledgeSchema = z.object({
 export const searchOptionsSchema = z.object({
   tags: z.array(z.string()).optional(),
   type: knowledgeTypeSchema.optional(),
-  scope: z.string().optional(),
+  scope: scopeSchema.optional(),
   limit: z.number().int().min(1).max(100).optional().default(DEFAULT_SEARCH_LIMIT),
   threshold: z.number().min(0).max(1).optional().default(DEFAULT_SIMILARITY_THRESHOLD),
 });
@@ -49,16 +54,20 @@ export const createPlanSchema = z.object({
   title: z.string().min(1, 'Title is required'),
   content: z.string().min(1, 'Content is required'),
   tags: z.array(z.string().min(1)).min(1, 'At least one tag is required'),
-  scope: z.string().min(1, 'Scope is required'),
+  scope: scopeSchema,
   source: z.string().min(1, 'Source is required'),
   status: knowledgeStatusSchema.optional().default(KnowledgeStatus.DRAFT),
+  tasks: z.array(z.object({
+    description: z.string().min(1),
+    priority: z.enum(['low', 'medium', 'high']).optional(),
+  })).optional(),
 });
 
 export const updatePlanSchema = z.object({
   title: z.string().min(1).optional(),
   content: z.string().min(1).optional(),
   tags: z.array(z.string().min(1)).min(1).optional(),
-  scope: z.string().min(1).optional(),
+  scope: scopeSchema.optional(),
   status: knowledgeStatusSchema.optional(),
   source: z.string().min(1).optional(),
 });

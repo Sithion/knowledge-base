@@ -118,26 +118,28 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
 
       const response: Record<string, unknown> = { results };
 
-      // Cross-session continuity: detect existing plans
-      try {
-        const activePlans = sdk.listPlans(1, 'active');
-        const draftPlans = sdk.listPlans(1, 'draft');
-        const currentPlan = activePlans[0] || draftPlans[0];
-        if (currentPlan) {
-          const tasks = sdk.listPlanTasks(currentPlan.id);
-          const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
-          response.activePlan = {
-            id: currentPlan.id,
-            title: currentPlan.title,
-            status: currentPlan.status,
-            scope: currentPlan.scope,
-            taskCount: tasks.length,
-            completedTasks,
-            hint: `You have an active plan (${completedTasks}/${tasks.length} tasks done). Use updatePlan(planId, ...) to modify it or updatePlanTask() to track progress. Do NOT call createPlan() — it will auto-deduplicate into this plan.`,
-          };
+      // Cross-session continuity: detect existing plans (scope-filtered, skip if no scope)
+      if (params.scope) {
+        try {
+          const activePlans = sdk.listPlans(1, 'active', params.scope);
+          const draftPlans = sdk.listPlans(1, 'draft', params.scope);
+          const currentPlan = activePlans[0] || draftPlans[0];
+          if (currentPlan) {
+            const tasks = sdk.listPlanTasks(currentPlan.id);
+            const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
+            response.activePlan = {
+              id: currentPlan.id,
+              title: currentPlan.title,
+              status: currentPlan.status,
+              scope: currentPlan.scope,
+              taskCount: tasks.length,
+              completedTasks,
+              hint: `You have an active plan (${completedTasks}/${tasks.length} tasks done). Use updatePlan(planId, ...) to modify it or updatePlanTask() to track progress. Do NOT call createPlan() — it will auto-deduplicate into this plan.`,
+            };
+          }
+        } catch {
+          // Best-effort
         }
-      } catch {
-        // Best-effort
       }
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };

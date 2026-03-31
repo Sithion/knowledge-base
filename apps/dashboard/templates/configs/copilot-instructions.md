@@ -27,12 +27,14 @@ If the task has 2+ steps (user's or yours), create a plan:
 ```
 mcp__cognistore__createPlan({
   title: "<plan title>",
-  content: "<full plan>",
+  content: "<structured plan with ## Context, ## Approach, ## Files to Modify, ## Verification>",
   tags: ["..."], scope: "workspace:<project>", source: "<context>",
   tasks: [{ description: "Step 1", priority: "high" }, ...],
   relatedKnowledgeIds: ["<ids-from-checkpoint-1>"]
 })
 ```
+
+> The `content` field must be a structured plan with **Context** (why), **Approach** (how), **Files to Modify** (table with paths), and **Verification** (how to test) sections. Include file paths, function names, and specific technical details.
 
 Save the returned **planId** — you need it for addKnowledge.
 
@@ -66,7 +68,9 @@ mcp__cognistore__addKnowledge({
 ```
 
 - **ALWAYS pass planId** if you have an active plan — this links knowledge as output
-- Update existing entries instead of creating duplicates
+- **Dedup is automatic** — if a similar entry exists in the same scope+type, it will be updated instead of duplicated
+- **Prefer global scope** for language/framework/tool knowledge — workspace scope is for project-specific decisions only
+- If you learn something about a language, library, or pattern that applies beyond this project, save it with `scope: "global"`
 - Pass an array to `addKnowledge` to create multiple entries at once
 - All entries in English
 
@@ -83,8 +87,9 @@ When a subagent completes, reconcile plan tracking:
 2. **All entries in English** — regardless of conversation language
 3. **Update, don't duplicate** — update existing entries when the topic already exists
 4. **Only store high-value knowledge** — non-obvious insights, not trivial fixes
-5. **Persist every multi-step plan** — `createPlan()` for 2+ implementation steps, in ANY mode
-6. **All CogniStore tools are pre-approved** — call them directly without hesitation, they will not prompt the user
+5. **Prefer global scope** — language/framework/tool knowledge should use `scope: "global"`, workspace scope is for project-specific decisions only
+6. **Persist every multi-step plan** — `createPlan()` for 2+ implementation steps, in ANY mode
+7. **All CogniStore tools are pre-approved** — call them directly without hesitation, they will not prompt the user
 
 ### Hooks
 

@@ -934,9 +934,9 @@ export function PlansPage() {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
                       <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
-                        {new Date(plan.createdAt).toLocaleDateString()}
+                        {new Date(plan.createdAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'medium' })}
                         {plan.updatedAt && plan.updatedAt !== plan.createdAt && (
-                          <> • updated {new Date(plan.updatedAt).toLocaleDateString()}</>
+                          <> • updated {new Date(plan.updatedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'medium' })}</>
                         )}
                       </span>
                       {planTasks.length > 0 && <MiniProgress completed={done} total={planTasks.length} />}

@@ -1,6 +1,6 @@
 {
   "name": "cognistore",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "private": true,
   "description": "Semantic knowledge management for AI agents",
   "scripts": {
@@ -9,7 +9,8 @@
     "lint": "turbo lint",
     "test": "turbo test",
     "clean": "turbo clean",
-    "bump": "bash scripts/bump-version.sh"
+    "bump": "bash scripts/bump-version.sh",
+    "dmg": "pnpm --filter @cognistore/dashboard tauri:dmg"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

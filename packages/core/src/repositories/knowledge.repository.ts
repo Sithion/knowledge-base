@@ -322,33 +322,56 @@ export class KnowledgeRepository {
     return this.sqlite.prepare('SELECT * FROM plans ORDER BY created_at DESC').all() as any[];
   }
 
-  listPlans(limit = 20, status?: string): any[] {
-    if (status) {
-      return this.sqlite.prepare('SELECT * FROM plans WHERE status = ? ORDER BY created_at DESC LIMIT ?').all(status, limit) as any[];
-    }
-    return this.sqlite.prepare('SELECT * FROM plans ORDER BY created_at DESC LIMIT ?').all(limit) as any[];
+  listPlans(limit = 20, status?: string, scope?: string): any[] {
+    const conditions: string[] = [];
+    const params: any[] = [];
+    if (status) { conditions.push('status = ?'); params.push(status); }
+    if (scope) { conditions.push('scope = ?'); params.push(scope); }
+    const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
+    params.push(limit);
+    return this.sqlite.prepare(`SELECT * FROM plans ${where} ORDER BY created_at DESC LIMIT ?`).all(...params) as any[];
   }
 
   findSimilarActivePlans(embedding: number[], scope: string, threshold = 0.5): { plan: any; similarity: number }[] {
     try {
-      const candidates = searchPlansKnn(this.sqlite, embedding, 5);
+      // Pre-filter: only draft/active plans in scope (avoids KNN saturation from completed plans)
+      const candidates = this.sqlite.prepare(
+        "SELECT id FROM plans WHERE scope = ? AND status IN ('draft', 'active')"
+      ).all(scope) as { id: string }[];
       if (!candidates.length) return [];
 
-      const distanceMap = new Map(candidates.map(c => [c.id, c.distance]));
+      // Fetch embeddings for those candidates only
       const ids = candidates.map(c => c.id);
       const placeholders = ids.map(() => '?').join(',');
+      const rows = this.sqlite.prepare(
+        `SELECT id, embedding FROM plans_embeddings WHERE id IN (${placeholders})`
+      ).all(...ids) as { id: string; embedding: Buffer }[];
+      if (!rows.length) return [];
 
-      const plans = this.sqlite.prepare(
-        `SELECT * FROM plans WHERE id IN (${placeholders}) AND scope = ? AND status IN ('draft', 'active') ORDER BY updated_at DESC`
-      ).all(...ids, scope) as any[];
-
-      return plans
-        .map(plan => ({ plan, similarity: 1 - (distanceMap.get(plan.id) ?? 1) }))
+      // Compute cosine similarity in JS
+      const queryVec = new Float32Array(embedding);
+      return rows
+        .map(row => {
+          const vec = new Float32Array(row.embedding.buffer, row.embedding.byteOffset, row.embedding.byteLength / 4);
+          const sim = cosineSimilarity(queryVec, vec);
+          return { id: row.id, similarity: sim };
+        })
         .filter(r => r.similarity >= threshold)
-        .sort((a, b) => b.similarity - a.similarity);
+        .sort((a, b) => b.similarity - a.similarity)
+        .map(r => ({
+          plan: this.sqlite.prepare('SELECT * FROM plans WHERE id = ?').get(r.id),
+          similarity: r.similarity,
+        }));
     } catch {
       return [];
     }
+  }
+
+  archiveStaleDrafts(maxAgeHours = 24): number {
+    const cutoff = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000).toISOString();
+    return this.sqlite.prepare(
+      "UPDATE plans SET status = 'archived', updated_at = ? WHERE status = 'draft' AND updated_at < ?"
+    ).run(new Date().toISOString(), cutoff).changes;
   }
 
   deletePlanTasks(planId: string): number {
@@ -526,4 +549,16 @@ export class KnowledgeRepository {
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     return this.sqlite.prepare('DELETE FROM operations_log WHERE created_at < ?').run(cutoff).changes;
   }
+}
+
+/** Cosine similarity between two Float32Arrays: dot(a,b) / (|a| * |b|) */
+function cosineSimilarity(a: Float32Array, b: Float32Array): number {
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  const denom = Math.sqrt(magA) * Math.sqrt(magB);
+  return denom === 0 ? 0 : dot / denom;
 }

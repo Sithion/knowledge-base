@@ -20,6 +20,16 @@
           }
         ],
         "matcher": "EnterPlanMode"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_SKILL_DIR}/hooks/pre-create-plan-check.sh",
+            "timeout": 5
+          }
+        ],
+        "matcher": "mcp__cognistore__createPlan"
       }
     ],
     "PostToolUse": [

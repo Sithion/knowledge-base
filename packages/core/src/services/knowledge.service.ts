@@ -16,6 +16,8 @@ export interface EmbeddingProvider {
 }
 
 export class KnowledgeService {
+  private lastArchiveRunMs = 0;
+
   constructor(
     private repository: KnowledgeRepository,
     private embeddingProvider: EmbeddingProvider
@@ -25,10 +27,34 @@ export class KnowledgeService {
     try { this.repository.logOperation(op); } catch { /* silent */ }
   }
 
-  async add(input: CreateKnowledgeInput): Promise<KnowledgeEntry> {
-    const tagsText = input.tags.join(' ');
-    const embedding = await this.embeddingProvider.embed(tagsText);
-    const entry = await this.repository.create({ ...input, embedding });
+  private buildEmbeddingText(title: string, content: string, tags: string[]): string {
+    return `${title} ${content} ${tags.join(' ')}`;
+  }
+
+  async add(input: CreateKnowledgeInput): Promise<KnowledgeEntry & { deduplicated?: boolean }> {
+    const { skipDedup, ...rest } = input;
+    const embeddingText = this.buildEmbeddingText(rest.title, rest.content, rest.tags);
+    const embedding = await this.embeddingProvider.embed(embeddingText);
+
+    // Dedup: check for existing similar entry in same scope + type
+    if (!skipDedup) {
+      try {
+        const similar = await this.repository.searchBySimilarity(embedding, {
+          scope: rest.scope,
+          type: rest.type,
+          limit: 1,
+          threshold: 0.85,
+        });
+        if (similar.length > 0) {
+          const existing = similar[0].entry;
+          const updated = await this.repository.update(existing.id, { ...rest, embedding });
+          this.logOp('write');
+          return { ...this.toKnowledgeEntry(updated!), deduplicated: true };
+        }
+      } catch { /* best-effort dedup — proceed with insert on failure */ }
+    }
+
+    const entry = await this.repository.create({ ...rest, embedding });
     this.logOp('write');
     return this.toKnowledgeEntry(entry);
   }
@@ -50,8 +76,12 @@ export class KnowledgeService {
 
   async update(id: string, updates: UpdateKnowledgeInput): Promise<KnowledgeEntry | null> {
     let embedding: number[] | undefined;
-    if (updates.tags && updates.tags.length > 0) {
-      embedding = await this.embeddingProvider.embed(updates.tags.join(' '));
+    if (updates.content || updates.title || updates.tags) {
+      const current = await this.repository.findById(id);
+      const title = updates.title || current?.title || '';
+      const content = updates.content || current?.content || '';
+      const tags = updates.tags || (current?.tags ?? []);
+      embedding = await this.embeddingProvider.embed(this.buildEmbeddingText(title, content, tags));
     }
     const entry = await this.repository.update(id, { ...updates, embedding });
     if (entry) this.logOp('write');
@@ -169,6 +199,12 @@ export class KnowledgeService {
     const { tasks, skipDedup, ...planInput } = input;
     const embedding = await this.embeddingProvider.embed(`${input.title} ${input.content}`);
 
+    // ─── Housekeeping: archive stale drafts before dedup (throttled to 1h) ───
+    const now = Date.now();
+    if (now - this.lastArchiveRunMs > 3_600_000) {
+      try { this.repository.archiveStaleDrafts(24); this.lastArchiveRunMs = now; } catch { /* best-effort */ }
+    }
+
     // ─── Dedup: check for semantically similar active/draft plans in same scope ───
     const similarPlans = skipDedup ? [] : this.repository.findSimilarActivePlans(embedding, input.scope, 0.5);
     if (similarPlans.length > 0) {
@@ -256,9 +292,13 @@ export class KnowledgeService {
     return rows.map((r) => this.toPlan(r));
   }
 
-  listPlans(limit = 20, status?: string): Plan[] {
-    const rows = this.repository.listPlans(limit, status);
+  listPlans(limit = 20, status?: string, scope?: string): Plan[] {
+    const rows = this.repository.listPlans(limit, status, scope);
     return rows.map((r) => this.toPlan(r));
+  }
+
+  archiveStaleDrafts(maxAgeHours = 24): number {
+    return this.repository.archiveStaleDrafts(maxAgeHours);
   }
 
   async importPlans(plans: (CreatePlanInput & { tasks?: { description: string; status?: string; priority?: string; notes?: string | null }[] })[]): Promise<{ imported: number; skipped: number; errors: string[] }> {

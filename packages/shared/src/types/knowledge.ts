@@ -55,6 +55,7 @@ export interface CreateKnowledgeInput {
   expiresAt?: Date | null;
   relatedIds?: string[] | null;
   agentId?: string | null;
+  skipDedup?: boolean;
 }
 
 export interface UpdateKnowledgeInput {
