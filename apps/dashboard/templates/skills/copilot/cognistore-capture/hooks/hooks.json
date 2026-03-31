@@ -7,6 +7,19 @@
         "bash": "${COPILOT_SKILL_DIR}/hooks/session-end-reminder.sh",
         "timeoutSec": 5
       }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/post-add-knowledge-marker.sh",
+        "timeoutSec": 5,
+        "toolName": "addKnowledge"
+      },
+      {
+        "type": "command",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/post-capture-nudge.sh",
+        "timeoutSec": 5
+      }
     ]
   }
 }

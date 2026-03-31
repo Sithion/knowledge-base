@@ -1,9 +1,12 @@
 # Patch Notes
 
-## v1.0.14
+## v1.0.15
 
 ### Fixes
 - **Serialize publish pipeline to eliminate race conditions**: `publish-mcp`, `create-release`, and `build-web` jobs ran in parallel with no dependency chain, causing intermittent pipeline failures. Added `needs` directives to create serial chain: `publish-mcp → create-release → build-web → publish-tauri`. Each job still handles its own setup (fast via pnpm/Turbo cache). npm publish runs first so failures stop the pipeline before creating releases or building desktop apps unnecessarily.
+
+### Improvements
+- **Mid-session knowledge capture enforcement**: Agents were only reminded to capture knowledge at session end (Stop/sessionEnd hook), making it easy to skip. Added PostToolUse hooks that nudge agents during work — after 10+ edits without calling `addKnowledge()`, a prescriptive reminder fires every 5th edit. Positive reinforcement: calling `addKnowledge()` sets a marker that silences all nudges. Stop/sessionEnd hooks are now context-aware: lighter reminder if knowledge was captured, very insistent if not. Applied to both Claude Code and Copilot skill templates.
 
 ## v1.0.13
 
