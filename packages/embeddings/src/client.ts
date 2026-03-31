@@ -2,6 +2,7 @@ import {
   DEFAULT_OLLAMA_HOST,
   DEFAULT_EMBEDDING_MODEL,
   DEFAULT_EMBEDDING_DIMENSIONS,
+  OLLAMA_NATIVE_DIMENSIONS,
 } from '@cognistore/shared';
 import type { EmbeddingRequest, EmbeddingResponse, OllamaTagsResponse } from './types.js';
 
@@ -10,6 +11,7 @@ export interface OllamaClientConfig {
   model?: string;
   dimensions?: number;
   maxRetries?: number;
+  maxInputChars?: number;
 }
 
 export class OllamaEmbeddingClient {
@@ -17,18 +19,27 @@ export class OllamaEmbeddingClient {
   private model: string;
   private dimensions: number;
   private maxRetries: number;
+  private maxInputChars: number;
 
   constructor(config?: OllamaClientConfig) {
     this.host = config?.host ?? (process.env.OLLAMA_HOST ?? DEFAULT_OLLAMA_HOST);
     this.model = config?.model ?? (process.env.OLLAMA_MODEL ?? DEFAULT_EMBEDDING_MODEL);
     this.dimensions = config?.dimensions ?? (Number(process.env.EMBEDDING_DIMENSIONS) || DEFAULT_EMBEDDING_DIMENSIONS);
     this.maxRetries = config?.maxRetries ?? 3;
+    this.maxInputChars = config?.maxInputChars ?? 2000;
+  }
+
+  private truncateText(text: string, maxChars: number): string {
+    if (text.length <= maxChars) return text;
+    const truncated = text.slice(0, maxChars);
+    const lastSpace = truncated.lastIndexOf(' ');
+    return lastSpace > maxChars * 0.5 ? truncated.slice(0, lastSpace) : truncated;
   }
 
   async embed(text: string): Promise<number[]> {
     const body: EmbeddingRequest = {
       model: this.model,
-      prompt: text,
+      prompt: this.truncateText(text, this.maxInputChars),
     };
 
     const response = await this.fetchWithRetry(`${this.host}/api/embeddings`, {
@@ -48,11 +59,17 @@ export class OllamaEmbeddingClient {
       throw new Error('Invalid embedding response from Ollama');
     }
 
-    if (data.embedding.length !== this.dimensions) {
+    // nomic-embed-text returns 768 dims natively; we truncate via Matryoshka (MRL)
+    if (data.embedding.length < this.dimensions) {
       throw new Error(
-        `Embedding dimension mismatch: expected ${this.dimensions}, got ${data.embedding.length}. ` +
+        `Embedding dimension mismatch: expected at least ${this.dimensions}, got ${data.embedding.length}. ` +
         `Check that OLLAMA_MODEL and EMBEDDING_DIMENSIONS are compatible.`
       );
+    }
+
+    // Matryoshka truncation: first N dims are a valid lower-dimensional embedding
+    if (data.embedding.length > this.dimensions) {
+      return this.truncateAndNormalize(data.embedding, this.dimensions);
     }
 
     return data.embedding;
@@ -125,6 +142,17 @@ export class OllamaEmbeddingClient {
       model: this.model,
       dimensions: this.dimensions,
     };
+  }
+
+  /**
+   * Matryoshka truncation: slice to first targetDims dimensions, then L2-normalize.
+   * L2 normalization is critical for cosine similarity quality after truncation.
+   */
+  private truncateAndNormalize(embedding: number[], targetDims: number): number[] {
+    const truncated = embedding.slice(0, targetDims);
+    const norm = Math.sqrt(truncated.reduce((sum, v) => sum + v * v, 0));
+    if (norm === 0) return truncated;
+    return truncated.map(v => v / norm);
   }
 
   private async fetchWithRetry(url: string, init: RequestInit): Promise<Response> {

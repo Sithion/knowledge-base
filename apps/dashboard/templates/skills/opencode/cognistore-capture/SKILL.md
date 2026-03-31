@@ -21,5 +21,9 @@ mcp__cognistore__addKnowledge({
 - **Prefer `scope: "global"`** for language/framework/tool insights that apply beyond this project
 - All entries in English
 
+## Pattern Checklist
+
+Before finishing, check: did you discover any reusable **pattern** about a language, framework, library, or tool? If yes, store it with `type: "pattern"`, `scope: "global"`. Patterns compound across every future project.
+
 ## Pre-Capture Check
 Before capturing knowledge, ensure any active plan tasks are marked completed.

@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { unlinkSync } from 'node:fs';
 import { createDbClient, KnowledgeRepository, KnowledgeService, type Database, type SQLiteDatabase } from '@cognistore/core';
-import { KnowledgeType, type CreateKnowledgeInput } from '@cognistore/shared';
+import { KnowledgeType, DEFAULT_EMBEDDING_DIMENSIONS, type CreateKnowledgeInput } from '@cognistore/shared';
 import type { EmbeddingProvider } from '@cognistore/core';
 
 export interface TestContext {
@@ -13,13 +13,14 @@ export interface TestContext {
   dbPath: string;
 }
 
-/** Mock embedding provider — deterministic 384-dim vector based on text hash */
+/** Mock embedding provider — deterministic vector based on text hash, matches DEFAULT_EMBEDDING_DIMENSIONS */
 function createMockEmbeddingProvider(): EmbeddingProvider {
+  const dims = DEFAULT_EMBEDDING_DIMENSIONS;
   return {
     async embed(text: string): Promise<number[]> {
-      const vec = new Array(384).fill(0);
+      const vec = new Array(dims).fill(0);
       for (let i = 0; i < text.length; i++) {
-        vec[i % 384] += text.charCodeAt(i) / 1000;
+        vec[i % dims] += text.charCodeAt(i) / 1000;
       }
       const mag = Math.sqrt(vec.reduce((s, v) => s + v * v, 0)) || 1;
       return vec.map((v) => v / mag);

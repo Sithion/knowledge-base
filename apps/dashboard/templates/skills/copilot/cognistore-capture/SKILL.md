@@ -78,6 +78,18 @@ Only store knowledge that **saves significant time in future sessions**. Do NOT 
 
 **Actively create `scope: "global"` entries** for insights about languages, frameworks, libraries, tools, and general patterns. If it took investigation to discover and applies beyond this codebase, make it global.
 
+## Pattern Checklist
+
+Before finishing, ask yourself each question. If YES to any, store a `type: "pattern"` entry with `scope: "global"`:
+
+1. Did I discover a **reusable coding pattern** for a language or framework?
+2. Did I learn a **library usage pattern** not obvious from docs?
+3. Did I find a **tool workflow** that saves time?
+4. Did I use an **architectural pattern** worth repeating?
+5. Did I discover a **testing or debugging technique**?
+
+Patterns compound across every future project — actively look for them.
+
 ## Pre-Capture: Plan Completion Check
 
 Before capturing knowledge, ensure active plans are complete:

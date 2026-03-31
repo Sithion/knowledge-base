@@ -67,7 +67,7 @@ On first launch, the setup wizard will automatically:
 2. Install [Ollama](https://ollama.com) (via Homebrew on macOS, curl on Linux)
 3. Start the Ollama service
 4. Create the local SQLite database at `~/.cognistore/knowledge.db`
-5. Pull the `all-minilm` embedding model
+5. Pull the `nomic-embed-text` embedding model
 6. Configure MCP servers and install AI skills for Claude Code, GitHub Copilot, and OpenCode
 7. Seed system knowledge entries (protocol instructions that agents receive automatically via hooks)
 8. Mark setup as complete and open the dashboard

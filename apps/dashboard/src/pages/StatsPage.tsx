@@ -618,7 +618,7 @@ export function StatsPage() {
       <WidgetCard title={t('stats.tagCloud')} state={hasTags ? 'loaded' : 'empty'}>
         {tags.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {tags.map((tag, i) => (
+            {tags.slice(0, 30).map((tag, i) => (
               <span
                 key={tag}
                 style={{

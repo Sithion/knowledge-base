@@ -226,8 +226,8 @@ The MCP server reads configuration from environment variables:
 |----------|---------|-------------|
 | `SQLITE_PATH` | `~/.cognistore/knowledge.db` | Database file path |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
-| `OLLAMA_MODEL` | `all-minilm` | Embedding model |
-| `EMBEDDING_DIMENSIONS` | `384` | Vector dimensions |
+| `OLLAMA_MODEL` | `nomic-embed-text` | Embedding model |
+| `EMBEDDING_DIMENSIONS` | `768` | Vector dimensions |
 
 ## Client Configuration
 

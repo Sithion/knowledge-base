@@ -47,11 +47,11 @@ The knowledge base uses **SQLite** with the **sqlite-vec** extension for vector 
 CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_embeddings
 USING vec0(
   id TEXT PRIMARY KEY,
-  embedding float[384] distance_metric=cosine
+  embedding float[768] distance_metric=cosine
 );
 ```
 
-This is a **sqlite-vec** virtual table that stores 384-dimensional float32 vectors with cosine distance metric. It supports KNN (k-nearest-neighbor) queries.
+This is a **sqlite-vec** virtual table that stores 768-dimensional float32 vectors with cosine distance metric. It supports KNN (k-nearest-neighbor) queries.
 
 ### plans (relational table)
 
@@ -113,7 +113,7 @@ Links plans to knowledge entries with a relation type.
 CREATE VIRTUAL TABLE IF NOT EXISTS plans_embeddings
 USING vec0(
   id TEXT PRIMARY KEY,
-  embedding float[384] distance_metric=cosine
+  embedding float[768] distance_metric=cosine
 );
 ```
 
@@ -176,7 +176,7 @@ The `createDbClient()` function runs versioned migrations and then creates sqlit
 ### Similarity Search Algorithm
 
 ```
-Input: query vector (384-dim), options (scope, tags, type, limit, threshold)
+Input: query vector (768-dim), options (scope, tags, type, limit, threshold)
 
 1. KNN Phase (sqlite-vec):
    SELECT id, distance FROM knowledge_embeddings
@@ -204,7 +204,7 @@ Tags serve as semantic anchors — they are concise, intentional descriptors cho
 
 - Search queries like "React performance" match entries tagged with `react`, `performance`, `optimization`
 - Short tag text produces more focused, discriminative embeddings
-- The `all-minilm` model (optimized for short text) performs better on tags than on paragraphs
+- The `nomic-embed-text` model performs well on concise tag text for discriminative embeddings
 
 ### Embedding Generation
 
@@ -213,8 +213,8 @@ Tags serve as semantic anchors — they are concise, intentional descriptors cho
 ```
 Input: tags array → join with space → "react performance hooks"
 POST http://localhost:11434/api/embeddings
-Body: { model: "all-minilm", prompt: "react performance hooks" }
-Response: { embedding: [0.012, -0.045, ...] }  // 384 floats
+Body: { model: "nomic-embed-text", prompt: "react performance hooks" }
+Response: { embedding: [0.012, -0.045, ...] }  // 768 floats
 ```
 
 ## File Location

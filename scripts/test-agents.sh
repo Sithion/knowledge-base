@@ -192,7 +192,7 @@ run_test() {
   local before=$(sqlite3 "$DB_PATH" "SELECT id FROM plans ORDER BY created_at DESC LIMIT 1" 2>/dev/null || echo "")
   local t0=$(date +%s) rc=0
 
-  local MCP_JSON='{"mcpServers":{"cognistore":{"type":"stdio","command":"node","args":["'"$MCP_DIST"'"],"env":{"SQLITE_PATH":"'"$DB_PATH"'","OLLAMA_HOST":"'"$OLLAMA_URL"'","OLLAMA_MODEL":"all-minilm","EMBEDDING_DIMENSIONS":"384"}}}}'
+  local MCP_JSON='{"mcpServers":{"cognistore":{"type":"stdio","command":"node","args":["'"$MCP_DIST"'"],"env":{"SQLITE_PATH":"'"$DB_PATH"'","OLLAMA_HOST":"'"$OLLAMA_URL"'","OLLAMA_MODEL":"nomic-embed-text","EMBEDDING_DIMENSIONS":"768"}}}}'
 
   case "$tool" in
     claude)
@@ -276,13 +276,13 @@ docker run -d --name "$OLLAMA_CONTAINER" -p "$OLLAMA_PORT:11434" ollama/ollama:l
 for i in $(seq 1 30); do curl -sf "$OLLAMA_URL/api/tags" > /dev/null 2>&1 && break; sleep 1; done
 curl -sf "$OLLAMA_URL/api/tags" > /dev/null 2>&1 && echo -e "${GREEN}✓${NC}" || { echo -e "${RED}✗${NC}"; exit 1; }
 echo -n "  Model... "
-docker exec "$OLLAMA_CONTAINER" ollama pull all-minilm > /dev/null 2>&1 && echo -e "${GREEN}✓${NC}"
+docker exec "$OLLAMA_CONTAINER" ollama pull nomic-embed-text > /dev/null 2>&1 && echo -e "${GREEN}✓${NC}"
 
 # Initialize DB via MCP server (creates schema + sqlite-vec virtual tables)
 echo -n "  DB... "
 # Pipe initialize JSON then close stdin — node process will init DB then exit on EOF
 (printf '{"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"init","version":"1.0"}}}\n'; sleep 5) | \
-  SQLITE_PATH="$DB_PATH" OLLAMA_HOST="$OLLAMA_URL" OLLAMA_MODEL="all-minilm" EMBEDDING_DIMENSIONS="384" \
+  SQLITE_PATH="$DB_PATH" OLLAMA_HOST="$OLLAMA_URL" OLLAMA_MODEL="nomic-embed-text" EMBEDDING_DIMENSIONS="768" \
   node "$MCP_DIST" > /dev/null 2>&1 || true
 [ -f "$DB_PATH" ] && echo -e "${GREEN}✓${NC}" || { echo -e "${RED}✗${NC}"; exit 1; }
 
@@ -338,7 +338,7 @@ echo -n "  Seed KB... "
   sleep 2
   echo '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"addKnowledge","arguments":{"title":"Glob and Grep verification pattern for test files","content":"For file verification in test workflows: (1) Use Glob with specific patterns like doc-*.md to avoid false positives from hidden directories. (2) Use Grep with case-insensitive flag (-i) or match exact capitalization (Lorem) for content validation. (3) Always verify cleanup with a final Glob check to confirm no files remain.","tags":["glob","grep","verification","testing","sandbox"],"type":"pattern","scope":"workspace:agents-test","source":"seed-data"}}}'
   sleep 2
-} | SQLITE_PATH="$DB_PATH" OLLAMA_HOST="$OLLAMA_URL" OLLAMA_MODEL="all-minilm" EMBEDDING_DIMENSIONS="384" \
+} | SQLITE_PATH="$DB_PATH" OLLAMA_HOST="$OLLAMA_URL" OLLAMA_MODEL="nomic-embed-text" EMBEDDING_DIMENSIONS="768" \
   node "$MCP_DIST" > /dev/null 2>&1 || true
 # Verify seed entries were created
 SEED_COUNT=$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM knowledge_entries WHERE source='seed-data'" 2>/dev/null || echo "0")
@@ -359,7 +359,7 @@ echo -e "${GREEN}✓${NC}"
 echo -n "  MCP swap... "
 python3 -c "
 import json, os
-mcp = {'type':'stdio','command':'node','args':['$MCP_DIST'],'env':{'SQLITE_PATH':'$DB_PATH','OLLAMA_HOST':'$OLLAMA_URL','OLLAMA_MODEL':'all-minilm','EMBEDDING_DIMENSIONS':'384'}}
+mcp = {'type':'stdio','command':'node','args':['$MCP_DIST'],'env':{'SQLITE_PATH':'$DB_PATH','OLLAMA_HOST':'$OLLAMA_URL','OLLAMA_MODEL':'nomic-embed-text','EMBEDDING_DIMENSIONS':'768'}}
 for p in ['$HOME/.claude/mcp-config.json','$HOME/.copilot/mcp-config.json']:
     if os.path.exists(p):
         with open(p) as f: d=json.load(f)
@@ -368,7 +368,7 @@ for p in ['$HOME/.claude/mcp-config.json','$HOME/.copilot/mcp-config.json']:
 oc='$HOME/.config/opencode/opencode.json'
 if os.path.exists(oc):
     with open(oc) as f: d=json.load(f)
-    d.setdefault('mcp',{})['cognistore']={'type':'local','command':['node','$MCP_DIST'],'enabled':True,'environment':{'SQLITE_PATH':'$DB_PATH','OLLAMA_HOST':'$OLLAMA_URL','OLLAMA_MODEL':'all-minilm','EMBEDDING_DIMENSIONS':'384'}}
+    d.setdefault('mcp',{})['cognistore']={'type':'local','command':['node','$MCP_DIST'],'enabled':True,'environment':{'SQLITE_PATH':'$DB_PATH','OLLAMA_HOST':'$OLLAMA_URL','OLLAMA_MODEL':'nomic-embed-text','EMBEDDING_DIMENSIONS':'768'}}
     with open(oc,'w') as f: json.dump(d,f,indent=2)
 "
 echo -e "${GREEN}✓${NC}"

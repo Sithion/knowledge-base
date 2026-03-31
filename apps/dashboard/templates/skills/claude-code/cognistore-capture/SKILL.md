@@ -57,11 +57,11 @@ mcp__cognistore__addKnowledge({
 **Decision made:**
 ```
 mcp__cognistore__addKnowledge({
-  content: "Chose all-minilm (384 dimensions) over nomic-embed-text for embeddings. Reason: 3x faster inference, lower memory footprint, sufficient accuracy for code knowledge retrieval.",
+  content: "Chose nomic-embed-text (768 dimensions) over all-minilm for embeddings. Reason: significantly better accuracy for semantic search, richer vector space for knowledge retrieval, acceptable size trade-off (274MB vs 23MB).",
   type: "decision",
   scope: "workspace:knowledge-base",
   source: "embedding model selection",
-  tags: ["ollama", "embeddings", "performance"],
+  tags: ["ollama", "embeddings", "accuracy"],
   confidenceScore: 0.9
 })
 ```
@@ -148,6 +148,50 @@ These entries benefit ALL future projects, not just the current one. If it took 
 | `mcp__cognistore__updateKnowledge` | Update existing entry by ID |
 | `mcp__cognistore__deleteKnowledge` | Remove outdated entry by ID |
 | `mcp__cognistore__listTags` | Browse all tags in the database |
+
+## Pattern Checklist
+
+Before finishing, ask yourself each question. If YES to any, store a `type: "pattern"` entry with `scope: "global"`:
+
+1. Did I discover a **reusable coding pattern** for a language or framework? (e.g., "TypeScript: use discriminated unions for exhaustive switch with never type")
+2. Did I learn a **library usage pattern** not obvious from docs? (e.g., "react-markdown requires remark-gfm plugin for table support")
+3. Did I find a **tool workflow** that saves time? (e.g., "pnpm: use --filter to run scripts in specific workspaces")
+4. Did I use an **architectural pattern** worth repeating? (e.g., "Repository pattern: separate raw SQL for sqlite-vec virtual tables from Drizzle ORM")
+5. Did I discover a **testing or debugging technique**? (e.g., "sqlite-vec: test KNN search with known vectors to verify distance metric")
+
+Patterns are the most valuable knowledge type — they compound across every future project.
+
+### Global vs Workspace Pattern Examples
+
+**Global pattern (language):**
+```json
+{
+  "title": "TypeScript: Exhaustive switch with never type",
+  "content": "Use 'const _exhaustive: never = value' as the default case in switch statements over discriminated unions. TypeScript will error at compile time if a new variant is added but not handled.",
+  "type": "pattern", "scope": "global",
+  "tags": ["typescript", "type-safety", "switch"]
+}
+```
+
+**Global pattern (library):**
+```json
+{
+  "title": "better-sqlite3: WAL mode + busy_timeout for concurrent access",
+  "content": "When multiple processes access the same SQLite database, enable WAL mode and set busy_timeout to 5000ms. Without busy_timeout, concurrent writes throw SQLITE_BUSY immediately.",
+  "type": "pattern", "scope": "global",
+  "tags": ["sqlite", "better-sqlite3", "concurrency", "wal"]
+}
+```
+
+**Workspace pattern (project-specific):**
+```json
+{
+  "title": "CogniStore: inline styles with CSS variables for dashboard components",
+  "content": "Dashboard components use inline styles with CSS variables (--bg-card, --text-primary) defined in index.css. No component library is used.",
+  "type": "pattern", "scope": "workspace:knowledge-base",
+  "tags": ["react", "styling", "css-variables"]
+}
+```
 
 ## Pre-Capture: Plan Completion Check
 

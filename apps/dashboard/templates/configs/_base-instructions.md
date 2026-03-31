@@ -42,11 +42,13 @@ Save the returned **planId** — you need it for addKnowledge.
 
 **Dedup is automatic**: if an active plan exists in the same scope, `createPlan()` adds your tasks to it instead of creating a duplicate. If a similar draft exists, it updates it. Just call `createPlan()` normally — the server handles dedup.
 
-**Track each task:**
-- Before starting: `updatePlanTask(taskId, { status: "in_progress" })`
-- After finishing: `updatePlanTask(taskId, { status: "completed" })`
+**MANDATORY — Track each task in real-time (hooks enforce this):**
+- IMMEDIATELY after createPlan: call `listPlanTasks(planId)` to get taskIds
+- BEFORE each task: `updatePlanTask(taskId, { status: "in_progress" })` — do NOT skip
+- AFTER each task: `updatePlanTask(taskId, { status: "completed", notes: "..." })` — do NOT batch at the end
 - Plan activates automatically when the first task starts
 - Plan completes automatically when all tasks are done
+- A PostToolUse hook monitors Edit/Write/Bash and will remind you if tasks are not being tracked
 
 Use `updatePlanTasks` (plural) to update multiple tasks at once.
 
@@ -72,6 +74,7 @@ mcp__cognistore__addKnowledge({
 - **ALWAYS pass planId** if you have an active plan — this links knowledge as output
 - **Dedup is automatic** — if a similar entry exists in the same scope+type, it will be updated instead of duplicated
 - **Prefer global scope** for language/framework/tool knowledge — workspace scope is for project-specific decisions only
+- **Actively look for patterns** — if you discovered a reusable approach about a language, framework, library, or tool, store it as `type: "pattern"` with `scope: "global"`. Patterns are the highest-value knowledge type — they compound across every future project
 - If you learn something about a language, library, or pattern that applies beyond this project, save it with `scope: "global"`
 - Pass an array to `addKnowledge` to create multiple entries at once
 - All entries in English
@@ -97,6 +100,7 @@ When a subagent completes, reconcile plan tracking:
 ### Hooks
 
 - **PreToolUse hook**: Fires before Edit, Write, Bash, MultiEdit, Agent, NotebookEdit — requires you to query first
+- **PostToolUse hook**: Fires after Edit, Write, Bash — enforces `updatePlanTask()` calls during execution when a plan is active
 - **Stop hook**: Fires at session end — requires you to capture knowledge
 - These hooks enforce the workflow. If you already completed the step, proceed normally.
 <!-- ENDIF -->
@@ -104,6 +108,7 @@ When a subagent completes, reconcile plan tracking:
 ### Hooks
 
 - **preToolUse hook**: Fires before tool use — requires you to query first
+- **postToolUse hook**: Fires after tool use — enforces `updatePlanTask()` calls during execution when a plan is active
 - **sessionEnd hook**: Fires at session end — requires you to capture knowledge
 - These hooks enforce the workflow. If you already completed the step, proceed normally.
 <!-- ENDIF -->

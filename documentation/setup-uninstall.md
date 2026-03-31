@@ -17,7 +17,7 @@ The setup wizard runs on first launch and installs all dependencies automaticall
 | 2 | Ollama | `POST /api/setup/ollama` | Install Ollama via brew (macOS) or curl (Linux) |
 | 3 | Start Ollama | `POST /api/setup/ollama-start` | Spawn `ollama serve` as background daemon, wait 15s |
 | 4 | Database | `POST /api/setup/database` | Create `~/.cognistore/knowledge.db` with schema + indices |
-| 5 | Model | `POST /api/setup/model` | Pull `all-minilm` embedding model via Ollama API |
+| 5 | Model | `POST /api/setup/model` | Pull `nomic-embed-text` embedding model via Ollama API |
 | 6 | Configure | `POST /api/setup/configure` | Inject MCP configs, instructions, skills, and seed system knowledge |
 | 7 | Complete | `POST /api/setup/complete` | Finalize setup, re-initialize SDK |
 
@@ -67,10 +67,10 @@ Uses Ollama's HTTP API with streaming progress:
 
 ```
 POST http://localhost:11434/api/pull
-Body: { "name": "all-minilm", "stream": true }
+Body: { "name": "nomic-embed-text", "stream": true }
 ```
 
-The `all-minilm` model is ~23MB and takes 5-15 seconds to download.
+The `nomic-embed-text` model is ~274MB and takes 15-60 seconds to download.
 
 ### Configure Step Details
 
@@ -115,7 +115,7 @@ The uninstall button requires a 3-step confirmation to prevent accidental data l
 | 1 | Remove instruction markers | Delete `COGNISTORE:BEGIN/END` blocks from CLAUDE.md, copilot-instructions.md |
 | 2 | Remove MCP entries | Delete `cognistore` from all `mcpServers`/`mcp` configs |
 | 3 | Remove skills | Delete `~/.claude/skills/cognistore-*/` directories (query, capture, plan) and `~/.copilot/skills/cognistore-*.md` files |
-| 4 | Uninstall Ollama model | `ollama rm all-minilm` |
+| 4 | Uninstall Ollama model | `ollama rm nomic-embed-text` |
 | 5 | Uninstall Ollama binary | `brew uninstall ollama` (macOS) or remove binary (Linux) |
 | 6 | Close SDK | Gracefully close database connections |
 | 7 | Remove data directory | `rm -rf ~/.cognistore/` (database + WAL files) |
@@ -132,7 +132,7 @@ Every resource created by setup **must** be removed by uninstall. This is a mand
 | `knowledge.db` (SQLite) | Removed with directory |
 | Ollama via brew/curl | Uninstall via brew or remove binary |
 | `ollama serve` process | Stop via `pkill` |
-| `all-minilm` model | Remove via `ollama rm` |
+| `nomic-embed-text` model | Remove via `ollama rm` |
 | CLAUDE.md markers | Remove via ConfigManager |
 | copilot-instructions.md markers | Remove via ConfigManager |
 | MCP config entries (4 files) | Remove via ConfigManager |

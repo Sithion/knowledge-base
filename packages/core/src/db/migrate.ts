@@ -108,7 +108,7 @@ export function runMigrations(sqlite: BetterSqlite3.Database, migrationsDir: str
         .prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)')
         .run('0.8.0', new Date().toISOString());
       applied.add('0.8.0');
-      console.log('Migration: bootstrapped existing DB as v0.8.0');
+      console.error('Migration: bootstrapped existing DB as v0.8.0');
     }
   }
 
@@ -130,7 +130,7 @@ export function runMigrations(sqlite: BetterSqlite3.Database, migrationsDir: str
     migrations = Object.entries(EMBEDDED_MIGRATIONS)
       .map(([version, sql]) => ({ version, sql }))
       .sort((a, b) => compareSemver(a.version, b.version));
-    console.log('Migration: using embedded migrations (bundled mode)');
+    console.error('Migration: using embedded migrations (bundled mode)');
   }
 
   // 5. Apply pending migrations
@@ -159,7 +159,7 @@ export function runMigrations(sqlite: BetterSqlite3.Database, migrationsDir: str
     sqlite
       .prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)')
       .run(version, new Date().toISOString());
-    console.log(`Migration: ${version} applied`);
+    console.error(`Migration: ${version} applied`);
   }
 }
 
@@ -176,7 +176,7 @@ export function runSeeds(sqlite: BetterSqlite3.Database, seedsDir: string, isFre
     const sqlPath = resolve(seedsDir, file);
     const sqlContent = readFileSync(sqlPath, 'utf-8');
     sqlite.exec(sqlContent);
-    console.log(`Seed: ${file} applied`);
+    console.error(`Seed: ${file} applied`);
   }
 }
 

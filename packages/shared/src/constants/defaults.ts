@@ -1,7 +1,8 @@
 import { KnowledgeType } from '../types/knowledge.js';
 
-export const DEFAULT_EMBEDDING_MODEL = 'all-minilm';
-export const DEFAULT_EMBEDDING_DIMENSIONS = 384;
+export const DEFAULT_EMBEDDING_MODEL = 'nomic-embed-text';
+export const DEFAULT_EMBEDDING_DIMENSIONS = 256;
+export const OLLAMA_NATIVE_DIMENSIONS = 768;
 export const DEFAULT_SIMILARITY_THRESHOLD = 0.3;
 export const DEFAULT_SEARCH_LIMIT = 10;
 export const DEFAULT_OLLAMA_HOST = 'http://localhost:11434';

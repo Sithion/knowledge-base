@@ -157,9 +157,9 @@ Pass an array to addKnowledge to create multiple entries at once.
     }, 10000);
   }
 
-  // Cleanup old operations log entries every 6 hours
+  // Periodic maintenance every 6 hours: cleanup old ops log + WAL checkpoint
   setInterval(() => {
-    if (sdkReady) { try { sdk.cleanupOldOperations(); } catch { /* silent */ } }
+    if (sdkReady) { try { sdk.cleanupOldOperations(); sdk.cleanupCompletedPlanEmbeddings(); sdk.walCheckpoint(); } catch { /* silent */ } }
   }, 6 * 60 * 60 * 1000);
 
   const app = Fastify({ logger: true });
@@ -228,7 +228,7 @@ Pass an array to addKnowledge to create multiple entries at once.
         const res = await fetch('http://localhost:11434/api/tags');
         if (res.ok) {
           const data = (await res.json()) as { models: { name: string }[] };
-          const model = process.env.OLLAMA_MODEL || 'all-minilm';
+          const model = process.env.OLLAMA_MODEL || 'nomic-embed-text';
           modelAvailable = data.models.some(m => m.name === model || m.name.startsWith(`${model}:`));
         }
       } catch { /* ignore */ }
@@ -316,8 +316,8 @@ Pass an array to addKnowledge to create multiple entries at once.
     const env: Record<string, string> = {
       SQLITE_PATH: resolve(INSTALL_DIR, 'knowledge.db'),
       OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://localhost:11434',
-      OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'all-minilm',
-      EMBEDDING_DIMENSIONS: process.env.EMBEDDING_DIMENSIONS || '384',
+      OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'nomic-embed-text',
+      EMBEDDING_DIMENSIONS: process.env.EMBEDDING_DIMENSIONS || '256',
     };
     if (binDir) {
       // Prepend Node 20 bin dir so `node` resolves to v20 at runtime.
@@ -518,7 +518,7 @@ Pass an array to addKnowledge to create multiple entries at once.
 
   app.post('/api/setup/model', async () => {
     try {
-      const model = process.env.OLLAMA_MODEL || 'all-minilm';
+      const model = process.env.OLLAMA_MODEL || 'nomic-embed-text';
       const host = process.env.OLLAMA_HOST || 'http://localhost:11434';
 
       // Check if already available
@@ -712,6 +712,82 @@ Pass an array to addKnowledge to create multiple entries at once.
       if (ok) await seedSystemKnowledge();
     } catch (e: any) {
       results.push({ step: 'database', status: 'error', message: e.message });
+    }
+
+    // Step 1b: Re-embed if embedding dimensions changed (e.g. all-minilm 384d → nomic-embed-text 768d)
+    try {
+      if (sdkReady) {
+        const expectedDims = Number(process.env.EMBEDDING_DIMENSIONS) || 256;
+        const needsReembed = await (async () => {
+          try {
+            // Check if vec table has wrong dimensions by trying a dummy query
+            const sqliteRaw = (sdk as any).sqlite ?? (sdk as any).db?.sqlite;
+            if (!sqliteRaw) return false;
+            const row = sqliteRaw.prepare('SELECT embedding FROM knowledge_embeddings LIMIT 1').get() as { embedding: Buffer } | undefined;
+            if (!row) return false; // No entries yet, nothing to re-embed
+            const currentDims = row.embedding.byteLength / 4; // float32 = 4 bytes
+            return currentDims !== expectedDims;
+          } catch { return false; }
+        })();
+
+        if (needsReembed) {
+          console.log(`[CogniStore] Upgrade: embedding dimension mismatch detected, re-embedding all entries...`);
+
+          // 1. Pull new model first
+          const model = process.env.OLLAMA_MODEL || 'nomic-embed-text';
+          const host = process.env.OLLAMA_HOST || 'http://localhost:11434';
+          try {
+            const tagsRes = await fetch(`${host}/api/tags`);
+            let modelAvailable = false;
+            if (tagsRes.ok) {
+              const data = (await tagsRes.json()) as { models: { name: string }[] };
+              modelAvailable = data.models.some(m => m.name === model || m.name.startsWith(`${model}:`));
+            }
+            if (!modelAvailable) {
+              console.log(`[CogniStore] Pulling model ${model}...`);
+              const pullRes = await fetch(`${host}/api/pull`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: model }),
+              });
+              if (pullRes.ok) {
+                const reader = pullRes.body?.getReader();
+                if (reader) { while (!(await reader.read()).done) {} }
+              }
+            }
+          } catch (e) {
+            console.warn('[CogniStore] Model pull failed during upgrade:', e);
+          }
+
+          // 2. Drop old vec tables and re-init SDK (recreates with new dimensions)
+          try {
+            const sqliteRaw = (sdk as any).sqlite ?? (sdk as any).db?.sqlite;
+            if (sqliteRaw) {
+              sqliteRaw.exec('DROP TABLE IF EXISTS knowledge_embeddings');
+              sqliteRaw.exec('DROP TABLE IF EXISTS plans_embeddings');
+            }
+          } catch (e) { console.warn('[CogniStore] Drop vec tables failed:', e); }
+
+          await sdk.close();
+          sdkReady = false;
+          const reinitOk = await tryInitSDK();
+
+          // 3. Re-embed all knowledge entries
+          if (reinitOk) {
+            try {
+              const reembedded = await sdk.reembedAll();
+              results.push({ step: 'reembed', status: 'success', message: `Re-embedded ${reembedded} entries with new model` });
+              console.log(`[CogniStore] Re-embedded ${reembedded} entries`);
+            } catch (e: any) {
+              results.push({ step: 'reembed', status: 'error', message: e.message });
+            }
+          } else {
+            results.push({ step: 'reembed', status: 'error', message: 'SDK re-init failed after dropping vec tables' });
+          }
+        }
+      }
+    } catch (e: any) {
+      results.push({ step: 'reembed', status: 'error', message: e.message });
     }
 
     // Step 2: Re-inject agent instructions
@@ -963,7 +1039,7 @@ Pass an array to addKnowledge to create multiple entries at once.
       configManager.removeOpenCodePlugins(); results.push('OpenCode plugins removed');
 
       // 4. Remove Ollama model
-      await step('Ollama model removed', () => { execSync(`ollama rm ${process.env.OLLAMA_MODEL || 'all-minilm'}`, { stdio: 'pipe', timeout: 30000 }); }, results, errors);
+      await step('Ollama model removed', () => { execSync(`ollama rm ${process.env.OLLAMA_MODEL || 'nomic-embed-text'}`, { stdio: 'pipe', timeout: 30000 }); }, results, errors);
 
       // 5. Uninstall Ollama
       try { execSync('pkill -f "ollama serve"', { stdio: 'pipe' }); } catch { /* may not be running */ }
