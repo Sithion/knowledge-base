@@ -64,6 +64,7 @@ jobs:
 
   # ── Create GitHub Release (single job to avoid race condition) ──
   create-release:
+    needs: publish-mcp
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -133,6 +134,7 @@ jobs:
 
   # ── Build web assets (runs once, platform-independent) ─────────
   build-web:
+    needs: create-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

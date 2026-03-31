@@ -1,5 +1,10 @@
 # Patch Notes
 
+## v1.0.14
+
+### Fixes
+- **Serialize publish pipeline to eliminate race conditions**: `publish-mcp`, `create-release`, and `build-web` jobs ran in parallel with no dependency chain, causing intermittent pipeline failures. Added `needs` directives to create serial chain: `publish-mcp → create-release → build-web → publish-tauri`. Each job still handles its own setup (fast via pnpm/Turbo cache). npm publish runs first so failures stop the pipeline before creating releases or building desktop apps unnecessarily.
+
 ## v1.0.13
 
 - Version bump to recover npm publish pipeline (v1.0.10–v1.0.12 failed to publish due to expired NPM_TOKEN)
