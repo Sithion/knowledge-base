@@ -197,7 +197,7 @@ pub fn spawn_node(
         .env("SQLITE_PATH", sqlite_path.to_string_lossy().to_string())
         .env("OLLAMA_HOST", "http://localhost:11434")
         .env("OLLAMA_MODEL", env::var("OLLAMA_MODEL").unwrap_or_else(|_| "nomic-embed-text".into()))
-        .env("EMBEDDING_DIMENSIONS", "768")
+        .env("EMBEDDING_DIMENSIONS", "256")
         .env("DASHBOARD_PORT", port.to_string())
         .env("DASHBOARD_DIST_PATH", dist_path.to_string_lossy().to_string())
         .env("TEMPLATES_PATH", templates_path.to_string_lossy().to_string())
