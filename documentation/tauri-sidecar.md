@@ -61,8 +61,8 @@ The Rust shell passes configuration to the Fastify sidecar via environment:
 |----------|-------|---------|
 | `SQLITE_PATH` | `~/.cognistore/knowledge.db` | Database file location |
 | `OLLAMA_HOST` | `http://localhost:11434` | Ollama API endpoint |
-| `OLLAMA_MODEL` | `all-minilm` | Embedding model name |
-| `EMBEDDING_DIMENSIONS` | `384` | Vector dimensions |
+| `OLLAMA_MODEL` | `nomic-embed-text` | Embedding model name |
+| `EMBEDDING_DIMENSIONS` | `768` | Vector dimensions |
 | `DASHBOARD_PORT` | `3210+` (dynamic) | Fastify server port |
 | `DASHBOARD_DIST_PATH` | Resource path | React build output |
 | `TEMPLATES_PATH` | Resource path | Skills + config templates |

@@ -382,6 +382,14 @@ export class KnowledgeRepository {
     try { updatePlanEmbedding(this.sqlite, id, embedding); } catch { /* silent */ }
   }
 
+  insertEmbeddingById(id: string, embedding: number[]): void {
+    insertEmbedding(this.sqlite, id, embedding);
+  }
+
+  insertPlanEmbeddingById(id: string, embedding: number[]): void {
+    insertPlanEmbedding(this.sqlite, id, embedding);
+  }
+
   // ─── Plan Relations ─────────────────────────────────────────
 
   addPlanRelation(planId: string, knowledgeId: string, relationType: 'input' | 'output'): void {
@@ -489,6 +497,16 @@ export class KnowledgeRepository {
       .run(operation, new Date().toISOString());
   }
 
+  logOperationBatch(operation: 'read' | 'write', count: number): void {
+    if (count <= 0) return;
+    const now = new Date().toISOString();
+    const stmt = this.sqlite.prepare('INSERT INTO operations_log (operation, created_at) VALUES (?, ?)');
+    const insertMany = this.sqlite.transaction((n: number) => {
+      for (let i = 0; i < n; i++) stmt.run(operation, now);
+    });
+    insertMany(count);
+  }
+
   getOperationCounts(): {
     readsLastHour: number;
     readsLastDay: number;
@@ -548,6 +566,27 @@ export class KnowledgeRepository {
   cleanupOldOperations(): number {
     const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     return this.sqlite.prepare('DELETE FROM operations_log WHERE created_at < ?').run(cutoff).changes;
+  }
+
+  /**
+   * Delete embeddings for completed/archived plans older than maxAgeDays.
+   * These plans are never searched semantically (only draft/active are).
+   */
+  cleanupCompletedPlanEmbeddings(maxAgeDays = 30): number {
+    const cutoff = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
+    const oldPlans = this.sqlite.prepare(
+      `SELECT id FROM plans WHERE status IN ('completed', 'archived') AND updated_at < ?`
+    ).all(cutoff) as { id: string }[];
+
+    if (oldPlans.length === 0) return 0;
+
+    let removed = 0;
+    const deleteStmt = this.sqlite.prepare('DELETE FROM plans_embeddings WHERE id = ?');
+    for (const plan of oldPlans) {
+      const result = deleteStmt.run(plan.id);
+      removed += result.changes;
+    }
+    return removed;
   }
 }
 

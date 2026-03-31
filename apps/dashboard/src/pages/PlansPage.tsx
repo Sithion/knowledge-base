@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { api } from '../api/client.js';
 import { FloatingAddButton } from '../components/FloatingAddButton.js';
 import { ScopeAutocomplete } from '../components/ScopeAutocomplete.js';
@@ -709,7 +710,7 @@ export function PlansPage() {
 
         {/* Content */}
         <div className="plan-markdown" style={{ backgroundColor: 'var(--bg-card)', borderRadius: 10, border: '1px solid var(--border)', padding: 20, marginBottom: 20 }}>
-          <Markdown>{selectedPlan.content}</Markdown>
+          <Markdown remarkPlugins={[remarkGfm]}>{selectedPlan.content}</Markdown>
           <div style={{ display: 'flex', gap: 6, marginTop: 16, flexWrap: 'wrap' }}>
             {selectedPlan.tags.map((tag) => (
               <span key={tag} style={{ padding: '3px 10px', borderRadius: 6, fontSize: 11, backgroundColor: 'var(--bg-input)', color: 'var(--accent)' }}>
@@ -922,9 +923,6 @@ export function PlansPage() {
                     <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
                       {plan.title || 'Untitled Plan'}
                     </h3>
-                    <div className="plan-markdown" style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', maxHeight: 40, lineHeight: 1.4 }}>
-                      <Markdown>{plan.content.slice(0, 200)}</Markdown>
-                    </div>
                     <div style={{ display: 'flex', gap: 4, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       {plan.tags.slice(0, 5).map((tag) => (
                         <span key={tag} style={{ padding: '1px 6px', borderRadius: 3, fontSize: 10, backgroundColor: 'var(--bg-input)', color: 'var(--text-secondary)' }}>

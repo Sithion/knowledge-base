@@ -199,7 +199,7 @@ Create SQLite database with schema and indices.
 
 ### POST /api/setup/model
 
-Pull `all-minilm` embedding model via Ollama API.
+Pull `nomic-embed-text` embedding model via Ollama API.
 
 ### POST /api/setup/configure
 

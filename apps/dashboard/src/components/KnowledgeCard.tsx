@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { api } from '../api/client.js';
 
 interface RelatedPlan {
@@ -155,7 +156,7 @@ export function KnowledgeCard({
           overflow: 'hidden',
         }}
       >
-        <Markdown>{(entry.content as string).substring(0, 300)}</Markdown>
+        <Markdown remarkPlugins={[remarkGfm]}>{(entry.content as string).substring(0, 300)}</Markdown>
       </div>
 
       <div

@@ -1,5 +1,6 @@
 import {
   createDbClient,
+  createEmbeddingsTable,
   KnowledgeRepository,
   KnowledgeService,
   type Database,
@@ -68,8 +69,11 @@ export class KnowledgeSDK {
         );
       }
 
-      // Step 3: Create service
-      const repository = new KnowledgeRepository(this.db, this.sqlite);
+      // Step 3: Detect embedding dimension mismatch (Matryoshka migration)
+      await this.detectAndMigrateDimensions();
+
+      // Step 4: Create service
+      const repository = new KnowledgeRepository(this.db!, this.sqlite!);
       this.service = new KnowledgeService(repository, this.ollamaClient);
 
       this.initialized = true;
@@ -336,6 +340,15 @@ export class KnowledgeSDK {
     return this.service!.getPlanTaskStats();
   }
 
+  /**
+   * Re-embed all knowledge entries and plans with the current embedding model.
+   * Used during upgrade when switching embedding models (dimensions change).
+   */
+  async reembedAll(): Promise<number> {
+    this.ensureInitialized();
+    return this.service!.reembedAll();
+  }
+
   // ─── Operations ─────────────────────────────────────────────
 
   getOperationCounts() {
@@ -351,6 +364,11 @@ export class KnowledgeSDK {
   cleanupOldOperations() {
     if (!this.initialized || !this.service) return 0;
     return this.service!.cleanupOldOperations();
+  }
+
+  cleanupCompletedPlanEmbeddings(maxAgeDays = 30) {
+    if (!this.initialized || !this.service) return 0;
+    return this.service!.cleanupCompletedPlanEmbeddings(maxAgeDays);
   }
 
   async healthCheck(): Promise<HealthStatus> {
@@ -412,6 +430,15 @@ export class KnowledgeSDK {
     }
   }
 
+  /**
+   * Run a passive WAL checkpoint to keep the WAL file small.
+   * PASSIVE mode does not block readers or writers.
+   */
+  walCheckpoint(): void {
+    this.ensureInitialized();
+    this.sqlite!.pragma('wal_checkpoint(PASSIVE)');
+  }
+
   private ensureInitialized(): void {
     if (!this.initialized || !this.service) {
       throw new ConnectionError('SDK not initialized. Call initialize() first.');
@@ -429,6 +456,48 @@ export class KnowledgeSDK {
     }
     this.db = null;
     this.service = null;
+  }
+
+  /**
+   * Detect if stored embeddings have different dimensions than config.
+   * If mismatch found (e.g., 768→256 Matryoshka migration), drop vec tables,
+   * recreate at new dimensions, and re-embed all entries.
+   */
+  private async detectAndMigrateDimensions(): Promise<void> {
+    const targetDims = this.config.ollama.dimensions;
+
+    try {
+      const sampleRow = this.sqlite!.prepare(
+        'SELECT embedding FROM knowledge_embeddings LIMIT 1'
+      ).get() as { embedding: Buffer } | undefined;
+
+      if (!sampleRow) return; // No embeddings yet, nothing to migrate
+
+      const currentDims = sampleRow.embedding.byteLength / 4; // float32 = 4 bytes
+      if (currentDims === targetDims) return; // Dimensions match, no migration needed
+
+      console.error(`[CogniStore] Embedding dimension mismatch: DB has ${currentDims}d, config wants ${targetDims}d. Re-embedding all entries...`);
+
+      // Drop and recreate both vec tables at new dimensions
+      this.sqlite!.exec('DROP TABLE IF EXISTS knowledge_embeddings');
+      this.sqlite!.exec('DROP TABLE IF EXISTS plans_embeddings');
+      createEmbeddingsTable(this.sqlite!, targetDims);
+      this.sqlite!.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS plans_embeddings USING vec0(
+          id TEXT PRIMARY KEY,
+          embedding float[${targetDims}] distance_metric=cosine
+        )
+      `);
+
+      // Re-embed all entries with new dimensions
+      const repository = new KnowledgeRepository(this.db!, this.sqlite!);
+      const tempService = new KnowledgeService(repository, this.ollamaClient);
+      const count = await tempService.reembedAll();
+      console.error(`[CogniStore] Re-embedded ${count} entries at ${targetDims} dimensions`);
+    } catch (error) {
+      // Non-fatal: if migration fails, existing search still works (just with old dims)
+      console.error(`[CogniStore] Dimension migration failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   private wrapError(error: unknown, context: string): Error {

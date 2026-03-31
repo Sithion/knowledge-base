@@ -1,7 +1,7 @@
 import BetterSqlite3 from 'better-sqlite3';
 import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as sqliteVec from 'sqlite-vec';
-import { DEFAULT_SQLITE_PATH } from '@cognistore/shared';
+import { DEFAULT_SQLITE_PATH, DEFAULT_EMBEDDING_DIMENSIONS } from '@cognistore/shared';
 import * as schema from './schema/index.js';
 import { createEmbeddingsTable } from './schema/sqlite-vec.js';
 import { runMigrations, runSeeds } from './migrate.js';
@@ -48,19 +48,20 @@ export function createDbClient(dbPath?: string): { db: Database; sqlite: SQLiteD
   runSeeds(sqlite, seedsDir, isFreshInstall);
 
   // Ensure sqlite-vec virtual tables (always idempotent)
-  createEmbeddingsTable(sqlite);
-  createPlansEmbeddingsTable(sqlite);
+  const dims = Number(process.env.EMBEDDING_DIMENSIONS) || DEFAULT_EMBEDDING_DIMENSIONS;
+  createEmbeddingsTable(sqlite, dims);
+  createPlansEmbeddingsTable(sqlite, dims);
 
   const db = drizzle(sqlite, { schema });
   return { db, sqlite };
 }
 
-function createPlansEmbeddingsTable(sqlite: BetterSqlite3.Database): void {
+function createPlansEmbeddingsTable(sqlite: BetterSqlite3.Database, dimensions = DEFAULT_EMBEDDING_DIMENSIONS): void {
   try {
     sqlite.exec(`
       CREATE VIRTUAL TABLE IF NOT EXISTS plans_embeddings USING vec0(
         id TEXT PRIMARY KEY,
-        embedding float[384] distance_metric=cosine
+        embedding float[${dimensions}] distance_metric=cosine
       );
     `);
   } catch {

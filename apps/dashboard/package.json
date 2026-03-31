@@ -1,6 +1,6 @@
 {
   "name": "@cognistore/dashboard",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "private": true,
   "type": "module",
   "scripts": {
@@ -37,6 +37,7 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.13.1",
     "recharts": "^2.15.0",
+    "remark-gfm": "^4.0.1",
     "tsx": "^4.0.0"
   },
   "devDependencies": {

@@ -18,27 +18,26 @@
         "type": "command",
         "bash": "${COPILOT_SKILL_DIR}/hooks/post-plan-check.sh",
         "timeoutSec": 5
-      }
-    ],
-    "subagentStop": [
+      },
       {
-        "type": "bash",
-        "bash": "${COPILOT_SKILL_DIR}/hooks/subagent-stop-reconcile.sh",
-        "timeoutSec": 10
-      }
-    ],
-    "postCompact": [
+        "type": "command",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/post-create-plan-marker.sh",
+        "timeoutSec": 5
+      },
       {
-        "type": "bash",
-        "bash": "${COPILOT_SKILL_DIR}/hooks/post-compact-reinject.sh",
-        "timeoutSec": 10
-      }
-    ],
-    "taskCompleted": [
+        "type": "command",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/post-edit-task-sync.sh",
+        "timeoutSec": 5
+      },
       {
-        "type": "bash",
-        "bash": "${COPILOT_SKILL_DIR}/hooks/task-completed-check.sh",
-        "timeoutSec": 10
+        "type": "command",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/post-task-update-marker.sh",
+        "timeoutSec": 5
+      },
+      {
+        "type": "command",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/post-update-plan-cleanup.sh",
+        "timeoutSec": 5
       }
     ]
   }

@@ -23,8 +23,11 @@ export class KnowledgeService {
     private embeddingProvider: EmbeddingProvider
   ) {}
 
-  private logOp(op: 'read' | 'write') {
-    try { this.repository.logOperation(op); } catch { /* silent */ }
+  private logOp(op: 'read' | 'write', count = 1) {
+    try {
+      if (count <= 1) this.repository.logOperation(op);
+      else this.repository.logOperationBatch(op, count);
+    } catch { /* silent */ }
   }
 
   private buildEmbeddingText(title: string, content: string, tags: string[]): string {
@@ -62,7 +65,7 @@ export class KnowledgeService {
   async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {
     const queryEmbedding = await this.embeddingProvider.embed(query);
     const results = await this.repository.searchBySimilarity(queryEmbedding, options);
-    this.logOp('read');
+    this.logOp('read', results.length);
     return results.map((r) => ({
       entry: this.toKnowledgeEntry(r.entry),
       similarity: r.similarity,
@@ -97,6 +100,43 @@ export class KnowledgeService {
   async listAll() {
     const entries = await this.repository.listAll();
     return entries.map((e) => this.toKnowledgeEntry(e));
+  }
+
+  /**
+   * Re-embed all knowledge entries and plans with the current embedding provider.
+   * Used when switching embedding models (e.g. all-minilm 384d → nomic-embed-text 768d).
+   * Assumes vec tables have already been dropped and recreated with new dimensions.
+   */
+  async reembedAll(): Promise<number> {
+    let count = 0;
+
+    // Re-embed knowledge entries
+    const entries = await this.repository.listAll();
+    for (const entry of entries) {
+      try {
+        const tags = Array.isArray(entry.tags) ? entry.tags : JSON.parse(entry.tags ?? '[]');
+        const text = this.buildEmbeddingText(entry.title, entry.content, tags);
+        const embedding = await this.embeddingProvider.embed(text);
+        try { this.repository.insertEmbeddingById(entry.id, embedding); } catch { /* may already exist */ }
+        count++;
+      } catch (e) {
+        console.warn(`[CogniStore] Re-embed failed for entry ${entry.id}:`, e);
+      }
+    }
+
+    // Re-embed plans
+    const plans = this.repository.listAllPlans();
+    for (const plan of plans) {
+      try {
+        const embedding = await this.embeddingProvider.embed(`${plan.title} ${plan.content}`);
+        try { this.repository.insertPlanEmbeddingById(plan.id, embedding); } catch { /* may already exist */ }
+        count++;
+      } catch (e) {
+        console.warn(`[CogniStore] Re-embed failed for plan ${plan.id}:`, e);
+      }
+    }
+
+    return count;
   }
 
   async listScopes(): Promise<string[]> {
@@ -438,6 +478,10 @@ export class KnowledgeService {
 
   cleanupOldOperations() {
     return this.repository.cleanupOldOperations();
+  }
+
+  cleanupCompletedPlanEmbeddings(maxAgeDays = 30) {
+    return this.repository.cleanupCompletedPlanEmbeddings(maxAgeDays);
   }
 
   // ─── Converters ─────────────────────────────────────────────

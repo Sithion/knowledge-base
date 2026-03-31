@@ -1,8 +1,9 @@
 import type Database from 'better-sqlite3';
+import { DEFAULT_EMBEDDING_DIMENSIONS } from '@cognistore/shared';
 
 const VIRTUAL_TABLE_NAME = 'knowledge_embeddings';
 
-export function createEmbeddingsTable(sqlite: Database.Database, dimensions = 384) {
+export function createEmbeddingsTable(sqlite: Database.Database, dimensions = DEFAULT_EMBEDDING_DIMENSIONS) {
   sqlite.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS ${VIRTUAL_TABLE_NAME} USING vec0(
       id TEXT PRIMARY KEY,

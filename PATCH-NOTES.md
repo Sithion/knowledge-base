@@ -1,8 +1,28 @@
 # Patch Notes
 
+## v1.0.13
+
+- Version bump to recover npm publish pipeline (v1.0.10–v1.0.12 failed to publish due to expired NPM_TOKEN)
+- Includes all v1.0.12 fixes and improvements below
+
 ## v1.0.12
 
+### Improvements
+- **Reduce embedding storage via Matryoshka truncation (768→256 dims)**: nomic-embed-text supports Matryoshka Representation Learning — the first 256 dimensions retain ~95% of semantic accuracy. Embeddings are now truncated to 256 dims + L2-normalized after Ollama returns the native 768-dim vector. Each embedding drops from 3 KB to 1 KB (67% reduction). Auto-migration detects dimension mismatch on startup and re-embeds all entries. Input text size (8192 token context window) is unchanged.
+- **Periodic WAL checkpoint**: Added `walCheckpoint()` (PASSIVE mode) to the 6-hour maintenance interval alongside `cleanupOldOperations()`. Keeps the WAL file compact without blocking readers/writers.
+- **Auto-cleanup completed plan embeddings**: Plans with status completed/archived older than 30 days have their embeddings deleted automatically. Semantic search only queries draft/active plans, so this has zero functional impact.
+- **Encourage pattern storage in agent instructions**: Added Pattern Checklist (5 concrete questions) to all 3 capture skills (claude-code, copilot, opencode). Enhanced `addKnowledge` tool description to emphasize patterns with global scope. Added pattern prompt to stop-reminder hooks. Added pattern bullet to CHECKPOINT 3 in base instructions.
+
 ### Fixes
+- **Fix plan detail markdown table rendering**: Added `remark-gfm` plugin to `react-markdown` in `PlansPage.tsx` and `KnowledgeCard.tsx`. Tables were rendering as raw text because `react-markdown` only supports CommonMark by default — GFM tables require the `remark-gfm` plugin. CSS styles for tables already existed in `styles.css`.
+- **Fix MCP server stdout pollution breaking protocol handshake**: `packages/core/src/db/migrate.ts` had 4 `console.log()` calls that wrote migration status messages to stdout. Since the MCP server uses stdio transport (stdin/stdout for JSON-RPC), any non-JSON output on stdout corrupts the protocol handshake and causes Claude Code / Copilot to fail connecting. Changed all `console.log` → `console.error` in migrate.ts so diagnostic output goes to stderr instead
+- **Fix plan task tracking enforcement**: Agents created plans via `createPlan()` but never called `updatePlanTask()` during execution — all tasks stayed "pending". Three root causes fixed:
+  1. `SubagentStop`, `PostCompact`, `TaskCompleted` hooks were unsupported event types that never fired — removed dead hooks
+  2. `PostToolUse` only fired on `ExitPlanMode`, not during Edit/Write/Bash where actual work happens — added state-aware PostToolUse hooks on execution tools
+  3. Hook messages used advisory language ("sync CogniStore plan") instead of prescriptive ("STOP. Call X NOW") — rewrote all messages with exact function signatures
+- **State-aware hook system**: New `/tmp` marker file mechanism tracks active planId across hooks. `post-create-plan-marker.sh` sets the marker after `createPlan()`, `post-edit-task-sync.sh` checks it before reminding, `post-task-update-marker.sh` resets the counter on compliance (positive reinforcement), `post-update-plan-cleanup.sh` cleans up on plan completion
+- **Throttled reminders**: PostToolUse hook on Edit/Write/Bash fires every 3rd edit instead of every time, reducing noise while maintaining enforcement. Counter resets when agent calls `updatePlanTask()` — compliant agents get fewer reminders
+- **Switch embedding model from all-minilm to nomic-embed-text**: `all-minilm` has a 256-token context window causing `createPlan()` to fail with large content. `nomic-embed-text` supports 8192 tokens (32x more) with 768 dimensions. Upgrade automatically detects dimension mismatch, pulls new model, drops/recreates vec tables, and re-embeds all existing entries and plans. `maxInputChars` raised from 500 to 2000.
 - **Fix auto-update system (3 root causes)**: The entire auto-update pipeline was broken:
   1. `window.__TAURI__` was undefined because the WebView loads from `http://localhost:{port}` (Node.js sidecar) without IPC access configured — added `remote.urls` to `capabilities/default.json`
   2. `createUpdaterArtifacts` was missing from `tauri.conf.json` — no `.tar.gz`/`.sig` files were generated, so `latest.json` was never uploaded (confirmed 404 on all releases v1.0.7–v1.0.11)
@@ -13,9 +33,18 @@
 - **Fix "Update Now" button in Settings**: When native Tauri update is unavailable, button now opens GitHub release page instead of doing nothing
 - **Fix plan dedup KNN saturation**: rewrote `findSimilarActivePlans()` to use pre-filter approach — query `plans` table for draft/active IDs first, then compute cosine similarity in JS. The old KNN approach returned from ALL plans (including completed), saturating results and hiding active duplicates. Now works correctly even with 15+ completed plans
 - **Fix knowledge embedding quality**: embeddings were generated from tags only (`tags.join(' ')`), making semantic search unreliable. Now uses full text: `${title} ${content} ${tags.join(' ')}`
+- **Fix dashboard read count undercount**: `logOp('read')` was called once per `getKnowledge` call regardless of results returned — a search returning 10 entries counted as 1 read. Now logs N reads for N results, consistent with how writes are counted (1 per entry). Uses a batched SQLite transaction for efficiency
+- **Fix `createEmbeddingsTable` hardcoded 768 default**: the function parameter default was `768` instead of `DEFAULT_EMBEDDING_DIMENSIONS` (256). This caused the vec0 table to be created with 768 dims when the env var was absent, conflicting with the Matryoshka 256-dim config and breaking all searches with a dimension mismatch error
 - **Scope-filter activePlan hint in getKnowledge**: the `activePlan` returned by `getKnowledge` now filters by the caller's `scope` parameter, preventing cross-workspace plan hints
 - **Add tasks to createPlan MCP tool schema**: the `tasks` property was missing from the MCP tool's input schema, causing inline tasks passed by agents to be silently dropped
 - **Refactor listPlans**: replaced 4-branch if/else with single dynamic parameterized query supporting status, scope, or both filters
+- **Fix Ollama embedding context overflow**: `all-minilm` has a 256-token context window but text was sent without truncation, causing `createPlan()` and `addKnowledge()` to fail with large content. Now truncates at 800 chars (word-boundary aware) in `OllamaEmbeddingClient.embed()`, protecting all callers. Limit is configurable via `maxInputChars`
+- **Block ExitPlanMode without createPlan()**: Added PreToolUse hook on `ExitPlanMode` that uses a marker file gate (`/tmp/.cognistore-plan-persisted`). `EnterPlanMode` resets the marker, `createPlan()` sets it, and `ExitPlanMode` is **blocked** if it's missing. Previous enforcement was non-blocking (post-hook reminder arrived too late)
+
+### Improvements
+- **Prescriptive instruction language**: "Track each task" section in all agent instructions (Claude Code, Copilot, OpenCode) now uses mandatory language with PostToolUse enforcement notes
+- **Removed dead hook scripts**: Cleaned up `subagent-stop-reconcile.sh`, `post-compact-reinject.sh`, `task-completed-check.sh` from both Claude Code and Copilot templates — these were registered under unsupported event types and never executed
+- **Removed dead MCP tool files**: Deleted `apps/mcp-server/src/tools/` directory (9 files). All tools were rewritten inline in `server.ts` — the old files were never imported
 
 ### Features
 - **Auto-archive stale draft plans**: `createPlan()` now runs `archiveStaleDrafts(24)` with 1-hour throttle, automatically archiving draft plans older than 24 hours

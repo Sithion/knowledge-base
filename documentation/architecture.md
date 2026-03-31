@@ -41,7 +41,7 @@ The system consists of three runtime subsystems:
 ┌──────────────────────┐          ┌────────────────────────────────┐
 │  @cognistore/core  │          │  @cognistore/embeddings      │
 │  SQLite + sqlite-vec │          │  Ollama HTTP client             │
-│  Drizzle ORM         │          │  all-minilm model (384-dim)     │
+│  Drizzle ORM         │          │  nomic-embed-text model (768-dim) │
 └──────────┬───────────┘          └──────────┬─────────────────────┘
            │                                 │
            ▼                                 ▼
@@ -78,7 +78,7 @@ All cross-package dependencies use `workspace:*` protocol via pnpm.
 2. MCP server validates input with Zod schema (packages/shared)
 3. SDK.add() delegates to KnowledgeService.add()
 4. Service joins tags into text → sends to Ollama /api/embeddings
-5. Ollama returns 384-dimensional float32 vector
+5. Ollama returns 768-dimensional float32 vector
 6. Repository generates UUIDv4 + ISO timestamps
 7. INSERT into knowledge_entries table (Drizzle ORM)
 8. INSERT embedding into knowledge_embeddings virtual table (sqlite-vec)
@@ -89,7 +89,7 @@ All cross-package dependencies use `workspace:*` protocol via pnpm.
 
 ```
 1. MCP client sends getKnowledge(query, options?)
-2. Query text → Ollama embedding → 384-dim vector
+2. Query text → Ollama embedding → 768-dim vector
 3. sqlite-vec KNN search returns (limit * 5) candidates with cosine distances
 4. Filter candidates: scope (always includes global), tags, type, expiration
 5. Convert: similarity = 1 - distance
@@ -190,7 +190,7 @@ A `schema_version` table tracks which migrations have been applied. On startup, 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | Embedding target | Tags (not content) | Tags are concise semantic anchors; content can be long and noisy |
-| Embedding model | all-minilm (384d) | Small (23MB), fast, good quality for short text |
+| Embedding model | nomic-embed-text (768d) | High quality (274MB), excellent accuracy for semantic search |
 | Similarity threshold | 0.3 default | Tags produce lower similarity scores than full sentences |
 | Database | SQLite + sqlite-vec | Zero-config, single file, no daemon, native vector ops |
 | Ollama install | brew (macOS), curl (Linux) | No sudo required on macOS via Homebrew |
