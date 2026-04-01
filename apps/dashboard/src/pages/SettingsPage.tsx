@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client.js';
-import { triggerUpdateCheck, triggerUpdateDownload, onUpdateState, getIsTauri, getLatestReleaseUrl } from '../components/UpdateChecker.js';
+import { triggerUpdateCheck, triggerUpdateDownload, onUpdateState, getIsTauri, getLatestReleaseUrl, getAutoUpdateEnabled, setAutoUpdateEnabled } from '../components/UpdateChecker.js';
 import { ConfirmModal } from '../components/ConfirmModal.js';
 
 interface Health {
@@ -24,6 +24,7 @@ export function SettingsPage() {
   const [uninstallStep, setUninstallStep] = useState(0);
   const [updateState, setUpdateState] = useState<string>('idle');
   const [checkResult, setCheckResult] = useState<string | null>(null);
+  const [autoUpdate, setAutoUpdate] = useState(getAutoUpdateEnabled);
 
   useEffect(() => {
     return onUpdateState((state) => {
@@ -178,6 +179,19 @@ export function SettingsPage() {
           {updateState === 'ready' && <span style={{ fontSize: 13, color: 'var(--success)' }}>{t('update.restartToApply')}</span>}
           {checkResult === 'error' && <span style={{ fontSize: 13, color: 'var(--error)' }}>{t('update.checkFailed')}</span>}
         </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, fontSize: 13, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={autoUpdate}
+            onChange={(e) => { setAutoUpdate(e.target.checked); setAutoUpdateEnabled(e.target.checked); }}
+            style={{ accentColor: 'var(--accent)' }}
+          />
+          <span>
+            <span style={{ fontWeight: 500 }}>{t('update.autoUpdate')}</span>
+            <br />
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{t('update.autoUpdateHint')}</span>
+          </span>
+        </label>
       </div>
 
       {/* ── Language Section ── */}

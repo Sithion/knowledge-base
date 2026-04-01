@@ -1,6 +1,7 @@
 export interface EmbeddingRequest {
   model: string;
   prompt: string;
+  options?: { num_ctx?: number };
 }
 
 export interface EmbeddingResponse {

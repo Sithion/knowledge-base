@@ -60,7 +60,7 @@ const resources = {
         archive: 'Archive', archiveTitle: 'Archive Plan', confirmArchive: 'Move this plan to archive?',
         backToPlans: 'Back to plans', notes: 'notes', addNotes: 'Click to add notes...', loading: 'Loading...',
       },
-      update: { section: 'Updates', check: 'Check for updates', checking: 'Checking...', upToDate: 'Up to date', available: 'Update available', updateNow: 'Update now', downloading: 'Downloading update...', checkFailed: 'Check failed — try again', viewRelease: 'View release', restartToApply: 'Update installed — restart to apply' },
+      update: { section: 'Updates', check: 'Check for updates', checking: 'Checking...', upToDate: 'Up to date', available: 'Update available', updateNow: 'Update now', downloading: 'Downloading update...', checkFailed: 'Check failed — try again', viewRelease: 'View release', restartToApply: 'Update installed — restart to apply', autoUpdate: 'Automatic updates', autoUpdateHint: 'Check for updates and download them automatically in the background' },
       settings: {
         language: 'Language', dataManagement: 'Data Management',
         exportDesc: 'Export your knowledge and plans for backup or migration.',
@@ -144,7 +144,7 @@ const resources = {
         archive: 'Archivar', archiveTitle: 'Archivar Plan', confirmArchive: '¿Mover este plan al archivo?',
         backToPlans: 'Volver a planes', notes: 'notas', addNotes: 'Clic para agregar notas...', loading: 'Cargando...',
       },
-      update: { section: 'Actualizaciones', check: 'Buscar actualizaciones', checking: 'Buscando...', upToDate: 'Actualizado', available: 'Actualización disponible', updateNow: 'Actualizar ahora', downloading: 'Descargando actualización...', checkFailed: 'Error al verificar — intenta de nuevo', viewRelease: 'Ver lanzamiento', restartToApply: 'Actualización instalada — reinicia para aplicar' },
+      update: { section: 'Actualizaciones', check: 'Buscar actualizaciones', checking: 'Buscando...', upToDate: 'Actualizado', available: 'Actualización disponible', updateNow: 'Actualizar ahora', downloading: 'Descargando actualización...', checkFailed: 'Error al verificar — intenta de nuevo', viewRelease: 'Ver lanzamiento', restartToApply: 'Actualización instalada — reinicia para aplicar', autoUpdate: 'Actualizaciones automáticas', autoUpdateHint: 'Buscar actualizaciones y descargarlas automáticamente en segundo plano' },
       settings: {
         language: 'Idioma', dataManagement: 'Gestión de Datos',
         exportDesc: 'Exporta tu conocimiento y planes para respaldo o migración.',
@@ -228,7 +228,7 @@ const resources = {
         archive: 'Arquivar', archiveTitle: 'Arquivar Plano', confirmArchive: 'Mover este plano para o arquivo?',
         backToPlans: 'Voltar aos planos', notes: 'notas', addNotes: 'Clique para adicionar notas...', loading: 'Carregando...',
       },
-      update: { section: 'Atualizações', check: 'Verificar atualizações', checking: 'Verificando...', upToDate: 'Atualizado', available: 'Atualização disponível', updateNow: 'Atualizar agora', downloading: 'Baixando atualização...', checkFailed: 'Erro ao verificar — tente novamente', viewRelease: 'Ver lançamento', restartToApply: 'Atualização instalada — reinicie para aplicar' },
+      update: { section: 'Atualizações', check: 'Verificar atualizações', checking: 'Verificando...', upToDate: 'Atualizado', available: 'Atualização disponível', updateNow: 'Atualizar agora', downloading: 'Baixando atualização...', checkFailed: 'Erro ao verificar — tente novamente', viewRelease: 'Ver lançamento', restartToApply: 'Atualização instalada — reinicie para aplicar', autoUpdate: 'Atualizações automáticas', autoUpdateHint: 'Verificar e baixar atualizações automaticamente em segundo plano' },
       settings: {
         language: 'Idioma', dataManagement: 'Gerenciamento de Dados',
         exportDesc: 'Exporte seu conhecimento e planos para backup ou migração.',

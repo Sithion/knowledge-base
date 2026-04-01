@@ -780,6 +780,43 @@ Pass an array to addKnowledge to create multiple entries at once.
       results.push({ step: 'reembed', status: 'error', message: e.message });
     }
 
+    // Step 1c: Embedding integrity check — detect entries without embeddings
+    try {
+      if (sdkReady) {
+        const sqliteRaw = (sdk as any).sqlite ?? (sdk as any).db?.sqlite;
+        if (sqliteRaw) {
+          const entryCount = (sqliteRaw.prepare('SELECT COUNT(*) as c FROM knowledge_entries').get() as { c: number }).c;
+          const embeddingCount = (sqliteRaw.prepare('SELECT COUNT(*) as c FROM knowledge_embeddings_rowids').get() as { c: number }).c;
+
+          if (entryCount > 0 && embeddingCount < entryCount) {
+            console.log(`[CogniStore] Upgrade: embedding integrity mismatch — ${entryCount} entries but only ${embeddingCount} embeddings. Resyncing...`);
+
+            try {
+              sqliteRaw.exec('DROP TABLE IF EXISTS knowledge_embeddings');
+              sqliteRaw.exec('DROP TABLE IF EXISTS plans_embeddings');
+            } catch (e) { console.warn('[CogniStore] Drop vec tables failed:', e); }
+
+            await sdk.close();
+            sdkReady = false;
+            const reinitOk = await tryInitSDK();
+
+            if (reinitOk) {
+              try {
+                const reembedded = await sdk.reembedAll();
+                results.push({ step: 'integrity', status: 'success', message: `Re-embedded ${reembedded} entries (${entryCount - embeddingCount} were missing)` });
+              } catch (e: any) {
+                results.push({ step: 'integrity', status: 'error', message: e.message });
+              }
+            } else {
+              results.push({ step: 'integrity', status: 'error', message: 'SDK re-init failed after integrity resync' });
+            }
+          }
+        }
+      }
+    } catch (e: any) {
+      results.push({ step: 'integrity', status: 'error', message: e.message });
+    }
+
     // Step 2: Re-inject agent instructions
     const configTemplateDir = resolve(TEMPLATES_PATH, 'configs');
     const claudeT = resolve(configTemplateDir, 'claude-code-instructions.md');

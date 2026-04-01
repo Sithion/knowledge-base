@@ -22,6 +22,18 @@ let latestReleaseUrl = '';
 /** Detect Tauri environment — check both v2 internals and legacy global */
 const isTauri = !!(window as any).__TAURI_INTERNALS__ || !!(window as any).__TAURI__;
 
+const AUTO_UPDATE_KEY = 'cognistore-auto-update';
+
+/** Get whether auto-update is enabled (default: false) */
+export function getAutoUpdateEnabled(): boolean {
+  try { return localStorage.getItem(AUTO_UPDATE_KEY) === 'true'; } catch { return false; }
+}
+
+/** Set auto-update preference */
+export function setAutoUpdateEnabled(value: boolean): void {
+  try { localStorage.setItem(AUTO_UPDATE_KEY, String(value)); } catch { /* ignore */ }
+}
+
 /** Trigger an update check from anywhere (manual = shows feedback) */
 export function triggerUpdateCheck() {
   isManualCheck = true;
@@ -138,8 +150,10 @@ export function UpdateChecker() {
           setDismissed(false);
           (window as any).__pendingUpdate = update;
 
-          // Auto-download in background
-          setTimeout(() => downloadAndInstall(), 500);
+          // Auto-download in background (only if auto-update is enabled)
+          if (getAutoUpdateEnabled()) {
+            setTimeout(() => downloadAndInstall(), 500);
+          }
         } else {
           if (manual) {
             broadcastState('upToDate');
@@ -195,8 +209,9 @@ export function UpdateChecker() {
     }
   }, [broadcastState, state]);
 
-  // Check on mount + every 30 minutes
+  // Check on mount + every 30 minutes (only if auto-update is enabled)
   useEffect(() => {
+    if (!getAutoUpdateEnabled()) return;
     const initial = setTimeout(checkForUpdate, 2000);
     const interval = setInterval(checkForUpdate, CHECK_INTERVAL_MS);
     return () => { clearTimeout(initial); clearInterval(interval); };
