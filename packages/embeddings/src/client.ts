@@ -40,6 +40,7 @@ export class OllamaEmbeddingClient {
     const body: EmbeddingRequest = {
       model: this.model,
       prompt: this.truncateText(text, this.maxInputChars),
+      options: { num_ctx: 8192 },
     };
 
     const response = await this.fetchWithRetry(`${this.host}/api/embeddings`, {

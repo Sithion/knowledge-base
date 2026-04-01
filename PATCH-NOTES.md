@@ -1,5 +1,15 @@
 # Patch Notes
 
+## v1.1.0
+
+### Fixes
+- **Fix Ollama "input length exceeds context length" error**: The `/api/embeddings` request did not pass `options.num_ctx`, so Ollama used the model's default context window — which varies by Ollama version and could be too small for some inputs. Fix: explicitly pass `options: { num_ctx: 8192 }` in every embedding request (nomic-embed-text supports 8192 tokens).
+- **Auto-resync embeddings on upgrade**: The upgrade endpoint only resynced vec tables when embedding dimensions changed. If entries existed without embeddings (e.g., from a previous failed embedding call), they were silently left orphaned. Added an integrity check (Step 1c) that compares `knowledge_entries` count vs `knowledge_embeddings` count — if any entries are missing embeddings, the upgrade drops vec tables and re-embeds all entries automatically.
+
+### Features
+- **`listPlans` MCP tool**: Agents can now browse and filter plans by status (`draft`, `active`, `completed`, `archived`) and scope. Each plan is enriched with task progress (`taskCount`/`completedTasks`). Response includes a hint when abandoned plans with incomplete tasks are detected, steering agents to resume existing plans instead of creating duplicates.
+- **Auto-update toggle in Settings**: Added a checkbox to the Updates section (default: OFF). When disabled, the app will not automatically check for or download updates in the background. Manual "Check for updates" button remains always available. Preference is persisted in localStorage.
+
 ## v1.0.15
 
 ### Fixes
