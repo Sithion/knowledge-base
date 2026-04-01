@@ -32,6 +32,16 @@ export function App() {
         const upgrade = await api.checkUpgrade();
         if (upgrade.needsUpgrade) {
           setUpgradeFrom(upgrade.fromVersion || '?');
+          // Silent upgrade — covers Tauri auto-update case
+          try {
+            const result = await api.runUpgrade();
+            if (result.success) {
+              setState('ready');
+              return;
+            }
+          } catch {
+            // fall through to visible upgrade screen
+          }
           setState('upgrade');
           return;
         }
