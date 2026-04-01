@@ -359,3 +359,31 @@ test('listPlans with undefined scope returns all plans (backward compat)', async
   expect(ids).toContain(p1.id);
   expect(ids).toContain(p2.id);
 });
+
+test('listPlans + listPlanTasks enrichment pattern (MCP tool flow)', async () => {
+  const plan = await factory.plan({
+    title: 'Enrichment Test Plan',
+    scope: 'workspace:enrich-test',
+    tasks: [
+      { description: 'Task 1' },
+      { description: 'Task 2' },
+      { description: 'Task 3' },
+    ],
+  });
+
+  // Complete one task to simulate partial progress
+  const tasks = ctx.service.listPlanTasks(plan.id);
+  ctx.service.updatePlanTask(tasks[0].id, { status: 'completed' });
+
+  // Simulate the MCP tool enrichment: listPlans + per-plan task progress
+  const plans = ctx.service.listPlans(10, undefined, 'workspace:enrich-test');
+  expect(plans.length).toBeGreaterThanOrEqual(1);
+
+  const target = plans.find((p) => p.id === plan.id)!;
+  expect(target).toBeTruthy();
+
+  const planTasks = ctx.service.listPlanTasks(target.id);
+  const completedTasks = planTasks.filter((t) => t.status === 'completed').length;
+  expect(planTasks).toHaveLength(3);
+  expect(completedTasks).toBe(1);
+});

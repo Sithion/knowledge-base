@@ -399,6 +399,51 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
     }
   );
 
+  // listPlans
+  server.tool(
+    'listPlans',
+    'List plans with optional status/scope filters. Shows task progress per plan — use to find abandoned or in-progress plans.',
+    {
+      limit: z.number().optional().describe('Max plans to return (default: 20)'),
+      status: z.enum(knowledgeStatusValues).optional().describe('Filter: draft, active, completed, archived'),
+      scope: z.string().optional().describe('Filter by scope (e.g. "workspace:my-project")'),
+    },
+    READ_ONLY,
+    async (params) => {
+      const plans = sdk.listPlans(params.limit ?? 20, params.status, params.scope);
+
+      const enriched = plans.map(plan => {
+        const tasks = sdk.listPlanTasks(plan.id);
+        const completedTasks = tasks.filter((t: any) => t.status === 'completed').length;
+        return {
+          id: plan.id,
+          title: plan.title,
+          status: plan.status,
+          scope: plan.scope,
+          taskCount: tasks.length,
+          completedTasks,
+          createdAt: plan.createdAt,
+          updatedAt: plan.updatedAt,
+        };
+      });
+
+      const abandoned = enriched.filter(
+        p => (p.status === 'draft' || p.status === 'active') && p.completedTasks < p.taskCount
+      );
+
+      const response: Record<string, unknown> = {
+        plans: enriched,
+        total: enriched.length,
+      };
+
+      if (abandoned.length > 0) {
+        response.hint = `${abandoned.length} plan(s) have incomplete tasks. Resume them with listPlanTasks(planId).`;
+      }
+
+      return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
+    }
+  );
+
   // ─── MCP Resources ──────────────────────────────────────────
 
   server.resource(
