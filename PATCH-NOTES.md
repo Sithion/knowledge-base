@@ -9,6 +9,9 @@
 - **Fix upgrade screen showing after Tauri auto-update**: After Tauri auto-updates the binary, `~/.cognistore/.version` still contains the old version (Tauri only replaces the app bundle, not user data). On next launch, the version mismatch triggered the full upgrade screen. Fix: `App.tsx` now silently runs the upgrade in the background when a version mismatch is detected, going straight to the dashboard on success. Falls back to the visible upgrade screen with retry only if the silent upgrade fails.
 - **Fix publish pipeline failing on re-run (asset conflict)**: `tauri-action` failed with "already_exists" when re-running the pipeline because updater artifacts (`.tar.gz`, `.tar.gz.sig`, `latest.json`) don't have versions in their filenames. Added a cleanup step before `tauri-action` that deletes stale updater assets from the release via `gh api`, making the pipeline idempotent.
 
+### Security
+- **Harden GitHub repo**: Enforce admins on branch protection (no direct push to main), dismiss stale reviews, require last push approval, require CODEOWNERS review. Pin all 8 external GitHub Actions to commit SHA hashes. Restrict Actions to GitHub-owned + verified creators + 4 explicit third-party patterns. Create `production` environment with required reviewer.
+
 ### Improvements
 - **Mid-session knowledge capture enforcement**: Agents were only reminded to capture knowledge at session end (Stop/sessionEnd hook), making it easy to skip. Added PostToolUse hooks that nudge agents during work — after 10+ edits without calling `addKnowledge()`, a prescriptive reminder fires every 5th edit. Positive reinforcement: calling `addKnowledge()` sets a marker that silences all nudges. Stop/sessionEnd hooks are now context-aware: lighter reminder if knowledge was captured, very insistent if not. Applied to both Claude Code and Copilot skill templates.
 
