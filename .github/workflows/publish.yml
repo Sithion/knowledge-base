@@ -215,6 +215,22 @@ jobs:
         working-directory: apps/dashboard
         run: node scripts/bundle-sidecar.mjs --phase=native
 
+      - name: Clean stale release assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_ID="${{ needs.create-release.outputs.release_id }}"
+          ASSETS=$(gh api repos/${{ github.repository }}/releases/${RELEASE_ID}/assets --jq '.[] | "\(.id) \(.name)"')
+          echo "$ASSETS" | while read -r ASSET_ID ASSET_NAME; do
+            [ -z "$ASSET_ID" ] && continue
+            case "$ASSET_NAME" in
+              *.tar.gz|*.tar.gz.sig|latest.json)
+                echo "Deleting stale asset: $ASSET_NAME (id: $ASSET_ID)"
+                gh api -X DELETE repos/${{ github.repository }}/releases/assets/${ASSET_ID}
+                ;;
+            esac
+          done
+
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
