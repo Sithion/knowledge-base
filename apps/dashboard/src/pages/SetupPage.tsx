@@ -158,7 +158,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
                 {step.label}
               </span>
               {step.error && (
-                <p style={{ fontSize: 11, color: 'var(--error)', marginTop: 2 }}>{step.error}</p>
+                <p style={{ fontSize: 11, color: 'var(--error)', marginTop: 2, whiteSpace: 'pre-wrap' }}>{step.error}</p>
               )}
             </div>
           </div>

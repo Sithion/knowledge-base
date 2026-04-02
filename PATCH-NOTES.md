@@ -1,5 +1,10 @@
 # Patch Notes
 
+## v1.2.1
+
+### Fixes
+- **Linux Ollama install via graphical sudo**: On Linux, the Ollama install script requires root. The setup wizard now tries `pkexec` first (graphical password prompt on GNOME/KDE/XFCE), falls back to non-sudo attempt, then shows clear terminal instructions with the exact command to run. Error messages in the setup page now render multiline text correctly.
+
 ## v1.2.0
 
 ### Features

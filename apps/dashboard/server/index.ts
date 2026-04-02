@@ -435,12 +435,31 @@ Pass an array to addKnowledge to create multiple entries at once.
           return { success: false, message: 'Could not install Ollama automatically. Please install Homebrew (brew.sh) and retry, or download Ollama manually from ollama.com/download' };
         }
       } else if (platform === 'linux') {
-        // Linux: install script is the official method (handles architecture, systemd, etc.)
+        // Linux: install script needs sudo. Try pkexec (graphical sudo prompt) first.
+        const installScript = '/tmp/cognistore-ollama-install.sh';
+        writeFileSync(installScript, '#!/bin/sh\ncurl -fsSL https://ollama.com/install.sh | sh\n');
+        execSync(`chmod +x "${installScript}"`, { stdio: 'pipe' });
+
+        // 1. Try pkexec (graphical sudo — works on GNOME, KDE, XFCE)
+        let hasPkexec = false;
+        try { execSync('which pkexec', { stdio: 'pipe' }); hasPkexec = true; } catch { /* no pkexec */ }
+        if (hasPkexec) {
+          try {
+            log('info', 'Installing Ollama via pkexec (graphical sudo prompt)...');
+            execSync(`pkexec "${installScript}"`, { stdio: 'pipe', timeout: 300000 });
+            return { success: true, message: 'Installed via install script (pkexec)' };
+          } catch (e) {
+            log('warn', `pkexec install failed: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+
+        // 2. Try without sudo (works on some distros)
         try {
-          execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'pipe', timeout: 180000 });
+          log('info', 'Trying Ollama install without sudo...');
+          execSync(`"${installScript}"`, { stdio: 'pipe', timeout: 180000 });
           return { success: true, message: 'Installed via install script' };
         } catch {
-          return { success: false, message: 'Could not install Ollama automatically. The install script may require sudo. Please run "curl -fsSL https://ollama.com/install.sh | sh" in your terminal, then retry setup.' };
+          return { success: false, message: 'Could not install Ollama automatically. Please run this command in your terminal:\n\ncurl -fsSL https://ollama.com/install.sh | sudo sh\n\nThen click "Retry" to continue setup.' };
         }
       }
       return { success: false, message: 'Unsupported platform. Download Ollama from ollama.com/download' };
