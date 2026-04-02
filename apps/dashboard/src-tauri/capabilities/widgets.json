@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicegui/tauri-v2-capabilities/refs/heads/main/capabilities.schema.json",
+  "identifier": "widgets",
+  "description": "Capabilities for floating widget windows",
+  "windows": ["widget-*"],
+  "remote": {
+    "urls": ["http://localhost:*"]
+  },
+  "permissions": [
+    "core:default",
+    "core:event:allow-emit",
+    "core:event:allow-listen"
+  ]
+}

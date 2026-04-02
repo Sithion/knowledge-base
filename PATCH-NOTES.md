@@ -1,5 +1,19 @@
 # Patch Notes
 
+## v1.2.0
+
+### Features
+- **Floating Quick Stats widget**: Always-on-top frameless window with frosted glass effect on macOS. Shows total knowledge count, consulted (1h/24h) and written (1h/24h) metrics. Auto-refreshes every 10 seconds. Draggable via title bar, closable via close button.
+- **System tray integration**: CogniStore now shows a system tray icon with a menu to toggle the Quick Stats widget, show the main window, or quit the app. Tray state syncs with the sidebar toggle.
+- **Sidebar widget toggle**: New "Widgets" section in the sidebar (Tauri only) with a toggle button for the Quick Stats widget. Green dot indicator shows when the widget is active.
+
+### Improvements
+- **Stats page label rework**: Renamed technical labels "Reads/Writes" to user-friendly "Consulted/Written" across all 3 languages (English, Spanish, Portuguese). Sub-labels changed from "searches/mutations" to "knowledge consulted/knowledge written". Chart legends updated accordingly.
+
+### Infrastructure
+- **Tauri multi-window support**: Added `tray-icon` and `image-png` features. New Rust modules (`widgets.rs`, `tray.rs`) for widget window management and system tray. Widget windows use `WebviewWindowBuilder` with `always_on_top`, `transparent`, `decorations(false)`.
+- **Vite multi-page build**: Added `rollupOptions.input` for widget HTML entry points alongside the main dashboard.
+
 ## v1.1.0
 
 ### Fixes

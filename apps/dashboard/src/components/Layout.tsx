@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 declare const __APP_VERSION__: string;
+
+const isTauri = !!(window as any).__TAURI_INTERNALS__ || !!(window as any).__TAURI__;
 
 interface NavItem {
   key: string;
@@ -29,6 +31,37 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [statsWidgetOpen, setStatsWidgetOpen] = useState(false);
+
+  const syncWidgetState = useCallback(async () => {
+    if (!isTauri) return;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      const open = await invoke<string[]>('get_open_widgets');
+      setStatsWidgetOpen(open.includes('stats'));
+    } catch { /* not in Tauri */ }
+  }, []);
+
+  useEffect(() => {
+    syncWidgetState();
+    // Poll every 2s to sync with tray toggle
+    const interval = setInterval(syncWidgetState, 2000);
+    return () => clearInterval(interval);
+  }, [syncWidgetState]);
+
+  const toggleStatsWidget = async () => {
+    if (!isTauri) return;
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+      if (statsWidgetOpen) {
+        await invoke('close_widget', { widgetId: 'stats' });
+        setStatsWidgetOpen(false);
+      } else {
+        await invoke('open_widget', { widgetId: 'stats' });
+        setStatsWidgetOpen(true);
+      }
+    } catch { /* ignore */ }
+  };
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
@@ -136,6 +169,49 @@ export function Layout({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        {/* Widget Toggles (Tauri only) */}
+        {isTauri && (
+          <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 8 }}>
+            {!collapsed && (
+              <p style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                {t('nav.widgets')}
+              </p>
+            )}
+            <button
+              onClick={toggleStatsWidget}
+              title={collapsed ? t('nav.quickStats') : undefined}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: 'none',
+                background: statsWidgetOpen ? 'rgba(99, 102, 241, 0.15)' : 'transparent',
+                color: statsWidgetOpen ? '#a5b4fc' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontSize: 13,
+                textAlign: 'left',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span style={{ fontSize: 14 }}>📊</span>
+              {!collapsed && <span>{t('nav.quickStats')}</span>}
+              {!collapsed && (
+                <span style={{
+                  marginLeft: 'auto',
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: statsWidgetOpen ? '#22c55e' : 'rgba(255,255,255,0.15)',
+                  transition: 'background-color 0.15s ease',
+                }} />
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Version Display */}
         {!collapsed && (

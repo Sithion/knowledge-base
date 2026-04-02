@@ -2,10 +2,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod sidecar;
+mod tray;
+mod widgets;
 
 use sidecar::SidecarState;
 use std::time::Duration;
 use tauri::Manager;
+use widgets::{PortState, WidgetRegistry};
 
 /// Run the full setup logic. Extracted so that errors can be caught
 /// and displayed in the webview instead of panicking through FFI.
@@ -42,8 +45,13 @@ fn run_setup(app: &mut tauri::App) -> Result<(), String> {
     )?;
 
     app.manage(SidecarState::new(child));
+    app.manage(PortState { port });
+    app.manage(WidgetRegistry::default());
 
-    // 6. Wait for OUR server to be ready (verifies sidecar token), then navigate WebView
+    // 6. Set up system tray
+    tray::setup_tray(app.handle()).map_err(|e| format!("Tray setup failed: {}", e))?;
+
+    // 7. Wait for OUR server to be ready (verifies sidecar token), then navigate WebView
     let window = app
         .get_webview_window("main")
         .ok_or_else(|| "Main window not found".to_string())?;
@@ -68,6 +76,11 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .invoke_handler(tauri::generate_handler![
+            widgets::open_widget,
+            widgets::close_widget,
+            widgets::get_open_widgets,
+        ])
         .setup(|app| {
             if let Err(msg) = run_setup(app) {
                 eprintln!("Setup error: {}", msg);
@@ -85,8 +98,18 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
-                if let Some(state) = window.try_state::<SidecarState>() {
-                    state.kill();
+                let label = window.label().to_string();
+                if label == "main" {
+                    // Kill sidecar only when main window is destroyed
+                    if let Some(state) = window.try_state::<SidecarState>() {
+                        state.kill();
+                    }
+                } else if label.starts_with("widget-") {
+                    // Deregister widget from registry
+                    let widget_id = label.strip_prefix("widget-").unwrap_or(&label);
+                    if let Some(registry) = window.try_state::<WidgetRegistry>() {
+                        registry.remove(widget_id);
+                    }
                 }
             }
         })

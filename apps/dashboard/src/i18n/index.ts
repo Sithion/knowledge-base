@@ -5,7 +5,7 @@ const resources = {
   en: {
     translation: {
       app: { title: 'CogniStore', subtitle: 'Semantic knowledge management for AI agents' },
-      nav: { home: 'Knowledge Base', add: 'Add Knowledge', tags: 'Tags', plans: 'Plans', stats: 'Statistics', statsKnowledge: 'Knowledge', statsPlans: 'Plans', settings: 'Settings' },
+      nav: { home: 'Knowledge Base', add: 'Add Knowledge', tags: 'Tags', plans: 'Plans', stats: 'Statistics', statsKnowledge: 'Knowledge', statsPlans: 'Plans', settings: 'Settings', widgets: 'Widgets', quickStats: 'Quick Stats' },
       statsTitle: { knowledge: 'Knowledge Statistics', plans: 'Plan Statistics' },
       search: { placeholder: 'Search knowledge semantically...', button: 'Search', noResults: 'No results found.', resultsCount: '{{count}} result(s) found', recent: 'Recent Knowledge', empty: 'No knowledge entries yet. Add some knowledge to get started.' },
       knowledge: { content: 'Content', tags: 'Tags', type: 'Type', scope: 'Scope', source: 'Source', confidence: 'Confidence', expires: 'Expires', agent: 'Agent', version: 'Version', created: 'Created', updated: 'Updated', relatedIds: 'Related', tagsPlaceholder: 'auth, jwt, fix', agentPlaceholder: 'claude' },
@@ -17,12 +17,12 @@ const resources = {
       stats: {
         title: 'Knowledge Statistics', total: 'Total Entries', byType: 'By Type', byScope: 'By Scope', tagCloud: 'Tag Cloud',
         cleanCache: 'Clean cache', cacheClean: 'Cache clean', cleanTooltip: 'Remove unused embeddings',
-        reads1h: 'Reads (1h)', reads24h: 'Reads (24h)', writes1h: 'Writes (1h)', writes24h: 'Writes (24h)',
-        searches: 'searches', mutations: 'mutations',
+        consulted1h: 'Consulted (1h)', consulted24h: 'Consulted (24h)', written1h: 'Written (1h)', written24h: 'Written (24h)',
+        consultedSub: 'knowledge consulted', writtenSub: 'knowledge written',
         totalEntries: 'Total Entries', last24h: 'Last 24h', last7d: 'Last 7 Days', dbSize: 'Database Size', newEntries: 'new entries',
         knowledgeByType: 'Knowledge by Type', knowledgeByScope: 'Knowledge by Scope',
         activity15d: 'Activity (Last 15 Days)', noActivity15d: 'No activity in the last 15 days',
-        dateLabel: 'Date', totalLine: 'Total', readsLine: 'Reads', writesLine: 'Writes',
+        dateLabel: 'Date', totalLine: 'Total', consultedLine: 'Consulted', writtenLine: 'Written',
         contributions90d: 'Contributions (Last 90 Days)', topTags: 'Top Tags', noTags: 'No tags yet',
         noData: 'No data yet', failedLoad: 'Failed to load', loading: 'Loading...',
         less: 'Less', more: 'More',
@@ -89,7 +89,7 @@ const resources = {
   es: {
     translation: {
       app: { title: 'CogniStore', subtitle: 'Gestión semántica de conocimiento para agentes de IA' },
-      nav: { home: 'Base de Conocimiento', add: 'Agregar Conocimiento', tags: 'Etiquetas', plans: 'Planes', stats: 'Estadísticas', statsKnowledge: 'Conocimiento', statsPlans: 'Planes', settings: 'Configuración' },
+      nav: { home: 'Base de Conocimiento', add: 'Agregar Conocimiento', tags: 'Etiquetas', plans: 'Planes', stats: 'Estadísticas', statsKnowledge: 'Conocimiento', statsPlans: 'Planes', settings: 'Configuración', widgets: 'Widgets', quickStats: 'Estadísticas Rápidas' },
       statsTitle: { knowledge: 'Estadísticas de Conocimiento', plans: 'Estadísticas de Planes' },
       search: { placeholder: 'Buscar conocimiento semánticamente...', button: 'Buscar', noResults: 'No se encontraron resultados.', resultsCount: '{{count}} resultado(s) encontrado(s)', recent: 'Conocimiento Reciente', empty: 'Aún no hay entradas. Agrega conocimiento para comenzar.' },
       knowledge: { content: 'Contenido', tags: 'Etiquetas', type: 'Tipo', scope: 'Ámbito', source: 'Fuente', confidence: 'Confianza', expires: 'Expira', agent: 'Agente', version: 'Versión', created: 'Creado', updated: 'Actualizado', relatedIds: 'Relacionados', tagsPlaceholder: 'auth, jwt, fix', agentPlaceholder: 'claude' },
@@ -101,12 +101,12 @@ const resources = {
       stats: {
         title: 'Estadísticas de Conocimiento', total: 'Entradas Totales', byType: 'Por Tipo', byScope: 'Por Ámbito', tagCloud: 'Nube de Etiquetas',
         cleanCache: 'Limpiar caché', cacheClean: 'Caché limpio', cleanTooltip: 'Eliminar embeddings no utilizados',
-        reads1h: 'Lecturas (1h)', reads24h: 'Lecturas (24h)', writes1h: 'Escritas (1h)', writes24h: 'Escritas (24h)',
-        searches: 'búsquedas', mutations: 'mutaciones',
+        consulted1h: 'Consultados (1h)', consulted24h: 'Consultados (24h)', written1h: 'Escritos (1h)', written24h: 'Escritos (24h)',
+        consultedSub: 'conocimiento consultado', writtenSub: 'conocimiento escrito',
         totalEntries: 'Entradas Totales', last24h: 'Últimas 24h', last7d: 'Últimos 7 Días', dbSize: 'Tamaño de BD', newEntries: 'entradas nuevas',
         knowledgeByType: 'Conocimiento por Tipo', knowledgeByScope: 'Conocimiento por Ámbito',
         activity15d: 'Actividad (Últimos 15 Días)', noActivity15d: 'Sin actividad en los últimos 15 días',
-        dateLabel: 'Fecha', totalLine: 'Total', readsLine: 'Lecturas', writesLine: 'Escritas',
+        dateLabel: 'Fecha', totalLine: 'Total', consultedLine: 'Consultados', writtenLine: 'Escritos',
         contributions90d: 'Contribuciones (Últimos 90 Días)', topTags: 'Etiquetas Principales', noTags: 'Sin etiquetas aún',
         noData: 'Sin datos aún', failedLoad: 'Error al cargar', loading: 'Cargando...',
         less: 'Menos', more: 'Más',
@@ -173,7 +173,7 @@ const resources = {
   pt: {
     translation: {
       app: { title: 'CogniStore', subtitle: 'Gestão semântica de conhecimento para agentes de IA' },
-      nav: { home: 'Base de Conhecimento', add: 'Adicionar Conhecimento', tags: 'Tags', plans: 'Planos', stats: 'Estatísticas', statsKnowledge: 'Conhecimento', statsPlans: 'Planos', settings: 'Configurações' },
+      nav: { home: 'Base de Conhecimento', add: 'Adicionar Conhecimento', tags: 'Tags', plans: 'Planos', stats: 'Estatísticas', statsKnowledge: 'Conhecimento', statsPlans: 'Planos', settings: 'Configurações', widgets: 'Widgets', quickStats: 'Estatísticas Rápidas' },
       statsTitle: { knowledge: 'Estatísticas de Conhecimento', plans: 'Estatísticas de Planos' },
       search: { placeholder: 'Buscar conhecimento semanticamente...', button: 'Buscar', noResults: 'Nenhum resultado encontrado.', resultsCount: '{{count}} resultado(s) encontrado(s)', recent: 'Conhecimento Recente', empty: 'Nenhuma entrada ainda. Adicione conhecimento para começar.' },
       knowledge: { content: 'Conteúdo', tags: 'Tags', type: 'Tipo', scope: 'Escopo', source: 'Fonte', confidence: 'Confiança', expires: 'Expira', agent: 'Agente', version: 'Versão', created: 'Criado', updated: 'Atualizado', relatedIds: 'Relacionados', tagsPlaceholder: 'auth, jwt, fix', agentPlaceholder: 'claude' },
@@ -185,12 +185,12 @@ const resources = {
       stats: {
         title: 'Estatísticas de Conhecimento', total: 'Total de Entradas', byType: 'Por Tipo', byScope: 'Por Escopo', tagCloud: 'Nuvem de Tags',
         cleanCache: 'Limpar cache', cacheClean: 'Cache limpo', cleanTooltip: 'Remover embeddings não utilizados',
-        reads1h: 'Leituras (1h)', reads24h: 'Leituras (24h)', writes1h: 'Escritas (1h)', writes24h: 'Escritas (24h)',
-        searches: 'buscas', mutations: 'mutações',
+        consulted1h: 'Consultados (1h)', consulted24h: 'Consultados (24h)', written1h: 'Escritos (1h)', written24h: 'Escritos (24h)',
+        consultedSub: 'conhecimento consultado', writtenSub: 'conhecimento escrito',
         totalEntries: 'Total de Entradas', last24h: 'Últimas 24h', last7d: 'Últimos 7 Dias', dbSize: 'Tamanho do BD', newEntries: 'novas entradas',
         knowledgeByType: 'Conhecimento por Tipo', knowledgeByScope: 'Conhecimento por Escopo',
         activity15d: 'Atividade (Últimos 15 Dias)', noActivity15d: 'Sem atividade nos últimos 15 dias',
-        dateLabel: 'Data', totalLine: 'Total', readsLine: 'Leituras', writesLine: 'Escritas',
+        dateLabel: 'Data', totalLine: 'Total', consultedLine: 'Consultados', writtenLine: 'Escritos',
         contributions90d: 'Contribuições (Últimos 90 Dias)', topTags: 'Tags Principais', noTags: 'Sem tags ainda',
         noData: 'Sem dados ainda', failedLoad: 'Erro ao carregar', loading: 'Carregando...',
         less: 'Menos', more: 'Mais',
