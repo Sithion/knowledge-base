@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 
 declare const __APP_VERSION__: string;
 
+const isTauri = !!(window as any).__TAURI_INTERNALS__ || !!(window as any).__TAURI__;
+
 interface NavItem {
   key: string;
   path: string;
@@ -21,6 +23,7 @@ const navItems: NavItem[] = [
       { key: 'statsPlans', path: '/stats/plans' },
     ],
   },
+  ...(isTauri ? [{ key: 'widgets', path: '/widgets', icon: '🧩' }] : []),
   { key: 'settings', path: '/settings', icon: '⚙' },
 ];
 

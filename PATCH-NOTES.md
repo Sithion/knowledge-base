@@ -1,5 +1,34 @@
 # Patch Notes
 
+## v1.2.0
+
+### Features
+- **Multiple floating widgets**: Three draggable widget types — Knowledge Stats (total entries, reads/writes), Plan Stats (plan status breakdown, task completion %), and Active Plans (scrollable list with progress bars). Each widget auto-refreshes every 10 seconds.
+- **Widgets page**: New `/widgets` page in the sidebar (Tauri only) to manage all widget types. Cards show widget status with green indicator dot. Open/close buttons for each widget type.
+- **Widget position persistence**: Widget positions are saved to `~/.cognistore/widgets.json`. On app restart, all widgets that were open are restored at their last positions.
+- **Plan navigation from widget**: Clicking an active plan in the Active Plans widget navigates the main app to the Plans page with focus on that plan.
+- **System tray with Widgets submenu**: System tray icon with "Show CogniStore", "Widgets" submenu (Knowledge Stats, Plan Stats, Active Plans), and "Quit". Create new widget instances directly from the tray.
+- **Widget actions**: Active Plans widget rows show a delete button on hover. Click to delete the plan directly from the widget.
+- **Dynamic Active Plans widget**: Widget height adjusts automatically based on content (up to configurable max, default 5 slots). Scrollbar appears when content exceeds max. Max visible setting available on the Widgets page.
+- **Task visibility in Active Plans widget**: In-progress tasks are shown inline under each plan with blue status dots. Click the expand arrow to see all tasks (pending, in-progress, completed with strikethrough). Widget resizes dynamically when expanding/collapsing.
+
+### Fixes
+- **Widget close button**: Fixed close button not working — was using `window.close()` which doesn't work in Tauri webviews. Now uses Tauri window API with `core:window:allow-close` permission.
+- **Ollama download 404 on Linux/macOS**: Ollama v0.19.0 changed release format from standalone binaries to `.tar.zst` archives, breaking fallback download URLs. Removed broken binary download fallbacks; both platforms now use install script with clear manual install instructions if it fails.
+- **Active Plans widget progress**: The `/api/plans` endpoint now enriches plans with `taskCount` and `completedTasks` (matching MCP server behavior). Progress bars in the Active Plans widget now show correct task completion.
+
+### Improvements
+- **Application logging**: Logs written to `~/.cognistore/cognistore.log` with automatic rotation (500 lines max). New log viewer in Settings page (collapsible, auto-refresh, color-coded by level). New `/api/logs` endpoint.
+- **Friendly launcher errors**: Setup/server errors now show a branded error page with details toggle and retry button instead of raw technical messages.
+- **macOS dock behavior**: Closing the main window hides it instead of quitting. Click the dock icon to reopen. Only "Quit" in tray actually exits.
+- **Stats page label rework**: Renamed technical labels "Reads/Writes" to user-friendly "Consulted/Written" across all 3 languages (English, Spanish, Portuguese). Sub-labels changed from "searches/mutations" to "knowledge consulted/knowledge written".
+- **CogniStore CLI adherence**: Improved hook enforcement for Claude Code — query hook now uses `decision: "block"` instead of `systemMessage` (advisory), with state-aware marker (`/tmp/.cognistore-queried`) so it only blocks until the first query. Plan task sync reduced noise (every 5th edit) with escalation to block after 15+ edits without tracking. Capture nudge starts earlier (5th edit instead of 10th).
+
+### Infrastructure
+- **Tauri multi-window support**: New Rust modules (`widgets.rs`, `widget_config.rs`, `tray.rs`) for widget window management, position persistence, and system tray. Widget windows use `WebviewWindowBuilder` with `always_on_top`, `transparent`, `decorations(false)`.
+- **Vite multi-page build**: Three widget entry points (stats, plans, active-plans) alongside the main dashboard.
+- **Dependency validation CI**: New `validate-dependencies` job in CI pipeline checks that external URLs (Ollama install script, GitHub Releases API) are reachable before merge.
+
 ## v1.1.0
 
 ### Fixes

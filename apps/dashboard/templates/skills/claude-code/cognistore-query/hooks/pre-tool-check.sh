@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# PreToolUse hook: Enforces knowledge base query before write/execute actions.
-# Non-blocking — only adds a systemMessage.
-
+# PreToolUse hook: BLOCKS tool use until knowledge base has been queried.
+# State-aware: goes silent after getKnowledge is called (marker set by post-query-marker.sh).
 set -euo pipefail
 
 # Read tool info from stdin
@@ -10,27 +9,35 @@ TOOL_NAME=$(echo "$INPUT" | grep -o '"tool_name":"[^"]*"' | head -1 | cut -d'"' 
 
 # Skip if the tool is a cognistore MCP tool (already using knowledge base)
 case "$TOOL_NAME" in
-  mcp__cognistore__*|mcp__cognistore__*)
+  mcp__cognistore__*)
     echo '{}'
     exit 0
     ;;
 esac
+
+# If already queried this session, silent pass
+if [ -f /tmp/.cognistore-queried ]; then
+  echo '{}'
+  exit 0
+fi
 
 # Quick health check: verify knowledge DB exists
 SQLITE_PATH="${SQLITE_PATH:-$HOME/.cognistore/knowledge.db}"
 if [ ! -f "$SQLITE_PATH" ]; then
   cat <<'EOF'
 {
-  "systemMessage": "[CogniStore] WARNING: Knowledge database not found. Run the setup wizard in the CogniStore app to initialize the database."
+  "decision": "block",
+  "reason": "[CogniStore] Knowledge database not found. Run the setup wizard in the CogniStore app to initialize."
 }
 EOF
   exit 0
 fi
 
+# Block until getKnowledge is called
 cat <<EOF
 {
-  "systemMessage": "[CogniStore] STOP. Before ${TOOL_NAME}: call mcp__cognistore__getKnowledge(query: \"<your task>\") NOW if you haven't already. All CogniStore tools are pre-approved. If you have an active plan, ensure current task is marked in_progress via updatePlanTask()."
+  "decision": "block",
+  "reason": "CogniStore: You must call mcp__cognistore__getKnowledge(query: \"<your task>\") before using ${TOOL_NAME}. All CogniStore tools are pre-approved — call directly."
 }
 EOF
-
 exit 0

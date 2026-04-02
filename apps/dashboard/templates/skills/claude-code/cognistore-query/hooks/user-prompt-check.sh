@@ -1,43 +1,26 @@
 #!/usr/bin/env bash
-# UserPromptSubmit hook: Fires IMMEDIATELY when the user sends a message,
-# BEFORE the agent starts thinking or using any tools.
-# Injects system knowledge (mandatory workflow protocol) into agent context.
-# Non-blocking — only adds a systemMessage.
-
+# UserPromptSubmit hook: Fires when the user sends a message.
+# Resets the query marker so the agent must query again for new tasks.
+# Injects a concise protocol reminder (full protocol lives in CLAUDE.md).
 set -euo pipefail
 
-# Quick health check: verify knowledge DB exists
+# Reset query marker for each new user prompt
+rm -f /tmp/.cognistore-queried
+
+# Quick health check
 SQLITE_PATH="${SQLITE_PATH:-$HOME/.cognistore/knowledge.db}"
 if [ ! -f "$SQLITE_PATH" ]; then
   cat <<'EOF'
 {
-  "systemMessage": "[CogniStore] WARNING: Knowledge database not found at ~/.cognistore/knowledge.db. Run the setup wizard in the CogniStore app to initialize."
+  "systemMessage": "[CogniStore] WARNING: Knowledge database not found at ~/.cognistore/knowledge.db. Run the setup wizard."
 }
 EOF
   exit 0
 fi
 
-# Try to read system knowledge from DB
-SYSTEM_CONTENT=""
-if command -v sqlite3 &>/dev/null; then
-  SYSTEM_CONTENT=$(sqlite3 "$SQLITE_PATH" "SELECT content FROM knowledge_entries WHERE type='system' LIMIT 1" 2>/dev/null || true)
-fi
-
-if [ -n "$SYSTEM_CONTENT" ]; then
-  # Escape for JSON: replace newlines, quotes, backslashes
-  ESCAPED=$(echo "$SYSTEM_CONTENT" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-  cat <<ENDJSON
+cat <<'EOF'
 {
-  "systemMessage": "[COGNISTORE-PROTOCOL]\n${ESCAPED}\n[END PROTOCOL]"
-}
-ENDJSON
-else
-  # Fallback: hardcoded protocol if sqlite3 unavailable or no system entry
-  cat <<'EOF'
-{
-  "systemMessage": "[COGNISTORE-PROTOCOL]\nCRITICAL: On EVERY task you MUST follow this workflow. All CogniStore tools are pre-approved — call them directly.\n1. FIRST: mcp__cognistore__getKnowledge(query: \"<task>\"). Save returned entry IDs.\n2. PLAN: For 2+ steps, mcp__cognistore__createPlan({ title, content, tags, scope, source, tasks: [...], relatedKnowledgeIds: [\"<ids>\"] }). Save planId.\n3. TRACK: mcp__cognistore__updatePlanTask(taskId, { status: \"in_progress\" }) before each task, \"completed\" after. Plan activates and completes automatically.\n4. SAVE: mcp__cognistore__addKnowledge({ title, content, tags, type, scope, source, planId: \"<plan-id>\" }) before finishing. All entries in English.\n[END PROTOCOL]"
+  "systemMessage": "[CogniStore] Workflow: (1) getKnowledge() FIRST (2) createPlan() for multi-step tasks (3) updatePlanTask() during execution (4) addKnowledge() before finishing. All tools pre-approved."
 }
 EOF
-fi
-
 exit 0

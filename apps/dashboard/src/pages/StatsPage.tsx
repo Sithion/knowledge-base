@@ -527,10 +527,10 @@ export function StatsPage() {
 
       {/* ── Operations Row ── */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-        <MetricCard label={t('stats.reads1h')} value={metrics?.operations?.readsLastHour ?? 0} sub={t('stats.searches')} />
-        <MetricCard label={t('stats.reads24h')} value={metrics?.operations?.readsLastDay ?? 0} sub={t('stats.searches')} />
-        <MetricCard label={t('stats.writes1h')} value={metrics?.operations?.writesLastHour ?? 0} sub={t('stats.mutations')} />
-        <MetricCard label={t('stats.writes24h')} value={metrics?.operations?.writesLastDay ?? 0} sub={t('stats.mutations')} />
+        <MetricCard label={t('stats.consulted1h')} value={metrics?.operations?.readsLastHour ?? 0} sub={t('stats.consultedSub')} />
+        <MetricCard label={t('stats.consulted24h')} value={metrics?.operations?.readsLastDay ?? 0} sub={t('stats.consultedSub')} />
+        <MetricCard label={t('stats.written1h')} value={metrics?.operations?.writesLastHour ?? 0} sub={t('stats.writtenSub')} />
+        <MetricCard label={t('stats.written24h')} value={metrics?.operations?.writesLastDay ?? 0} sub={t('stats.writtenSub')} />
       </div>
 
       {/* ── Charts Row ── */}
@@ -588,8 +588,8 @@ export function StatsPage() {
                   wrapperStyle={{ fontSize: 11, color: 'var(--text-secondary)' }}
                 />
                 <Line type="monotone" dataKey="total" name={t('stats.totalLine')} stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="reads" name={t('stats.readsLine')} stroke="#3b82f6" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="writes" name={t('stats.writesLine')} stroke="#22c55e" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="reads" name={t('stats.consultedLine')} stroke="#3b82f6" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="writes" name={t('stats.writtenLine')} stroke="#22c55e" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           );

@@ -205,4 +205,11 @@ export const api = {
   redeploy: () => request<{ success: boolean; results: { step: string; status: string; message?: string }[] }>(
     '/api/redeploy', { method: 'POST' }
   ),
+
+  // Logs
+  getLogs: (lines = 100) =>
+    request<{ lines: string[]; total: number }>(`/api/logs?lines=${lines}`),
+
+  clearLogs: () =>
+    request<{ success: boolean }>('/api/logs', { method: 'DELETE' }),
 };

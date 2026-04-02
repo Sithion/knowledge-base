@@ -1,18 +1,17 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicegui/tauri-v2-capabilities/refs/heads/main/capabilities.schema.json",
-  "identifier": "default",
-  "description": "Default capabilities for the main window",
-  "windows": ["main"],
+  "identifier": "widgets",
+  "description": "Capabilities for floating widget windows",
+  "windows": ["widget-*"],
   "remote": {
     "urls": ["http://localhost:*"]
   },
   "permissions": [
     "core:default",
-    "core:window:allow-create",
+    "core:event:allow-emit",
+    "core:event:allow-listen",
     "core:window:allow-close",
-    "core:window:allow-show",
-    "core:window:allow-set-focus",
-    "updater:default",
-    "process:default"
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-size"
   ]
 }

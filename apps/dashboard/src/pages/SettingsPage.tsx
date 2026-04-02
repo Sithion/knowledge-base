@@ -224,6 +224,9 @@ export function SettingsPage() {
       {/* ── Data Management Section ── */}
       <DataManagementSection />
 
+      {/* ── Log Viewer ── */}
+      <LogSection />
+
       {/* ── Uninstall Section ── */}
       <div style={{ borderTop: '1px solid var(--border)', marginTop: 32, paddingTop: 24 }}>
       <h2 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--error)', marginBottom: 16 }}>
@@ -288,6 +291,97 @@ export function SettingsPage() {
         confirmLabel={t('settings.yesUninstallAll')}
       />
       </div>
+    </div>
+  );
+}
+
+function LogSection() {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const [lines, setLines] = useState<string[]>([]);
+  const [total, setTotal] = useState(0);
+
+  const fetchLogs = useCallback(async () => {
+    try {
+      const res = await api.getLogs(200);
+      setLines(res.lines);
+      setTotal(res.total);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => {
+    if (!expanded) return;
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 5000);
+    return () => clearInterval(interval);
+  }, [expanded, fetchLogs]);
+
+  const handleClear = async () => {
+    try {
+      await api.clearLogs();
+      setLines([]);
+      setTotal(0);
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <div style={{ borderTop: '1px solid var(--border)', marginTop: 32, paddingTop: 24 }}>
+      <div
+        onClick={() => setExpanded(!expanded)}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: expanded ? 16 : 0 }}
+      >
+        <span style={{ fontSize: 12, color: 'var(--text-secondary)', transition: 'transform 0.2s', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>
+          ▶
+        </span>
+        <h2 style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--text-secondary)', margin: 0 }}>
+          {t('settings.logs.title')}
+        </h2>
+        {total > 0 && (
+          <span style={{ fontSize: 10, color: 'var(--text-secondary)', opacity: 0.6 }}>({total} lines)</span>
+        )}
+      </div>
+      {expanded && (
+        <>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+            <button
+              onClick={fetchLogs}
+              style={{
+                padding: '4px 12px', borderRadius: 6, border: '1px solid var(--border)',
+                background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 11,
+              }}
+            >{t('settings.logs.refresh')}</button>
+            <button
+              onClick={handleClear}
+              style={{
+                padding: '4px 12px', borderRadius: 6, border: '1px solid var(--border)',
+                background: 'transparent', color: 'var(--error)', cursor: 'pointer', fontSize: 11,
+              }}
+            >{t('settings.logs.clear')}</button>
+          </div>
+          <div style={{
+            backgroundColor: '#0a0a1a',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+            padding: 12,
+            maxHeight: 300,
+            overflowY: 'auto',
+            fontFamily: 'monospace',
+            fontSize: 11,
+            lineHeight: 1.6,
+            color: '#a5b4fc',
+          }}>
+            {lines.length === 0 ? (
+              <span style={{ color: 'var(--text-secondary)' }}>{t('settings.logs.empty')}</span>
+            ) : (
+              lines.map((line, i) => (
+                <div key={i} style={{
+                  color: line.includes('[ERROR]') ? '#ef4444' : line.includes('[WARN]') ? '#f59e0b' : '#a5b4fc',
+                }}>{line}</div>
+              ))
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

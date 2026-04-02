@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { execSync, spawn } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, cpSync, readdirSync, unlinkSync, rmdirSync, readFileSync, writeFileSync, statSync, chmodSync, copyFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, cpSync, readdirSync, unlinkSync, rmdirSync, readFileSync, writeFileSync, statSync, chmodSync, copyFileSync, appendFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
@@ -43,6 +43,35 @@ function saveDeployedVersion(): void {
   mkdirSync(INSTALL_DIR, { recursive: true });
   writeFileSync(VERSION_FILE, APP_VERSION);
 }
+
+// ─── Application Logging ──────────────────────────────────────
+const LOG_FILE = resolve(INSTALL_DIR, 'cognistore.log');
+const LOG_MAX_LINES = 500;
+
+function rotateLog(): void {
+  try {
+    if (!existsSync(LOG_FILE)) return;
+    const content = readFileSync(LOG_FILE, 'utf-8');
+    const lines = content.split('\n');
+    if (lines.length > LOG_MAX_LINES) {
+      writeFileSync(LOG_FILE, lines.slice(-LOG_MAX_LINES).join('\n'));
+    }
+  } catch { /* ignore rotation errors */ }
+}
+
+function log(level: 'info' | 'warn' | 'error', message: string): void {
+  const ts = new Date().toISOString();
+  const line = `[${ts}] [${level.toUpperCase()}] ${message}\n`;
+  console.log(line.trimEnd());
+  try {
+    mkdirSync(INSTALL_DIR, { recursive: true });
+    appendFileSync(LOG_FILE, line);
+  } catch { /* ignore write errors */ }
+}
+
+// Rotate on startup
+rotateLog();
+log('info', `CogniStore server starting (v${APP_VERSION})`);
 
 /** Compare two semver strings. Returns positive if a > b, negative if a < b, zero if equal. */
 function compareSemver(a: string, b: string): number {
@@ -377,7 +406,8 @@ Pass an array to addKnowledge to create multiple entries at once.
   app.post('/api/setup/ollama', async () => {
     try {
       // Check if already installed
-      try { execSync('which ollama', { stdio: 'pipe' }); return { success: true, message: 'Already installed' }; } catch { /* not installed */ }
+      try { execSync('which ollama', { stdio: 'pipe' }); log('info', 'Ollama already installed'); return { success: true, message: 'Already installed' }; } catch { /* not installed */ }
+      log('info', `Installing Ollama on ${process.platform}...`);
 
       const platform = process.platform;
       if (platform === 'darwin') {
@@ -397,31 +427,20 @@ Pass an array to addKnowledge to create multiple entries at once.
           return { success: true, message: 'Installed via Homebrew' };
         }
 
-        // No brew: try downloading the macOS zip directly
-        const ollamaDir = resolve(homedir(), '.ollama-bin');
-        mkdirSync(ollamaDir, { recursive: true });
-        try {
-          execSync(`curl -fsSL -o "${ollamaDir}/ollama" "https://ollama.com/download/ollama-darwin"`, { stdio: 'pipe', timeout: 120000 });
-          execSync(`chmod +x "${ollamaDir}/ollama"`, { stdio: 'pipe' });
-          // Add to PATH for this session
-          process.env.PATH = `${ollamaDir}:${process.env.PATH}`;
-          return { success: true, message: 'Installed to ~/.ollama-bin/' };
-        } catch {
-          return { success: false, message: 'Could not install Ollama. Please install Homebrew (brew.sh) or download Ollama from ollama.com/download' };
-        }
-      } else if (platform === 'linux') {
-        // Linux: curl installer usually works (many distros don't need sudo for /usr/local/bin)
+        // No brew: try install script (may need sudo but worth trying)
         try {
           execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'pipe', timeout: 180000 });
-          return { success: true, message: 'Installed via curl' };
+          return { success: true, message: 'Installed via install script' };
         } catch {
-          // Fallback: download binary directly
-          const ollamaDir = resolve(homedir(), '.ollama-bin');
-          mkdirSync(ollamaDir, { recursive: true });
-          execSync(`curl -fsSL -o "${ollamaDir}/ollama" "https://ollama.com/download/ollama-linux-amd64"`, { stdio: 'pipe', timeout: 120000 });
-          execSync(`chmod +x "${ollamaDir}/ollama"`, { stdio: 'pipe' });
-          process.env.PATH = `${ollamaDir}:${process.env.PATH}`;
-          return { success: true, message: 'Installed to ~/.ollama-bin/' };
+          return { success: false, message: 'Could not install Ollama automatically. Please install Homebrew (brew.sh) and retry, or download Ollama manually from ollama.com/download' };
+        }
+      } else if (platform === 'linux') {
+        // Linux: install script is the official method (handles architecture, systemd, etc.)
+        try {
+          execSync('curl -fsSL https://ollama.com/install.sh | sh', { stdio: 'pipe', timeout: 180000 });
+          return { success: true, message: 'Installed via install script' };
+        } catch {
+          return { success: false, message: 'Could not install Ollama automatically. The install script may require sudo. Please run "curl -fsSL https://ollama.com/install.sh | sh" in your terminal, then retry setup.' };
         }
       }
       return { success: false, message: 'Unsupported platform. Download Ollama from ollama.com/download' };
@@ -1445,7 +1464,16 @@ Pass an array to addKnowledge to create multiple entries at once.
     const q = request.query as any;
     const limit = Number(q.limit) || 20;
     const status = q.status || undefined;
-    return sdk.listPlans(limit, status);
+    const plans = sdk.listPlans(limit, status);
+    return plans.map((plan: any) => {
+      const tasks = sdk.listPlanTasks(plan.id);
+      return {
+        ...plan,
+        taskCount: tasks.length,
+        completedTasks: tasks.filter((t: any) => t.status === 'completed').length,
+        tasks: tasks.map((t: any) => ({ id: t.id, description: t.description, status: t.status })),
+      };
+    });
   });
 
   app.post<{ Body: { title: string; content: string; tags?: string[]; scope?: string; source?: string; tasks?: { description: string; priority?: string }[] } }>('/api/plans', async (request, reply) => {
@@ -1577,10 +1605,35 @@ Pass an array to addKnowledge to create multiple entries at once.
     }
   });
 
+  // ─── Logs endpoints ─────────────────────────────────────────────
+
+  app.get('/api/logs', async (request) => {
+    const q = request.query as any;
+    const lines = Number(q.lines) || 100;
+    try {
+      if (!existsSync(LOG_FILE)) return { lines: [], total: 0 };
+      const content = readFileSync(LOG_FILE, 'utf-8');
+      const allLines = content.split('\n').filter(Boolean);
+      return { lines: allLines.slice(-lines), total: allLines.length };
+    } catch {
+      return { lines: [], total: 0 };
+    }
+  });
+
+  app.delete('/api/logs', async () => {
+    try {
+      writeFileSync(LOG_FILE, '');
+      log('info', 'Log file cleared by user');
+      return { success: true };
+    } catch {
+      return { success: false };
+    }
+  });
+
   // ─── Start server ──────────────────────────────────────────────
 
   await app.listen({ port: PORT, host: '127.0.0.1' });
-  console.log(`Dashboard API running at http://localhost:${PORT} (initializing SDK...)`);
+  log('info', `Server listening on http://localhost:${PORT}`);
 
   // Initialize SDK in background — don't block server startup.
   // On fresh installs, ensureModel() pulls the Ollama model (streaming download)
@@ -1589,14 +1642,14 @@ Pass an array to addKnowledge to create multiple entries at once.
   (async () => {
     const initOk = await tryInitSDK();
     if (initOk) {
-      console.log('SDK initialized successfully');
+      log('info', 'SDK initialized successfully');
       await seedSystemKnowledge();
     } else {
-      console.warn(`SDK initialization failed (degraded mode): ${sdkError}`);
+      log('warn', `SDK initialization failed (degraded mode): ${sdkError}`);
       retryInterval = setInterval(async () => {
         const ok = await tryInitSDK();
         if (ok) {
-          console.log('SDK initialized (recovered from degraded mode)');
+          log('info', 'SDK initialized (recovered from degraded mode)');
           await seedSystemKnowledge();
         }
       }, 10000);

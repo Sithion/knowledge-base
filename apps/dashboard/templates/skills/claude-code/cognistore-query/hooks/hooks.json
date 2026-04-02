@@ -22,6 +22,18 @@
         ],
         "matcher": "Edit|Write|Bash|MultiEdit|Agent|NotebookEdit|EnterPlanMode"
       }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_SKILL_DIR}/hooks/post-query-marker.sh",
+            "timeout": 5
+          }
+        ],
+        "matcher": "mcp__cognistore__getKnowledge"
+      }
     ]
   }
 }
