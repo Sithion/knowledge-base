@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # PostToolUse hook: Fires after Edit/Write/Bash to remind about plan task tracking.
 # State-aware: only fires when an active plan exists.
-# Throttled: fires every 3rd edit to reduce noise.
+# Throttled: fires every 5th edit. Escalates to block after 15+ edits without task update.
 set -euo pipefail
 
 PLAN_MARKER="/tmp/.cognistore-active-plan"
 COUNTER_FILE="/tmp/.cognistore-edit-count"
+TASK_UPDATED="/tmp/.cognistore-task-updated"
 
 # No active plan? Silent exit.
 if [ ! -f "$PLAN_MARKER" ]; then
@@ -19,19 +20,40 @@ if [ -z "$PLAN_ID" ]; then
   exit 0
 fi
 
-# Throttle: only fire every 3rd edit to reduce noise
+# Increment counter
 COUNT=$(cat "$COUNTER_FILE" 2>/dev/null || echo "0")
 COUNT=$((COUNT + 1))
 echo "$COUNT" > "$COUNTER_FILE"
 
-if [ $((COUNT % 3)) -ne 0 ]; then
+# If task was recently updated, reset counter and stay silent
+if [ -f "$TASK_UPDATED" ]; then
+  rm -f "$TASK_UPDATED"
+  echo "0" > "$COUNTER_FILE"
+  echo '{}'
+  exit 0
+fi
+
+# Escalate to block after 15+ edits without a task update
+if [ "$COUNT" -ge 15 ]; then
+  echo "0" > "$COUNTER_FILE"
+  cat <<EOF
+{
+  "decision": "block",
+  "reason": "CogniStore: 15+ edits without updating plan tasks. Call mcp__cognistore__listPlanTasks(\"${PLAN_ID}\") then updatePlanTask(taskId, { status: \"completed\" }) for finished tasks NOW."
+}
+EOF
+  exit 0
+fi
+
+# Throttle: only fire every 5th edit
+if [ $((COUNT % 5)) -ne 0 ]; then
   echo '{}'
   exit 0
 fi
 
 cat <<EOF
 {
-  "systemMessage": "STOP. You have an active CogniStore plan (${PLAN_ID}). Call mcp__cognistore__updatePlanTask(taskId, { status: \"completed\", notes: \"<what you just did>\" }) NOW for any task you just finished. Then call mcp__cognistore__updatePlanTask(nextTaskId, { status: \"in_progress\" }) for the next task. If you don't know the taskIds, call mcp__cognistore__listPlanTasks(\"${PLAN_ID}\") first."
+  "systemMessage": "[CogniStore] Active plan ${PLAN_ID}: call updatePlanTask(taskId, {status: \"completed\"}) for finished tasks, then updatePlanTask(nextTaskId, {status: \"in_progress\"}) for the next."
 }
 EOF
 exit 0

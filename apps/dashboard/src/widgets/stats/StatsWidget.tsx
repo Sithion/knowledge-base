@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '../../api/client.js';
+import { useWidgetClose } from '../shared/useWidgetClose.js';
 
 interface Metrics {
   activity: { total: number };
@@ -12,6 +13,12 @@ interface Metrics {
 }
 
 const REFRESH_INTERVAL = 10_000;
+
+function navigateMainApp(route: string) {
+  import('@tauri-apps/api/event').then(({ emit }) => {
+    emit('navigate', route);
+  }).catch(() => {});
+}
 
 function StatRow({ label, value }: { label: string; value: number }) {
   return (
@@ -31,6 +38,7 @@ function StatRow({ label, value }: { label: string; value: number }) {
 export function StatsWidget() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const handleClose = useWidgetClose();
 
   const fetchData = useCallback(async () => {
     try {
@@ -48,10 +56,6 @@ export function StatsWidget() {
     const interval = setInterval(fetchData, REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [fetchData]);
-
-  const handleClose = () => {
-    window.close();
-  };
 
   return (
     <div className="widget-shell">
@@ -79,12 +83,20 @@ export function StatsWidget() {
         ) : (
           <>
             {/* Total */}
-            <div style={{
-              textAlign: 'center',
-              padding: '8px 0 12px',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-              marginBottom: 8,
-            }}>
+            <div
+              onClick={() => navigateMainApp('/stats')}
+              style={{
+                textAlign: 'center',
+                padding: '8px 0 12px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                marginBottom: 8,
+                cursor: 'pointer',
+                borderRadius: 6,
+                transition: 'background 0.15s',
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'rgba(255,255,255,0.03)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+            >
               <div style={{ fontSize: 28, fontWeight: 700, color: '#6366f1' }}>
                 {metrics?.activity.total ?? 0}
               </div>

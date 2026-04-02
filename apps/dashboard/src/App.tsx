@@ -1,16 +1,50 @@
 import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 
 declare const __APP_VERSION__: string;
 import { Layout } from './components/Layout.js';
 import { HomePage } from './pages/HomePage.js';
 import { StatsPage, PlanStatsPage } from './pages/StatsPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { WidgetsPage } from './pages/WidgetsPage.js';
 import { PlansPage } from './pages/PlansPage.js';
 import { SetupPage } from './pages/SetupPage.js';
 import { UpgradePage } from './pages/UpgradePage.js';
 import { api } from './api/client.js';
 import { UpdateChecker } from './components/UpdateChecker.js';
+
+const isTauri = !!(window as any).__TAURI_INTERNALS__ || !!(window as any).__TAURI__;
+
+function WidgetEventListener() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isTauri) return;
+    const unlisteners: (() => void)[] = [];
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      const showMainWindow = () => {
+        import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+          const win = getCurrentWindow();
+          win.show();
+          win.setFocus();
+        }).catch(() => {});
+      };
+
+      listen<string>('open-plan', (event) => {
+        navigate('/plans', { state: { focusPlan: event.payload } });
+        showMainWindow();
+      }).then((fn) => unlisteners.push(fn));
+
+      listen<string>('navigate', (event) => {
+        navigate(event.payload);
+        showMainWindow();
+      }).then((fn) => unlisteners.push(fn));
+    });
+    return () => { unlisteners.forEach(fn => fn()); };
+  }, [navigate]);
+
+  return null;
+}
 
 type AppState = 'loading' | 'setup' | 'upgrade' | 'ready';
 
@@ -87,12 +121,14 @@ export function App() {
   return (
     <BrowserRouter>
       <UpdateChecker />
+      <WidgetEventListener />
       <Layout>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/plans" element={<PlansPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/stats/plans" element={<PlanStatsPage />} />
+          <Route path="/widgets" element={<WidgetsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Layout>

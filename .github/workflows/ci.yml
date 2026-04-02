@@ -30,6 +30,26 @@ jobs:
           fi
           echo "Version bumped: ${{ steps.main.outputs.version }} → ${{ steps.pr.outputs.version }}"
 
+  validate-dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+      - name: Validate external dependency URLs
+        run: |
+          FAILED=0
+          check_url() {
+            STATUS=$(curl -sIL -o /dev/null -w "%{http_code}" "$1" --max-time 15 2>/dev/null)
+            if [ "$STATUS" != "200" ]; then
+              echo "::error::$2 returned HTTP $STATUS: $1"
+              FAILED=1
+            else
+              echo "✓ $2 (HTTP $STATUS)"
+            fi
+          }
+          check_url "https://ollama.com/install.sh" "Ollama install script"
+          check_url "https://api.github.com/repos/Sithion/cognistore/releases/latest" "GitHub Releases API"
+          if [ "$FAILED" -ne 0 ]; then exit 1; fi
+
   build-and-test:
     runs-on: ubuntu-latest
     steps:
