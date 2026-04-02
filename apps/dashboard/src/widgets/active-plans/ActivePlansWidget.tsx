@@ -2,20 +2,32 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { api } from '../../api/client.js';
 import { useWidgetClose } from '../shared/useWidgetClose.js';
 
+interface Task {
+  id: string;
+  description: string;
+  status: string;
+}
+
 interface Plan {
   id: string;
   title: string;
   status: string;
   taskCount?: number;
   completedTasks?: number;
+  tasks?: Task[];
 }
 
 const REFRESH_INTERVAL = 10_000;
-const ROW_HEIGHT = 44; // px per plan row
-const HEADER_HEIGHT = 32; // drag region
-const PADDING_HEIGHT = 24; // content padding top+bottom
-const EMPTY_HEIGHT = 80; // empty state height
+const HEADER_HEIGHT = 32;
+const PADDING_HEIGHT = 24;
+const EMPTY_HEIGHT = 80;
 const MIN_WIDTH = 320;
+
+const STATUS_DOT: Record<string, string> = {
+  in_progress: '#3b82f6',
+  pending: '#6b7280',
+  completed: '#22c55e',
+};
 
 function getMaxVisible(): number {
   const params = new URLSearchParams(window.location.search);
@@ -23,13 +35,23 @@ function getMaxVisible(): number {
   return val > 0 ? val : 5;
 }
 
-function PlanRow({ plan, onDelete }: { plan: Plan; onDelete: (id: string) => void }) {
+function PlanRow({ plan, onDelete, expanded, onToggle }: {
+  plan: Plan;
+  onDelete: (id: string) => void;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
   const [hover, setHover] = useState(false);
   const total = plan.taskCount ?? 0;
   const completed = plan.completedTasks ?? 0;
   const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const tasks = plan.tasks ?? [];
+  const inProgressTasks = tasks.filter(t => t.status === 'in_progress');
+  const pendingTasks = tasks.filter(t => t.status === 'pending');
+  const completedTasks = tasks.filter(t => t.status === 'completed');
 
-  const handleClick = () => {
+  const handleNavigate = (e: React.MouseEvent) => {
+    e.stopPropagation();
     import('@tauri-apps/api/event').then(({ emit }) => {
       emit('open-plan', plan.id);
     }).catch(() => {});
@@ -42,22 +64,35 @@ function PlanRow({ plan, onDelete }: { plan: Plan; onDelete: (id: string) => voi
 
   return (
     <div
-      onClick={handleClick}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
         padding: '8px 0',
         borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-        cursor: 'pointer',
         background: hover ? 'rgba(255,255,255,0.03)' : 'transparent',
         transition: 'background 0.15s',
       }}
     >
+      {/* Title row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-        <div style={{
-          fontSize: 12, fontWeight: 500, color: '#e2e8f0', flex: 1,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
+        {/* Expand toggle */}
+        <span
+          onClick={onToggle}
+          style={{
+            fontSize: 9, color: 'rgba(255,255,255,0.3)', cursor: 'pointer',
+            transition: 'transform 0.15s', transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+            flexShrink: 0, width: 12, textAlign: 'center',
+          }}
+        >&#9654;</span>
+        <div
+          onClick={handleNavigate}
+          style={{
+            fontSize: 12, fontWeight: 500, color: '#e2e8f0', flex: 1,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            cursor: 'pointer',
+          }}
+          title={plan.title}
+        >
           {plan.title}
         </div>
         {hover && (
@@ -69,16 +104,14 @@ function PlanRow({ plan, onDelete }: { plan: Plan; onDelete: (id: string) => voi
               background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444',
               cursor: 'pointer', display: 'flex', alignItems: 'center',
               justifyContent: 'center', fontSize: 10, lineHeight: 1,
-              padding: 0, flexShrink: 0, transition: 'background 0.15s',
+              padding: 0, flexShrink: 0,
             }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 0.4)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 0.2)'; }}
-          >
-            ×
-          </button>
+          >×</button>
         )}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+      {/* Progress bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 12 }}>
         <div style={{
           flex: 1, height: 3, borderRadius: 2,
           backgroundColor: 'rgba(255, 255, 255, 0.08)', overflow: 'hidden',
@@ -93,6 +126,45 @@ function PlanRow({ plan, onDelete }: { plan: Plan; onDelete: (id: string) => voi
           {completed}/{total}
         </span>
       </div>
+
+      {/* In-progress tasks always visible */}
+      {!expanded && inProgressTasks.length > 0 && (
+        <div style={{ paddingLeft: 12, marginTop: 6 }}>
+          {inProgressTasks.map(t => (
+            <TaskLine key={t.id} task={t} />
+          ))}
+        </div>
+      )}
+
+      {/* Expanded: show all tasks by status */}
+      {expanded && (
+        <div style={{ paddingLeft: 12, marginTop: 6 }}>
+          {inProgressTasks.map(t => <TaskLine key={t.id} task={t} />)}
+          {pendingTasks.map(t => <TaskLine key={t.id} task={t} />)}
+          {completedTasks.map(t => <TaskLine key={t.id} task={t} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskLine({ task }: { task: Task }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 6,
+      padding: '2px 0', fontSize: 10,
+    }}>
+      <span style={{
+        width: 6, height: 6, borderRadius: '50%', flexShrink: 0, marginTop: 3,
+        backgroundColor: STATUS_DOT[task.status] ?? '#6b7280',
+      }} />
+      <span style={{
+        color: task.status === 'completed' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)',
+        textDecoration: task.status === 'completed' ? 'line-through' : 'none',
+        lineHeight: 1.3,
+      }}>
+        {task.description}
+      </span>
     </div>
   );
 }
@@ -100,9 +172,10 @@ function PlanRow({ plan, onDelete }: { plan: Plan; onDelete: (id: string) => voi
 export function ActivePlansWidget() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const handleClose = useWidgetClose();
   const maxVisible = useRef(getMaxVisible()).current;
-  const resized = useRef(false);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -128,23 +201,24 @@ export function ActivePlansWidget() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // Resize window dynamically based on plan count
+  // Max content height based on configurable maxVisible (each "slot" ~80px)
+  const maxContentHeight = maxVisible * 80;
+
+  // Resize Tauri window: grows with content up to max, then scrollbar kicks in
   useEffect(() => {
     if (loading) return;
-    const visibleCount = Math.min(plans.length, maxVisible);
-    const contentHeight = plans.length === 0
-      ? EMPTY_HEIGHT
-      : visibleCount * ROW_HEIGHT;
-    const totalHeight = HEADER_HEIGHT + PADDING_HEIGHT + contentHeight;
-
-    import('@tauri-apps/api/window').then(({ getCurrentWindow, LogicalSize }) => {
-      getCurrentWindow().setSize(new LogicalSize(MIN_WIDTH, totalHeight));
-    }).catch(() => {});
-    resized.current = true;
-  }, [plans.length, loading, maxVisible]);
-
-  const showScroll = plans.length > maxVisible;
-  const maxContentHeight = maxVisible * ROW_HEIGHT;
+    const resize = () => {
+      const contentHeight = contentRef.current?.scrollHeight ?? EMPTY_HEIGHT;
+      const clampedContent = Math.min(contentHeight, maxContentHeight);
+      const minHeight = HEADER_HEIGHT + PADDING_HEIGHT + 40;
+      const finalHeight = Math.max(minHeight, HEADER_HEIGHT + PADDING_HEIGHT + clampedContent);
+      import('@tauri-apps/api/window').then(({ getCurrentWindow, LogicalSize }) => {
+        getCurrentWindow().setSize(new LogicalSize(MIN_WIDTH, finalHeight));
+      }).catch(() => {});
+    };
+    const timer = setTimeout(resize, 60);
+    return () => clearTimeout(timer);
+  }, [plans, loading, expandedPlan, maxContentHeight]);
 
   return (
     <div className="widget-shell">
@@ -153,10 +227,7 @@ export function ActivePlansWidget() {
         <button className="widget-close" onClick={handleClose} title="Close">×</button>
       </div>
 
-      <div className="widget-content" style={{
-        overflowY: showScroll ? 'auto' : 'hidden',
-        maxHeight: showScroll ? maxContentHeight : undefined,
-      }}>
+      <div ref={contentRef} className="widget-content" style={{ overflowY: 'auto', maxHeight: maxContentHeight }}>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 20 }}>
             <div style={{
@@ -175,7 +246,15 @@ export function ActivePlansWidget() {
             No active plans
           </div>
         ) : (
-          plans.map(plan => <PlanRow key={plan.id} plan={plan} onDelete={handleDelete} />)
+          plans.map(plan => (
+            <PlanRow
+              key={plan.id}
+              plan={plan}
+              onDelete={handleDelete}
+              expanded={expandedPlan === plan.id}
+              onToggle={() => setExpandedPlan(prev => prev === plan.id ? null : plan.id)}
+            />
+          ))
         )}
       </div>
     </div>

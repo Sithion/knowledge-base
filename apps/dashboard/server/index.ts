@@ -1471,6 +1471,7 @@ Pass an array to addKnowledge to create multiple entries at once.
         ...plan,
         taskCount: tasks.length,
         completedTasks: tasks.filter((t: any) => t.status === 'completed').length,
+        tasks: tasks.map((t: any) => ({ id: t.id, description: t.description, status: t.status })),
       };
     });
   });

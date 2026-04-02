@@ -9,7 +9,8 @@
 - **Plan navigation from widget**: Clicking an active plan in the Active Plans widget navigates the main app to the Plans page with focus on that plan.
 - **System tray with Widgets submenu**: System tray icon with "Show CogniStore", "Widgets" submenu (Knowledge Stats, Plan Stats, Active Plans), and "Quit". Create new widget instances directly from the tray.
 - **Widget actions**: Active Plans widget rows show a delete button on hover. Click to delete the plan directly from the widget.
-- **Dynamic Active Plans widget**: Widget height adjusts automatically based on plan count (up to configurable max, default 5). Max visible plans setting available on the Widgets page.
+- **Dynamic Active Plans widget**: Widget height adjusts automatically based on content (up to configurable max, default 5 slots). Scrollbar appears when content exceeds max. Max visible setting available on the Widgets page.
+- **Task visibility in Active Plans widget**: In-progress tasks are shown inline under each plan with blue status dots. Click the expand arrow to see all tasks (pending, in-progress, completed with strikethrough). Widget resizes dynamically when expanding/collapsing.
 
 ### Fixes
 - **Widget close button**: Fixed close button not working — was using `window.close()` which doesn't work in Tauri webviews. Now uses Tauri window API with `core:window:allow-close` permission.
