@@ -4,7 +4,7 @@
   "private": false,
   "type": "module",
   "description": "MCP server for CogniStore — integrates with Claude Code and GitHub Copilot",
-  "license": "BUSL-1.1",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Sithion/cognistore.git",
