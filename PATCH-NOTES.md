@@ -2,6 +2,9 @@
 
 ## v1.2.1
 
+### Improvements
+- **MIT license**: Changed project license from BUSL-1.1 (Business Source License) to MIT.
+
 ### Fixes
 - **Linux Ollama install via graphical sudo**: On Linux, the Ollama install script requires root. The setup wizard now tries `pkexec` first (graphical password prompt on GNOME/KDE/XFCE), falls back to non-sudo attempt, then shows clear terminal instructions with the exact command to run. Error messages in the setup page now render multiline text correctly.
 
