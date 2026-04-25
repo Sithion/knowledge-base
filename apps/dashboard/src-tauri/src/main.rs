@@ -145,6 +145,11 @@ fn main() {
             intake::commands::intake_first_run_setup,
             intake::commands::intake_list_audit_records,
             intake::commands::intake_get_audit_record,
+            intake::commands::intake_lock_state,
+            intake::commands::git_diff_intake_branch,
+            intake::commands::cancel_intake_run,
+            intake::commands::context_engine_reindex,
+            intake::commands::context_engine_repo_status,
             // AI_STACK_POC:INTAKE_HANDLERS_END
         ])
         .setup(|app| {

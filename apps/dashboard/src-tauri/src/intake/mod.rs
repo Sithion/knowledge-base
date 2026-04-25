@@ -19,8 +19,9 @@ pub mod runner;
 
 pub use audit::{AuditPaths, IntakeAuditRecord};
 pub use commands::{
-    intake_first_run_setup, intake_get_audit_record, intake_list_audit_records, run_intake,
-    run_pr_cut, IntakeServiceState,
+    cancel_intake_run, context_engine_reindex, context_engine_repo_status,
+    git_diff_intake_branch, intake_first_run_setup, intake_get_audit_record, intake_list_audit_records,
+    intake_lock_state, run_intake, run_pr_cut, IntakeServiceState,
 };
 pub use first_run::{FirstRunReport, FirstRunStep};
 pub use lock::{IntakeLock, LockError};
