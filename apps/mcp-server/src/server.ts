@@ -3,6 +3,13 @@ import { z } from 'zod';
 import { KnowledgeSDK } from '@cognistore/sdk';
 import { KnowledgeType } from '@cognistore/shared';
 import { stackInit, stackUpgrade, stackStatus } from './tools/stack.js';
+import {
+  listProjects as sbListProjects,
+  getProjectBrain as sbGetProjectBrain,
+  getDecisionRecord as sbGetDecisionRecord,
+  searchProject as sbSearchProject,
+  type SbToolContext,
+} from './tools/secondBrain.js';
 
 const knowledgeTypeValues = ['decision', 'pattern', 'fix', 'constraint', 'gotcha'] as const;
 const knowledgeStatusValues = ['draft', 'active', 'completed', 'archived'] as const;
@@ -484,6 +491,77 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
     READ_ONLY,
     async ({ repoPath }) => {
       const result = await stackStatus({ repoPath });
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  // ─── Second Brain Tools (read-only context surface) ────────
+  // Resolves config from the SDK; falls back to env vars matching the
+  // dashboard server's `isSbOrchestrationEnabled()` shape so behavior
+  // stays consistent across surfaces.
+  function sbCtx(): SbToolContext {
+    const cfg = (sdk as unknown as { config?: { aiStack?: { secondBrainPath?: string; enableSbOrchestration?: boolean } } }).config?.aiStack;
+    if (cfg) {
+      return {
+        secondBrainPath: cfg.secondBrainPath,
+        enableSbOrchestration: cfg.enableSbOrchestration === true,
+      };
+    }
+    const env = (process.env.COGNISTORE_ENABLE_SB_ORCHESTRATION || '').trim().toLowerCase();
+    return {
+      secondBrainPath: process.env.COGNISTORE_SECOND_BRAIN_PATH || undefined,
+      enableSbOrchestration: env === '1' || env === 'true' || env === 'yes' || env === 'on',
+    };
+  }
+
+  server.tool(
+    'secondBrain.listProjects',
+    'List all Second Brain projects under 01-Projects/ with brain.md presence and DR count. Read-only. Returns { disabled: true } when aiStack.enableSbOrchestration is false.',
+    {},
+    READ_ONLY,
+    async () => {
+      const result = sbListProjects(sbCtx());
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'secondBrain.getProjectBrain',
+    "Return a Second Brain project's brain.md content (or { brainExists: false } if missing). Read-only.",
+    {
+      project: z.string().describe('Project directory name under 01-Projects/'),
+    },
+    READ_ONLY,
+    async ({ project }) => {
+      const result = sbGetProjectBrain(project, sbCtx());
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'secondBrain.getDecisionRecord',
+    "Return a Decision Record markdown body. `idOrPath` accepts a bare DR id (DR-007-foo), a `*.md` filename, or a relative path inside the project. Path traversal is rejected. Read-only.",
+    {
+      project: z.string().describe('Project directory name under 01-Projects/'),
+      idOrPath: z.string().describe('DR id, filename, or relative path'),
+    },
+    READ_ONLY,
+    async ({ project, idOrPath }) => {
+      const result = sbGetDecisionRecord(project, idOrPath, sbCtx());
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'secondBrain.searchProject',
+    'Substring search across markdown files in a Second Brain project. v1 uses literal case-insensitive substring matching (no embeddings). Read-only.',
+    {
+      project: z.string().describe('Project directory name under 01-Projects/'),
+      query: z.string().describe('Substring to search for'),
+    },
+    READ_ONLY,
+    async ({ project, query }) => {
+      const result = sbSearchProject(project, query, sbCtx());
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     }
   );
