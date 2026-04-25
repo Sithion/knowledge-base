@@ -63,6 +63,7 @@ pub enum FreshnessEvent {
     /// Anything went wrong, anywhere in the pipeline.
     Failed {
         ts: String,
+        #[serde(rename = "failureKind")]
         kind: FreshnessFailureKind,
         message: String,
     },

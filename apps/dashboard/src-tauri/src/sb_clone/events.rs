@@ -55,6 +55,7 @@ pub enum CloneEvent {
     },
     Failed {
         ts: String,
+        #[serde(rename = "failureKind")]
         kind: CloneFailureKind,
         message: String,
     },
