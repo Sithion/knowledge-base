@@ -8,10 +8,13 @@ mod widgets;
 // AI_STACK_POC:COPILOT_BRIDGE_MOD_BEGIN
 mod copilot_bridge;
 // AI_STACK_POC:COPILOT_BRIDGE_MOD_END
+// AI_STACK_POC:FRESHNESS_MOD_BEGIN
+mod sb_freshness;
+// AI_STACK_POC:FRESHNESS_MOD_END
 
 use sidecar::SidecarState;
 use std::time::Duration;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use widget_config::WidgetPositions;
 use widgets::{PortState, WidgetRegistry};
 
@@ -124,11 +127,65 @@ fn main() {
             copilot_bridge::commands::spawn_copilot_session,
             copilot_bridge::commands::abort_copilot_session,
             // AI_STACK_POC:COPILOT_BRIDGE_HANDLERS_END
+            // AI_STACK_POC:FRESHNESS_HANDLERS_BEGIN
+            sb_freshness::commands::sb_freshness_check,
+            sb_freshness::commands::sb_freshness_pull_and_import,
+            sb_freshness::commands::sb_freshness_status,
+            // AI_STACK_POC:FRESHNESS_HANDLERS_END
         ])
         .setup(|app| {
             // AI_STACK_POC:COPILOT_BRIDGE_STATE_BEGIN
             app.manage(copilot_bridge::registry::CopilotRegistry::default());
             // AI_STACK_POC:COPILOT_BRIDGE_STATE_END
+            // AI_STACK_POC:FRESHNESS_STATE_BEGIN
+            // Resolve config from env (the dashboard server uses the same
+            // env-var fallback pattern). When the SDK persists config to a
+            // file we'll read it here too — for now env wins.
+            let sb_path_env = std::env::var("COGNISTORE_SECOND_BRAIN_PATH").ok();
+            let enabled_env = std::env::var("COGNISTORE_ENABLE_SB_ORCHESTRATION")
+                .ok()
+                .map(|v| {
+                    let v = v.trim().to_ascii_lowercase();
+                    matches!(v.as_str(), "1" | "true" | "yes" | "on")
+                })
+                .unwrap_or(false);
+            let sb_path = sb_path_env
+                .as_ref()
+                .map(|s| {
+                    if let Some(rest) = s.strip_prefix("~/") {
+                        dirs::home_dir().map(|h| h.join(rest)).unwrap_or_else(|| s.into())
+                    } else {
+                        s.into()
+                    }
+                })
+                .or_else(|| {
+                    // Default suggested path from the migration prompt.
+                    dirs::home_dir().map(|h| h.join("AcuityTech").join("Second Brain"))
+                });
+            let freshness_cfg = sb_freshness::service::FreshnessConfig {
+                second_brain_path: sb_path,
+                enable_sb_orchestration: enabled_env,
+                branch: std::env::var("COGNISTORE_SB_BRANCH")
+                    .unwrap_or_else(|_| "develop".to_string()),
+                sync_script: None,
+            };
+            let freshness = sb_freshness::SbFreshnessService::new(freshness_cfg);
+            app.manage(freshness.clone());
+
+            // Launch-time freshness check: spawn detached. Skips silently
+            // when the gate is off (Failed{Disabled} event), so this is a
+            // no-op for users who haven't opted in.
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let events = freshness.check_freshness().await;
+                for ev in &events {
+                    let _ = app_handle.emit(
+                        sb_freshness::commands::FRESHNESS_EVENT_TOPIC,
+                        ev,
+                    );
+                }
+            });
+            // AI_STACK_POC:FRESHNESS_STATE_END
             if let Err(msg) = run_setup(app) {
                 eprintln!("Setup error: {}", msg);
                 if let Some(window) = app.get_webview_window("main") {
