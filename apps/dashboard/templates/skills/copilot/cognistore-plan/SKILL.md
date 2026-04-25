@@ -147,3 +147,17 @@ When a subagent completes plan tasks:
 3. `updatePlanTask(nextTaskId, {status: 'in_progress'})` for next task
 
 This is the #1 cause of orphaned plans. Never skip reconciliation after delegation.
+
+---
+
+## AI Stack POC — Second Brain traceability (when enabled)
+
+When `cognistore.config.aiStack.enableSbOrchestration` is `true`, plans that implement work derived from a Second Brain Decision Record or spec MUST carry that linkage forward:
+
+- Add a tag of the form `sb:DR-<id>` or `sb:spec-<slug>` (e.g. `sb:DR-2025-01-ai-stack`) to `createPlan({ tags: [...] })`.
+- Reference the source DR/spec by relative path (from `secondBrainPath`) in the `## Context` section of the plan content (e.g. `Source: 03-decisions/DR-2025-01-ai-stack.md`).
+- When capturing knowledge during execution (`addKnowledge`), pass through the same `sb:*` tag so future queries can trace runtime artifacts back to canonical source.
+
+This keeps the Second Brain → CogniStore → Context Engine chain auditable: any plan or knowledge entry can be traced to the originating decision when the layered stack is in use.
+
+When the flag is off (default), this section can be ignored.
