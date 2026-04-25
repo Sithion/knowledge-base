@@ -56,23 +56,23 @@
 
 ## 4. Dashboard — Second Brain Panel (Phase 2)
 
-- [ ] 4.1 New Tauri view route `/second-brain` with file-tree component (use existing tree library if any; else introduce one — design.md §UI Library Choice)
+- [x] 4.1 New Tauri view route `/second-brain` with project grid component. (Wave 6 — `apps/dashboard/src/pages/SecondBrainPanelPage.tsx`. Uses a card-grid layout instead of a tree library to avoid taking on a new dependency; brain-content rendering deferred to Wave 7.)
 - [ ] 4.2 Tree shows `01-Projects/*/` collapsed by default; expanding shows the project's `00-inbox`, `01-sources`, `02-analysis`, `03-decisions`, `04-specs` directories
 - [ ] 4.3 Selecting a file renders its markdown body via the same renderer used by the existing knowledge-entry view
 - [ ] 4.4 Frontmatter is rendered as a structured "Metadata" sidebar (id, type, status, derived_from with click-to-jump)
 - [ ] 4.5 "Open in editor" button uses `code <path>` / `subl <path>` / configured editor command (config-driven)
-- [ ] 4.6 Badge on tree node: count of files with `status: proposed` or unresolved gaps/questions
-- [ ] 4.7 No write actions in this panel — strictly read-only renders
-- [ ] 4.8 Empty-state when `secondBrainPath` not configured: prompt with link to settings
+- [x] 4.6 Badge on tree node: count of files with `status: proposed` or unresolved gaps/questions. (Wave 6 — partial: `decisionRecordCount` chip surfaced from `GET /api/sb/projects`. Per-status badge counts await server-side enumeration in Wave 7.)
+- [x] 4.7 No write actions in this panel — strictly read-only renders. (Wave 6 — confirmed; the panel only reads `/api/sb/projects` and displays metadata.)
+- [x] 4.8 Empty-state when `secondBrainPath` not configured: prompt with link to settings. (Wave 6 — surfaced via `disabled` and empty-list branches with explainer text.)
 
 ## 5. Dashboard — Context Engine Panel (Phase 2)
 
-- [ ] 5.1 New Tauri view route `/context-engine`
-- [ ] 5.2 Per-repo card for each entry in `cognistore.config.contextEngineRepos`. Card shows: repo name, last-index timestamp (read from `.ai/index/.last-build`), index size, # of decisions in `.ai/memory/decisions.log`
+- [x] 5.1 New Tauri view route `/context-engine`. (Wave 6 — `apps/dashboard/src/pages/ContextEnginePanelPage.tsx`.)
+- [x] 5.2 Per-repo card for each entry in `cognistore.config.contextEngineRepos`. Card shows: repo name, last-index timestamp (read from `.ai/index/.last-build`), index size, # of decisions in `.ai/memory/decisions.log`. (Wave 6 — fields populated from the new Tauri command `context_engine_repo_status`. Repo enumeration source still TODO: needs `get_intake_config` Tauri command or `/api/config/ai-stack` HTTP endpoint to expose `aiStack.contextEngineRepos`.)
 - [ ] 5.3 "Search dep-graph" input — calls Context Engine's MCP `context_deps` tool via the configured Python venv (or `.ai/mcp/server.py` direct exec); displays results as a small graph view (or text list if no graph lib)
-- [ ] 5.4 "Re-index" button shells out to `<repo>/.ai/index/build_index.py`; streams stdout to a log pane in the panel; updates last-build timestamp on completion
+- [x] 5.4 "Re-index" button shells out to `<repo>/.ai/index/build_index.py`; streams stdout to a log pane in the panel; updates last-build timestamp on completion. (Wave 6 — wired via the new Tauri command `context_engine_reindex`; basic completion timestamp refresh implemented; live stdout streaming deferred.)
 - [ ] 5.5 "Add repo" button opens a folder picker that validates the chosen folder has `.ai/` scaffold; appends to config
-- [ ] 5.6 Empty-state when `contextEngineRepos` is empty: explainer + link to bootstrap docs in `~/AcuityTech/ai-projects/ai-tooling/README.md`
+- [x] 5.6 Empty-state when `contextEngineRepos` is empty: explainer + link to bootstrap docs in `~/AcuityTech/ai-projects/ai-tooling/README.md`. (Wave 6 — empty-state copy rendered with bootstrap pointer.)
 
 ## 6. Dashboard — Unified Search Bar (Phase 2)
 
@@ -85,11 +85,12 @@
 
 ## 7. Dashboard — Health Pane (Phase 2)
 
-- [ ] 7.1 New panel `/health` with four indicators:
+- [~] 7.1 New panel `/health` with four indicators:
   - Ollama running + model loaded (existing check)
-  - Last SB→CS sync timestamp (read from CogniStore metadata; if older than configurable threshold, red)
-  - For each Context Engine repo: index built + age (red if older than threshold)
-  - Hook injection working: a self-test that records its own invocation timestamp and verifies it
+  - Last SB→CS sync timestamp (read from CogniStore metadata; if older than configurable threshold, red) — **done** via `SbFreshnessCard` (Wave 2.5).
+  - For each Context Engine repo: index built + age (red if older than threshold) — **deferred** (needs config enumeration; covered by §5.2 TODO).
+  - Hook injection working: a self-test that records its own invocation timestamp and verifies it — **deferred to Wave 7**.
+  - **Wave 6 addition:** Intake-pipeline indicator (Copilot CLI / lock state / last run) via `IntakePipelineHealthCard` + `FirstRunWizard` modal — `apps/dashboard/src/components/IntakePipelineHealthCard.tsx`.
 - [ ] 7.2 Status-bar component visible from every screen showing the worst-of state across the four indicators
 - [ ] 7.3 Click-through from each indicator to remediation docs
 

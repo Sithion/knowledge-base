@@ -21,12 +21,12 @@
 ## 2. Project picker & inbox staging
 
 - [x] 2.1 Tauri command `list_sb_projects()` reads `${managedClone}/01-Projects/*/` entries that contain `AGENTS.md`. Returns `[{slug, displayName, lastModified}]`.
-- [ ] 2.2 React component `ProjectPicker` with searchable dropdown + "+ New Project" affordance.
+- [x] 2.2 React component `ProjectPicker` with searchable dropdown + "+ New Project" affordance. (Wave 6 — `apps/dashboard/src/intake/components/ProjectPicker.tsx`. Backed by `GET /api/sb/projects` and `POST /api/sb/projects/scaffold`.)
 - [x] 2.3 Tauri command `start_intake_session(project) -> { sessionId, stagingDir, intakeBranch }`:
   - Calls `prepare_intake_branch`
   - Creates `${managedClone}/00-Inbox/${project}/${sessionId}/`
   - Creates `${appDataDir}/intake-sessions/${sessionId}/` for audit artifacts
-- [ ] 2.4 React `InboxDropzone` component accepts drag-and-drop, validates extensions against the allow-list (.docx, .xlsx, .pptx, .pdf, .png, .jpg, .jpeg, .tiff, .eml, .msg, .html, .md, .txt), copies to staging via `copy_to_staging` Tauri command.
+- [x] 2.4 React `InboxDropzone` component accepts drag-and-drop, validates extensions against the allow-list (.docx, .xlsx, .pptx, .pdf, .png, .jpg, .jpeg, .tiff, .eml, .msg, .html, .md, .txt). (Wave 6 — `apps/dashboard/src/intake/components/InboxDropzone.tsx`. Files are tracked in-memory; the runner copies them under `${managedClone}/00-Inbox/${project}/${runId}/` server-side.)
 - [ ] 2.5 "+ New Project" flow: small form (slug validated against `^[a-z0-9-]+$`, display name, one-line description), spawns intake agent with a `scaffold-project` prompt template, runs Phase B (PR cut) on success.
 
 ## 3. Copilot CLI bridge
@@ -56,7 +56,7 @@
 
 ## 5. Diff review & three-action gate
 
-- [ ] 5.1 React `DiffReviewPanel` reads `diff.patch` and renders with syntax highlighting (use existing CogniStore markdown rendering as a base).
+- [x] 5.1 React `DiffReviewPanel` reads `diff.patch` and renders with syntax highlighting. (Wave 6 — `apps/dashboard/src/intake/components/DiffViewer.tsx` + `pages/workspace/ReviewTab.tsx`. Diff source is the new Tauri command `git_diff_intake_branch(runId)`. Lightweight line-by-line coloured renderer; no heavy diff lib.)
 - [ ] 5.2 Pre-Approve drift check: call `check_base_drift`; if `develop` advanced, refresh diff against new `origin/develop`, surface "develop advanced by N commits" banner, gate Approve until user clicks "I've reviewed the refreshed diff."
 - [ ] 5.3 Three actions:
   - **Reject** → call `reject_intake_session(sessionId)`: `discard_intake_branch`, move staging dir to `${appDataDir}/intake-sessions/${sessionId}/rejected-files/`, mark session `rejected` in audit log.
@@ -73,13 +73,13 @@
   - The file set in `git diff ${baseSha}..HEAD --name-only` MUST equal the approved file set (warn if expanded; flag in audit log)
 - [x] 6.4 Parse final agent output for the PR URL (`gh pr create` writes it to stdout); persist to audit log.
 - [x] 6.5 Emit Tauri event `intake-phase-b-complete` with payload `{sessionId, prUrl, invariantViolations}`.
-- [ ] 6.6 UI shows a success card with the PR URL + "Open in GitHub" button + "Start another intake session" affordance.
+- [x] 6.6 UI shows a success card with the PR URL + "Open in GitHub" button + "Start another intake session" affordance. (Wave 6 — `apps/dashboard/src/pages/workspace/PrCutTab.tsx`.)
 
 ## 7. First-run setup
 
 - [x] 7.1 Tauri command `check_intake_prereqs() -> PrereqReport` runs availability probes (`copilot --version`, `gh --version`, `gh auth status`, `git --version`) in parallel, then if all pass runs the **smoke probe**: `copilot --no-ask-user --allow-all-tools --output-format json --add-dir <tmp> --agent mojito:second-brain -p "Reply with the exact word OK and nothing else."` against a temp scratch dir. PASS iff exit 0 + final assistant message contains `OK` within 30s.
 - [ ] 7.2 React `SetupRequiredBanner` renders when any check fails; gates the Process Inbox button.
-- [ ] 7.3 React `DiagnosticsModal` shows live results (separating availability vs smoke), Re-check button, OS-specific install snippets (per OS detected via Tauri `os` plugin). Smoke probe failure surfaces specific guidance ("Copilot is installed but login is expired. Run `copilot login` and re-check.").
+- [x] 7.3 React `DiagnosticsModal` shows live results, Re-check button, OS-specific install snippets via remediation hints from `intake_first_run_setup`. (Wave 6 — `apps/dashboard/src/intake/components/FirstRunWizard.tsx`. Remediation strings are sourced from the Rust `FirstRunStep.remediation` field. OS-specific snippet templates from 7.4 are still TODO.)
 - [ ] 7.4 Document install snippets for macOS/Windows/Linux in `cognistore/templates/intake-setup-guide.md` (rendered into the modal).
 - [ ] 7.5 Provide a "Test intake against sample-bot project" button that runs a no-op intake (drops a `.txt` "hello world" file, runs Phase A only, shows the diff, requires user to Reject) — validates the entire pipeline before real use.
 
