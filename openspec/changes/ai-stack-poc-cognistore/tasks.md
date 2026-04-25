@@ -7,25 +7,27 @@
 
 ## 2. SB Orchestration MCP Tools (Phase 1)
 
+> **Wave-3 deviation (2025):** Implemented a simplified read-only surface — `secondBrain.listProjects`, `getProjectBrain`, `getDecisionRecord`, `searchProject` — gated behind `enableSbOrchestration`. The originally-spec'd `runPipeline`, `promoteDecision`, and `lookupTraceability` tools are deferred until the Second Brain repo ships `_tools/ingest/`, `_tools/promote/`, and a built `_graph.json`. Items 2.1, 2.2, 2.4, 2.8 remain unchecked to track that follow-up.
+
 - [ ] 2.1 Implement `secondBrain.runPipeline(project, stage?)` — Node child_process shelling out to `${secondBrainPath}/_tools/ingest/run-pipeline.js`; pipes stdout/stderr; returns parsed result `{ branch, prUrl?, manualInstructions? }`
 - [ ] 2.2 Implement `secondBrain.promoteDecision(entryId, project?)` — same shape, calls `_tools/promote/from-cognistore.js`
-- [ ] 2.3 Implement `secondBrain.listProjects()` — reads `${secondBrainPath}/_graph.json` (or per-project graphs) and returns project names with brain-file existence flag
+- [x] 2.3 Implement `secondBrain.listProjects()` — walks `${secondBrainPath}/01-Projects/`; returns `{ name, path, brainExists, decisionRecordCount }[]` sorted by name. (Replaces the original `_graph.json`-based design — graph not yet shipped upstream.)
 - [ ] 2.4 Implement `secondBrain.lookupTraceability(artifactId)` — reads `_graph.json`, walks `derived_from` upstream and inverse-edges downstream, returns shape `{ upstream: Artifact[], downstream: Artifact[] }`
-- [ ] 2.5 All four tools fail-soft when `secondBrainPath` is not configured or the directory doesn't exist (return structured error, not throw)
-- [ ] 2.6 Unit tests with a fixture Second Brain checkout (small, ~3 fake projects under `tests/fixtures/second-brain/`)
-- [ ] 2.7 Register all four tools with the MCP server entry point; surface in MCP capability list
+- [x] 2.5 All four tools fail-soft: `{ disabled, reason }` when `enableSbOrchestration: false`; `{ error: 'second_brain_not_configured', details }` when path unset; `{ error: 'invalid_path', details }` on traversal; `{ error: 'not_found' }` for missing DRs.
+- [x] 2.6 Fixture tests under `packages/tests/src/e2e/secondbrain-tools.test.ts` (7 cases): list, brain hit/miss, DR by id/filename/path/traversal/not-found, search snippet, gate-off, missing-path, unsafe project name.
+- [x] 2.7 Registered with the MCP server (`apps/mcp-server/src/server.ts`); `READ_ONLY` annotation on all four tool handlers.
 - [ ] 2.8 Smoke test against the real `~/AcuityTech/Second Brain` (manual, in PR description)
 
 ## 2.5 Managed Second Brain Clone Freshness (Phase 1 / Phase 3 shared infrastructure)
 
-- [ ] 2.5.1 Implement `SbFreshnessService` (Rust, in the Tauri backend): single in-process mutex; methods `checkOnLaunch()`, `checkBeforeUse(reason: string)`, `manualSync()`. State file at `${appDataDir}/sb-freshness-state.json`.
-- [ ] 2.5.2 Wire `checkOnLaunch()` into the Tauri `setup` hook (after DB open, before window show). Show a "Syncing Second Brain context…" splash if a sync runs; suppress if fresh.
-- [ ] 2.5.3 Wire `checkBeforeUse()` into the four `secondBrain.*` MCP tools and into the `getKnowledge` IPC path (only when result set contains `source:second-brain`-tagged entries; cheap to detect via tag pre-filter).
-- [ ] 2.5.4 Coordination with intake-pipeline lock: if `.cognistore-intake.lock` is held, freshness skips with `intake_in_progress` (no wait — intake does its own fetch+reset).
-- [ ] 2.5.5 Sync script invocation: shell out to `node ${managedClone}/_tools/sync/cognistore-sync.js` via the managed clone's bundled Node/`npm install` (handled by intake-pipeline's bootstrap flow); capture stderr separately; surface partial-failure banner if exit != 0.
-- [ ] 2.5.6 Health pane wiring: render freshness state with green/yellow/red thresholds; "Sync Second Brain now" button calls `manualSync()`.
-- [ ] 2.5.7 Integration test: simulate "1 new DR pushed to remote" by scripting a second clone that pushes; relaunch CogniStore; assert `getKnowledge("<topic from new DR>")` returns the new entry within the launch sequence.
-- [ ] 2.5.8 Failure-mode tests: offline (fetch fails), malformed-DR (sync fails), lock contention (intake running), sync-script absent (managed clone bootstrap incomplete).
+- [x] 2.5.1 Implement `SbFreshnessService` (Rust, in the Tauri backend): single in-process mutex; methods `check_freshness()`, `pull_latest()`, `run_import_script()`, `pull_and_import()`. **State persistence (`${appDataDir}/sb-freshness-state.json`) is in-memory only — file persistence deferred (coordination item).**
+- [x] 2.5.2 Wire launch-time `check_freshness` into the Tauri `setup` hook (after DB open). Spawned async; emits `sb-freshness-event` so a future splash screen can subscribe. **No splash UI yet (Wave 7).**
+- [~] 2.5.3 TS-side `freshnessCheckBeforeUse(reason, ctx)` hook + 5-minute throttle implemented in `secondBrain.ts` and called by all four tools. **The hook is observational only — it does not yet invoke the Rust command** (intentional, "cheapest correct shape" per Wave-3 brief). Wiring the cross-process bridge is a Wave-5+ concern.
+- [ ] 2.5.4 Coordination with intake-pipeline lock: if `.cognistore-intake.lock` is held, freshness skips with `intake_in_progress` (Wave-5 concern; not implemented).
+- [x] 2.5.5 Sync-script invocation: `run_import_script` shells out to `node ${managedClone}/_tools/sync/cognistore-sync.js` with stdout/stderr captured into `import_complete` events (last 4 KB tail per stream).
+- [x] 2.5.6 Health pane (`apps/dashboard/src/pages/HealthPage.tsx`) renders configured path, gate state, local/remote SHAs, last-checked/pulled/imported timestamps, recent event log, plus "Check freshness" + "Pull & re-import" buttons. Disabled when gate is off or clone is uninitialized.
+- [ ] 2.5.7 Integration test: simulate "1 new DR pushed to remote" by scripting a second clone that pushes; relaunch CogniStore; assert `getKnowledge("<topic from new DR>")` returns the new entry within the launch sequence. (Wave 7.)
+- [ ] 2.5.8 Failure-mode tests: offline (fetch fails), malformed-DR (sync fails), lock contention (intake running), sync-script absent (managed clone bootstrap incomplete). (Wave 7.)
 
 ## 3. Protocol Hierarchy (Phase 1)
 
