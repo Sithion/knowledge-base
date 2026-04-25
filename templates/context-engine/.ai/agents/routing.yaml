@@ -1,0 +1,19 @@
+routes:
+  - condition: "new feature"
+    pipeline:
+      - architect
+      - backend_dev
+      - reviewer
+      - tester
+
+  - condition: "bug fix"
+    pipeline:
+      - backend_dev
+      - tester
+      - reviewer
+
+  - condition: "refactor"
+    pipeline:
+      - architect
+      - backend_dev
+      - reviewer

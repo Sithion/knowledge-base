@@ -1,0 +1,22 @@
+# Mapping from project roles to OhMyOpenAgent agent IDs and categories.
+# This bridges .ai/agents/role_policies.yaml with oh-my-opencode.json.
+#
+# Adjust these mappings to match your OhMyOpenAgent configuration.
+# See oh-my-opencode.json for available agent IDs and categories.
+
+purpose: "Maps project roles to OhMyOpenAgent runtime agents/categories."
+
+# Map each project role to an OhMyOpenAgent category (preferred)
+# or a specific agent ID.
+role_to_category:
+  architect: "ultrabrain"
+  backend_dev: "deep"
+  reviewer: "quick"
+  tester: "unspecified-high"
+
+# Alternative: map directly to agent IDs (uncomment if needed)
+# role_to_agent:
+#   architect: "oracle"
+#   backend_dev: "hephaestus"
+#   reviewer: "sisyphus"
+#   tester: "hephaestus"

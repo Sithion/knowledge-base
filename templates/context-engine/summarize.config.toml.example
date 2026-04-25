@@ -1,0 +1,10 @@
+# Example summarize.config.toml — copy to repo root and edit.
+# Controls the CogniStore IPC bridge invoked by `summarize.py record`.
+
+[cognistore]
+# Set to false to disable the bridge for this repo. Defaults to true.
+enabled = true
+
+# IPC endpoint for CogniStore. The COGNISTORE_IPC_URL env var (when set)
+# takes precedence over this value.
+ipc_url = "http://localhost:7321/ipc/addKnowledge"

@@ -1,0 +1,5 @@
+# Template gitignore for .ai/context/sb-derived/.
+# refresh_sb_context.sh writes a copy of this file into
+# <repo>/.ai/context/sb-derived/.gitignore on every run.
+*
+!.gitignore

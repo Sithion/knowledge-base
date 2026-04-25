@@ -1,0 +1,72 @@
+# Context Engine — Agent Role Policies
+# These are NOT OhMyOpenAgent agent definitions.
+# They define context scoping and retrieval rules per project role.
+# Map roles to OhMyOpenAgent agents/categories via llm_agents_map.yaml.
+
+purpose: "context-policy-only"
+instantiates_agents: false
+
+roles:
+  architect:
+    responsibilities:
+      - enforce architectural boundaries
+      - evaluate cross-module impact
+      - review proposed approach before broad changes
+    allowed_context_sources:
+      - ".ai/context/*"
+      - ".ai/memory/decisions.log"
+      - ".ai/summaries/*"
+    retrieval:
+      top_k: 20
+      dependency_depth: 2
+    max_context_budget: 30000
+    write_scope:
+      - ".ai/context/*"
+      - ".ai/summaries/*"
+
+  backend_dev:
+    responsibilities:
+      - implement scoped backend changes
+      - update tests and module summaries when behavior changes
+    allowed_context_sources:
+      - ".ai/context/coding_standards.md"
+      - ".ai/summaries/*"
+      - "retrieved_code_only"
+    retrieval:
+      top_k: 25
+      dependency_depth: 3
+    max_context_budget: 40000
+    write_scope:
+      - "retrieved_files_only"
+      - ".ai/summaries/*"
+      - ".ai/memory/decisions.log"
+
+  reviewer:
+    responsibilities:
+      - review diffs for standards, risk, and contract compliance
+    allowed_context_sources:
+      - ".ai/context/coding_standards.md"
+      - ".ai/context/api_contracts.md"
+      - "diff_only"
+    retrieval:
+      top_k: 10
+      dependency_depth: 1
+    max_context_budget: 15000
+    write_scope:
+      - ".ai/memory/decisions.log"
+
+  tester:
+    responsibilities:
+      - validate changed behavior
+      - identify missing tests and regression risk
+    allowed_context_sources:
+      - ".ai/context/api_contracts.md"
+      - ".ai/summaries/*"
+      - "retrieved_code_only"
+    retrieval:
+      top_k: 15
+      dependency_depth: 2
+    max_context_budget: 20000
+    write_scope:
+      - ".ai/memory/bugs.log"
+      - ".ai/summaries/*"
