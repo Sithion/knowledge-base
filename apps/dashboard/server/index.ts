@@ -1352,6 +1352,98 @@ Pass an array to addKnowledge to create multiple entries at once.
     return { ...health, token: SIDECAR_TOKEN };
   });
 
+  // ─── Second Brain projects (intake-pipeline backend) ──────────────
+  //
+  // GET  /api/sb/projects             — list 01-Projects/* in the managed clone
+  // POST /api/sb/projects/scaffold    — validate slug + return next-step guidance
+  //
+  // Both routes fail-soft when `aiStack.enableSbOrchestration` is false.
+
+  const resolveManagedClonePath = (): string | null => {
+    try {
+      const cfg = (sdk as any).config?.aiStack;
+      const explicit = cfg?.intakePipeline?.managedClonePath || cfg?.secondBrainPath;
+      if (typeof explicit === 'string' && explicit.trim().length > 0) {
+        return explicit.startsWith('~/')
+          ? join(homedir(), explicit.slice(2))
+          : explicit;
+      }
+    } catch { /* ignore */ }
+    const env = (process.env.COGNISTORE_INTAKE_WORKSPACE_DIR || '').trim();
+    if (env) {
+      return env.startsWith('~/') ? join(homedir(), env.slice(2)) : env;
+    }
+    return join(INSTALL_DIR, 'second-brain-workspace');
+  };
+
+  app.get('/api/sb/projects', async (_request, reply) => {
+    if (!isSbOrchestrationEnabled()) {
+      reply.code(409);
+      return { disabled: true, reason: 'aiStack.enableSbOrchestration is false' };
+    }
+    const sbPath = resolveManagedClonePath();
+    if (!sbPath || !existsSync(sbPath)) {
+      reply.code(409);
+      return {
+        error: 'second_brain_not_configured',
+        details: `Managed Second Brain clone not found at ${sbPath ?? '<unset>'}. Run first-run setup.`,
+      };
+    }
+    try {
+      const { listProjects } = await import('@cognistore/mcp-server/dist/tools/secondBrain.js')
+        .catch(() => import('../../mcp-server/src/tools/secondBrain.js' as any));
+      const result = (listProjects as any)({
+        secondBrainPath: sbPath,
+        enableSbOrchestration: true,
+      });
+      return result;
+    } catch (err) {
+      reply.code(500);
+      return {
+        error: 'list_projects_failed',
+        details: err instanceof Error ? err.message : String(err),
+      };
+    }
+  });
+
+  app.post<{ Body: { name?: string } }>('/api/sb/projects/scaffold', async (request, reply) => {
+    if (!isSbOrchestrationEnabled()) {
+      reply.code(409);
+      return { disabled: true, reason: 'aiStack.enableSbOrchestration is false' };
+    }
+    const name = (request.body?.name || '').trim();
+    if (!/^[a-z0-9-]+$/.test(name)) {
+      reply.code(400);
+      return {
+        error: 'invalid_project_slug',
+        details: 'Project slug must match ^[a-z0-9-]+$ (lowercase, digits, hyphens).',
+      };
+    }
+    const sbPath = resolveManagedClonePath();
+    if (!sbPath || !existsSync(sbPath)) {
+      reply.code(409);
+      return {
+        error: 'second_brain_not_configured',
+        details: `Managed Second Brain clone not found at ${sbPath ?? '<unset>'}.`,
+      };
+    }
+    const projectDir = join(sbPath, '01-Projects', name);
+    if (existsSync(projectDir)) {
+      reply.code(409);
+      return { error: 'project_exists', details: `${projectDir} already exists` };
+    }
+    // The actual scaffolding happens client-side via the `run_intake` Tauri
+    // command in scaffold mode (see W6). Return the validated context so the
+    // UI can dispatch the IPC call without round-tripping to the server.
+    return {
+      ok: true,
+      project: name,
+      managedClonePath: sbPath,
+      nextStep: 'invoke run_intake with prompt=scaffold-project',
+    };
+  });
+
+
   // ─── Knowledge CRUD ────────────────────────────────────────────
 
   app.get('/api/stats', async (_request, reply) => {
