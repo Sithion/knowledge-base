@@ -74,6 +74,13 @@ CogniStore's runtime config schema (`SDKConfig`, in `packages/shared/src/types/c
 | `aiStack` | `enableSbOrchestration` | `false` | `COGNISTORE_ENABLE_SB_ORCHESTRATION` |
 | `aiStack` | `secondBrainPath` | _unset_ | `COGNISTORE_SECOND_BRAIN_PATH` |
 | `aiStack` | `contextEngineRepos` | `[]` | `COGNISTORE_CONTEXT_ENGINE_REPOS` (comma- or semicolon-separated list) |
+| `aiStack` | `secondBrainRemote` | _unset_ | `COGNISTORE_SECOND_BRAIN_REMOTE` |
+| `aiStack.intakePipeline` | `intakeModel` | `auto` | `COGNISTORE_INTAKE_MODEL` |
+| `aiStack.intakePipeline` | `prCutModel` | `auto` | `COGNISTORE_PR_CUT_MODEL` |
+| `aiStack.intakePipeline` | `intakeTimeoutSeconds` | `1800` | `COGNISTORE_INTAKE_TIMEOUT_SECONDS` |
+| `aiStack.intakePipeline` | `prCutTimeoutSeconds` | `600` | `COGNISTORE_PR_CUT_TIMEOUT_SECONDS` |
+| `aiStack.intakePipeline` | `workspaceDir` | `${appDataDir}/second-brain-workspace` | `COGNISTORE_INTAKE_WORKSPACE_DIR` |
+| `aiStack.intakePipeline` | `prCutBaseBranch` | `develop` | `COGNISTORE_PR_CUT_BASE_BRANCH` |
 
 ### `aiStack` — AI Knowledge Stack POC (opt-in)
 
@@ -90,3 +97,26 @@ Added by the `ai-stack-poc-cognistore` openspec change. Wires CogniStore into a 
 - The `UserPromptSubmit` hook injection includes layer-precedence guidance.
 
 Existing users are prompted exactly once on the first launch after upgrade ("Enable AI Knowledge Stack integration? Requires Second Brain checkout"); persisted via `~/.cognistore/.ai-stack-poc-migration.json`.
+
+### `aiStack.intakePipeline` — managed-clone intake/PR pipeline
+
+Added by the `ai-stack-poc-cognistore-intake-pipeline` openspec change. Drives the **Process Inbox → Review Diff → Open PR** flow against a CogniStore-owned managed clone at `${aiStack.intakePipeline.workspaceDir}` (default `${appDataDir}/second-brain-workspace/`), distinct from the user's personal `secondBrainPath`.
+
+- `secondBrainRemote` is required to bootstrap the managed clone on first run; `git clone` (not `gh repo clone`) is used so `gh auth` is only needed when Phase B opens the draft PR.
+- `intakeModel` / `prCutModel` flow into `copilot --model` for Phase A and Phase B respectively. Defaults are `auto` (the Rust bridge resolves to the curated catalog).
+- All intake commands no-op when `enableSbOrchestration` is `false`.
+
+```ts
+aiStack: {
+  enableSbOrchestration: true,
+  secondBrainPath: '~/AcuityTech/Second Brain',
+  secondBrainRemote: 'https://github.com/your-org/second-brain.git',
+  intakePipeline: {
+    intakeModel: 'auto',          // or e.g. 'claude-opus-4.6'
+    prCutModel: 'auto',           // or e.g. 'gpt-5.4-mini'
+    intakeTimeoutSeconds: 1800,   // 30 min
+    prCutTimeoutSeconds: 600,     // 10 min
+    prCutBaseBranch: 'develop',   // override for testing
+  },
+}
+```
