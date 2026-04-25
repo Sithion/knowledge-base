@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { IntakePipelineHealthCard } from '../components/IntakePipelineHealthCard.js';
 
 const isTauri = !!(window as any).__TAURI_INTERNALS__ || !!(window as any).__TAURI__;
 
@@ -268,6 +269,9 @@ export function HealthPage() {
           </div>
         )}
       </div>
+
+      {/* Intake pipeline (Wave 6) */}
+      <IntakePipelineHealthCard enabled={!!status?.enabled} />
 
       {/* Recent events log */}
       {log.length > 0 && (
