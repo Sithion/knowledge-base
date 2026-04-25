@@ -8,6 +8,10 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { KnowledgeSDK } from '@cognistore/sdk';
 import { ConfigManager } from '@cognistore/config';
+import {
+  buildLayerPrecedenceEntry,
+  LAYER_PRECEDENCE_TITLE,
+} from '@cognistore/core';
 import type {
   CreateKnowledgeInput,
   UpdateKnowledgeInput,
@@ -173,6 +177,95 @@ Pass an array to addKnowledge to create multiple entries at once.
       console.warn('Failed to seed system knowledge:', err instanceof Error ? err.message : String(err));
     }
   };
+
+  // ─── AI Stack POC: layer-precedence system entry + migration prompt ─────
+  // TODO(ai-stack-poc): gate sb-orchestration code on this flag in wave 3.
+  // The layer-precedence entry is upserted only when the user has opted in
+  // via `aiStack.enableSbOrchestration`. State for "did we already seed?" is
+  // tracked in a marker file so we can detect the flip transition.
+
+  const SB_ORCH_STATE_FILE = resolve(INSTALL_DIR, '.sb-orchestration-state.json');
+  const MIGRATION_PROMPT_FILE = resolve(INSTALL_DIR, '.ai-stack-poc-migration.json');
+
+  type SbOrchState = { lastKnownEnabled: boolean; seededAt?: string };
+  type MigrationState = {
+    prompted: boolean;
+    response: 'enable' | 'not-now' | null;
+    respondedAt?: string;
+    secondBrainPath?: string;
+  };
+
+  const readJsonState = <T>(path: string, fallback: T): T => {
+    try {
+      if (!existsSync(path)) return fallback;
+      return JSON.parse(readFileSync(path, 'utf-8')) as T;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const writeJsonState = (path: string, state: unknown): void => {
+    try {
+      mkdirSync(INSTALL_DIR, { recursive: true });
+      writeFileSync(path, JSON.stringify(state, null, 2));
+    } catch (err) {
+      log('warn', `Failed to write state ${path}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const isSbOrchestrationEnabled = (): boolean => {
+    // Resolve via SDK's configured flag (env override + future config file).
+    // Until config file persistence lands, env var COGNISTORE_ENABLE_SB_ORCHESTRATION is the source.
+    try {
+      const cfg = (sdk as any).config?.aiStack;
+      if (cfg && typeof cfg.enableSbOrchestration === 'boolean') return cfg.enableSbOrchestration;
+    } catch { /* ignore */ }
+    const env = (process.env.COGNISTORE_ENABLE_SB_ORCHESTRATION || '').trim().toLowerCase();
+    return env === '1' || env === 'true' || env === 'yes' || env === 'on';
+  };
+
+  const seedLayerPrecedenceKnowledge = async (): Promise<void> => {
+    if (!sdkReady) return;
+    if (!isSbOrchestrationEnabled()) return;
+
+    const prev = readJsonState<SbOrchState>(SB_ORCH_STATE_FILE, { lastKnownEnabled: false });
+
+    try {
+      const existing = (sdk as any).sqlite?.prepare?.(
+        "SELECT id FROM knowledge_entries WHERE type = 'system' AND title = ?"
+      )?.get(LAYER_PRECEDENCE_TITLE) as { id: string } | undefined;
+
+      const payload = buildLayerPrecedenceEntry();
+
+      if (existing) {
+        await sdk.updateKnowledge(existing.id, {
+          content: payload.content,
+          tags: payload.tags,
+        });
+      } else {
+        await sdk.addKnowledge({
+          title: payload.title,
+          content: payload.content,
+          tags: payload.tags,
+          type: payload.type as any,
+          scope: payload.scope,
+          source: payload.source,
+        });
+      }
+
+      writeJsonState(SB_ORCH_STATE_FILE, {
+        lastKnownEnabled: true,
+        seededAt: new Date().toISOString(),
+      } satisfies SbOrchState);
+
+      if (!prev.lastKnownEnabled) {
+        log('info', 'AI Stack POC: enableSbOrchestration flipped true — layer-precedence entry upserted');
+      }
+    } catch (err) {
+      log('warn', `Failed to seed layer-precedence entry: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
 
   // SDK initialization moved after app.listen() — see bottom of start()
 
@@ -704,7 +797,7 @@ Pass an array to addKnowledge to create multiple entries at once.
       const ok = await tryInitSDK();
       if (ok) {
         saveDeployedVersion();
-        await seedSystemKnowledge();
+        await seedSystemKnowledge(); await seedLayerPrecedenceKnowledge();
       }
       return { success: ok, sdkReady };
     } catch (error) {
@@ -726,6 +819,51 @@ Pass an array to addKnowledge to create multiple entries at once.
     };
   });
 
+  // ─── AI Stack POC: existing-user migration prompt ─────────────
+  // Prompted exactly once on the first launch after upgrade. Persistence
+  // lives in `~/.cognistore/.ai-stack-poc-migration.json` so the choice
+  // survives reinstalls and is not coupled to the DB schema.
+  // TODO(ai-stack-poc): wave 4 will wire a React modal that calls these endpoints
+  // on app boot when `shouldPrompt: true`.
+
+  app.get('/api/migration/ai-stack-poc/status', async () => {
+    const state = readJsonState<MigrationState>(MIGRATION_PROMPT_FILE, {
+      prompted: false,
+      response: null,
+    });
+    const isFirstInstall = getDeployedVersion() === null;
+    // Don't prompt on first install — that's the setup-wizard's job. Only
+    // existing users (who already have a deployed version) see the prompt.
+    const shouldPrompt = !state.prompted && !isFirstInstall;
+    return {
+      shouldPrompt,
+      prompted: state.prompted,
+      response: state.response,
+      respondedAt: state.respondedAt ?? null,
+      enableSbOrchestration: isSbOrchestrationEnabled(),
+      defaultSecondBrainPath: join(homedir(), 'AcuityTech', 'Second Brain'),
+    };
+  });
+
+  app.post<{
+    Body: { response: 'enable' | 'not-now'; secondBrainPath?: string };
+  }>('/api/migration/ai-stack-poc/respond', async (request, reply) => {
+    const { response, secondBrainPath } = request.body || ({} as any);
+    if (response !== 'enable' && response !== 'not-now') {
+      reply.code(400);
+      return { error: 'response must be "enable" or "not-now"' };
+    }
+    const state: MigrationState = {
+      prompted: true,
+      response,
+      respondedAt: new Date().toISOString(),
+      ...(secondBrainPath ? { secondBrainPath } : {}),
+    };
+    writeJsonState(MIGRATION_PROMPT_FILE, state);
+    log('info', `AI Stack POC migration prompt responded: ${response}`);
+    return { ok: true, state };
+  });
+
   let upgradeRunning = false;
   app.post('/api/upgrade/run', async (request, reply) => {
     if (upgradeRunning) { reply.code(409); return { error: 'Upgrade already in progress' }; }
@@ -737,7 +875,7 @@ Pass an array to addKnowledge to create multiple entries at once.
       if (sdkReady) { await sdk.close(); sdkReady = false; }
       const ok = await tryInitSDK();
       results.push({ step: 'database', status: ok ? 'success' : 'error', message: ok ? 'Schema up to date' : 'SDK init failed' });
-      if (ok) await seedSystemKnowledge();
+      if (ok) await seedSystemKnowledge(); await seedLayerPrecedenceKnowledge();
     } catch (e: any) {
       results.push({ step: 'database', status: 'error', message: e.message });
     }
@@ -1662,14 +1800,14 @@ Pass an array to addKnowledge to create multiple entries at once.
     const initOk = await tryInitSDK();
     if (initOk) {
       log('info', 'SDK initialized successfully');
-      await seedSystemKnowledge();
+      await seedSystemKnowledge(); await seedLayerPrecedenceKnowledge();
     } else {
       log('warn', `SDK initialization failed (degraded mode): ${sdkError}`);
       retryInterval = setInterval(async () => {
         const ok = await tryInitSDK();
         if (ok) {
           log('info', 'SDK initialized (recovered from degraded mode)');
-          await seedSystemKnowledge();
+          await seedSystemKnowledge(); await seedLayerPrecedenceKnowledge();
         }
       }, 10000);
     }
