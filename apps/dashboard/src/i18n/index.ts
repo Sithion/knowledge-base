@@ -5,7 +5,7 @@ const resources = {
   en: {
     translation: {
       app: { title: 'CogniStore', subtitle: 'Semantic knowledge management for AI agents' },
-      nav: { home: 'Knowledge Base', add: 'Add Knowledge', tags: 'Tags', plans: 'Plans', stats: 'Statistics', statsKnowledge: 'Knowledge', statsPlans: 'Plans', settings: 'Settings', widgets: 'Widgets', quickStats: 'Quick Stats' },
+      nav: { home: 'Knowledge Base', add: 'Add Knowledge', tags: 'Tags', plans: 'Plans', stats: 'Statistics', statsKnowledge: 'Knowledge', statsPlans: 'Plans', settings: 'Settings', widgets: 'Widgets', health: 'Health', quickStats: 'Quick Stats' },
       statsTitle: { knowledge: 'Knowledge Statistics', plans: 'Plan Statistics' },
       search: { placeholder: 'Search knowledge semantically...', button: 'Search', noResults: 'No results found.', resultsCount: '{{count}} result(s) found', recent: 'Recent Knowledge', empty: 'No knowledge entries yet. Add some knowledge to get started.' },
       knowledge: { content: 'Content', tags: 'Tags', type: 'Type', scope: 'Scope', source: 'Source', confidence: 'Confidence', expires: 'Expires', agent: 'Agent', version: 'Version', created: 'Created', updated: 'Updated', relatedIds: 'Related', tagsPlaceholder: 'auth, jwt, fix', agentPlaceholder: 'claude' },
@@ -99,7 +99,7 @@ const resources = {
   es: {
     translation: {
       app: { title: 'CogniStore', subtitle: 'Gestión semántica de conocimiento para agentes de IA' },
-      nav: { home: 'Base de Conocimiento', add: 'Agregar Conocimiento', tags: 'Etiquetas', plans: 'Planes', stats: 'Estadísticas', statsKnowledge: 'Conocimiento', statsPlans: 'Planes', settings: 'Configuración', widgets: 'Widgets', quickStats: 'Estadísticas Rápidas' },
+      nav: { home: 'Base de Conocimiento', add: 'Agregar Conocimiento', tags: 'Etiquetas', plans: 'Planes', stats: 'Estadísticas', statsKnowledge: 'Conocimiento', statsPlans: 'Planes', settings: 'Configuración', widgets: 'Widgets', health: 'Salud', quickStats: 'Estadísticas Rápidas' },
       statsTitle: { knowledge: 'Estadísticas de Conocimiento', plans: 'Estadísticas de Planes' },
       search: { placeholder: 'Buscar conocimiento semánticamente...', button: 'Buscar', noResults: 'No se encontraron resultados.', resultsCount: '{{count}} resultado(s) encontrado(s)', recent: 'Conocimiento Reciente', empty: 'Aún no hay entradas. Agrega conocimiento para comenzar.' },
       knowledge: { content: 'Contenido', tags: 'Etiquetas', type: 'Tipo', scope: 'Ámbito', source: 'Fuente', confidence: 'Confianza', expires: 'Expira', agent: 'Agente', version: 'Versión', created: 'Creado', updated: 'Actualizado', relatedIds: 'Relacionados', tagsPlaceholder: 'auth, jwt, fix', agentPlaceholder: 'claude' },
@@ -193,7 +193,7 @@ const resources = {
   pt: {
     translation: {
       app: { title: 'CogniStore', subtitle: 'Gestão semântica de conhecimento para agentes de IA' },
-      nav: { home: 'Base de Conhecimento', add: 'Adicionar Conhecimento', tags: 'Tags', plans: 'Planos', stats: 'Estatísticas', statsKnowledge: 'Conhecimento', statsPlans: 'Planos', settings: 'Configurações', widgets: 'Widgets', quickStats: 'Estatísticas Rápidas' },
+      nav: { home: 'Base de Conhecimento', add: 'Adicionar Conhecimento', tags: 'Tags', plans: 'Planos', stats: 'Estatísticas', statsKnowledge: 'Conhecimento', statsPlans: 'Planos', settings: 'Configurações', widgets: 'Widgets', health: 'Saúde', quickStats: 'Estatísticas Rápidas' },
       statsTitle: { knowledge: 'Estatísticas de Conhecimento', plans: 'Estatísticas de Planos' },
       search: { placeholder: 'Buscar conhecimento semanticamente...', button: 'Buscar', noResults: 'Nenhum resultado encontrado.', resultsCount: '{{count}} resultado(s) encontrado(s)', recent: 'Conhecimento Recente', empty: 'Nenhuma entrada ainda. Adicione conhecimento para começar.' },
       knowledge: { content: 'Conteúdo', tags: 'Tags', type: 'Tipo', scope: 'Escopo', source: 'Fonte', confidence: 'Confiança', expires: 'Expira', agent: 'Agente', version: 'Versão', created: 'Criado', updated: 'Atualizado', relatedIds: 'Relacionados', tagsPlaceholder: 'auth, jwt, fix', agentPlaceholder: 'claude' },

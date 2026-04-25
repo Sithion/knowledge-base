@@ -24,6 +24,7 @@ const navItems: NavItem[] = [
     ],
   },
   ...(isTauri ? [{ key: 'widgets', path: '/widgets', icon: '🧩' }] : []),
+  { key: 'health', path: '/health', icon: '❤️' },
   { key: 'settings', path: '/settings', icon: '⚙' },
 ];
 

@@ -10,6 +10,7 @@ import { WidgetsPage } from './pages/WidgetsPage.js';
 import { PlansPage } from './pages/PlansPage.js';
 import { SetupPage } from './pages/SetupPage.js';
 import { UpgradePage } from './pages/UpgradePage.js';
+import { HealthPage } from './pages/HealthPage.js';
 import { api } from './api/client.js';
 import { UpdateChecker } from './components/UpdateChecker.js';
 
@@ -129,6 +130,7 @@ export function App() {
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/stats/plans" element={<PlanStatsPage />} />
           <Route path="/widgets" element={<WidgetsPage />} />
+          <Route path="/health" element={<HealthPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Layout>
