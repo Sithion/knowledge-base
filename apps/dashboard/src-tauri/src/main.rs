@@ -11,6 +11,10 @@ mod copilot_bridge;
 // AI_STACK_POC:FRESHNESS_MOD_BEGIN
 mod sb_freshness;
 // AI_STACK_POC:FRESHNESS_MOD_END
+// AI_STACK_POC:INTAKE_MOD_BEGIN
+mod intake;
+mod sb_clone;
+// AI_STACK_POC:INTAKE_MOD_END
 
 use sidecar::SidecarState;
 use std::time::Duration;
@@ -132,6 +136,16 @@ fn main() {
             sb_freshness::commands::sb_freshness_pull_and_import,
             sb_freshness::commands::sb_freshness_status,
             // AI_STACK_POC:FRESHNESS_HANDLERS_END
+            // AI_STACK_POC:INTAKE_HANDLERS_BEGIN
+            sb_clone::commands::sb_clone_ensure,
+            sb_clone::commands::sb_clone_status,
+            sb_clone::commands::sb_clone_cleanup,
+            intake::commands::run_intake,
+            intake::commands::run_pr_cut,
+            intake::commands::intake_first_run_setup,
+            intake::commands::intake_list_audit_records,
+            intake::commands::intake_get_audit_record,
+            // AI_STACK_POC:INTAKE_HANDLERS_END
         ])
         .setup(|app| {
             // AI_STACK_POC:COPILOT_BRIDGE_STATE_BEGIN
@@ -171,6 +185,7 @@ fn main() {
             };
             let freshness = sb_freshness::SbFreshnessService::new(freshness_cfg);
             app.manage(freshness.clone());
+            let freshness_for_intake = freshness.clone();
 
             // Launch-time freshness check: spawn detached. Skips silently
             // when the gate is off (Failed{Disabled} event), so this is a
@@ -186,6 +201,76 @@ fn main() {
                 }
             });
             // AI_STACK_POC:FRESHNESS_STATE_END
+            // AI_STACK_POC:INTAKE_STATE_BEGIN
+            // Intake-pipeline state: managed clone manager + intake service.
+            // Both no-op when `enableSbOrchestration` is false (the gate is
+            // already enforced by the freshness service above; we mirror it
+            // here for the parallel managed-clone surface).
+            let workspace_dir_env = std::env::var("COGNISTORE_INTAKE_WORKSPACE_DIR").ok();
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
+                .ok()
+                .or_else(|| dirs::home_dir().map(|h| h.join(".cognistore")))
+                .unwrap_or_else(|| std::path::PathBuf::from("."));
+            let workspace_dir = workspace_dir_env
+                .map(|s| {
+                    if let Some(rest) = s.strip_prefix("~/") {
+                        dirs::home_dir().map(|h| h.join(rest)).unwrap_or_else(|| s.into())
+                    } else {
+                        std::path::PathBuf::from(s)
+                    }
+                })
+                .unwrap_or_else(|| app_data_dir.join("second-brain-workspace"));
+            let remote_url_env = std::env::var("COGNISTORE_SECOND_BRAIN_REMOTE")
+                .ok()
+                .filter(|s| !s.trim().is_empty());
+
+            let clone_cfg = sb_clone::CloneConfig {
+                enable_sb_orchestration: enabled_env,
+                workspace_dir: workspace_dir.clone(),
+                remote_url: remote_url_env,
+                default_branch: std::env::var("COGNISTORE_SB_BRANCH")
+                    .unwrap_or_else(|_| "develop".to_string()),
+            };
+            let clone_manager = sb_clone::ManagedCloneManager::new(clone_cfg);
+            app.manage(clone_manager.clone());
+
+            let intake_model = std::env::var("COGNISTORE_INTAKE_MODEL")
+                .unwrap_or_else(|_| "auto".to_string());
+            let pr_cut_model = std::env::var("COGNISTORE_PR_CUT_MODEL")
+                .unwrap_or_else(|_| "auto".to_string());
+            let intake_timeout_secs = std::env::var("COGNISTORE_INTAKE_TIMEOUT_SECONDS")
+                .ok()
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(1800);
+            let pr_cut_timeout_secs = std::env::var("COGNISTORE_PR_CUT_TIMEOUT_SECONDS")
+                .ok()
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(600);
+            let pr_cut_base_branch = std::env::var("COGNISTORE_PR_CUT_BASE_BRANCH")
+                .unwrap_or_else(|_| "develop".to_string());
+
+            let intake_cfg = intake::IntakePipelineConfig {
+                enable_sb_orchestration: enabled_env,
+                managed_clone_path: workspace_dir.clone(),
+                intake_model,
+                pr_cut_model,
+                intake_timeout_secs,
+                pr_cut_timeout_secs,
+                pr_cut_base_branch,
+                audit_root: app_data_dir.clone(),
+                intake_prompt_template: std::env::var("COGNISTORE_INTAKE_PROMPT_PATH")
+                    .ok()
+                    .map(std::path::PathBuf::from),
+                pr_cut_prompt_template: std::env::var("COGNISTORE_PR_CUT_PROMPT_PATH")
+                    .ok()
+                    .map(std::path::PathBuf::from),
+            };
+            let intake_service =
+                intake::IntakeService::new(intake_cfg, clone_manager.clone(), freshness_for_intake);
+            app.manage(intake_service);
+            // AI_STACK_POC:INTAKE_STATE_END
             if let Err(msg) = run_setup(app) {
                 eprintln!("Setup error: {}", msg);
                 if let Some(window) = app.get_webview_window("main") {
