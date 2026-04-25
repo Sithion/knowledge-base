@@ -60,3 +60,33 @@ The Tauri sidecar sets environment variables for the Fastify server:
 - `OLLAMA_HOST` — Ollama API endpoint
 - `DASHBOARD_DIST_PATH` — path to bundled frontend assets
 - `TEMPLATES_PATH` — path to bundled skills/config templates
+
+## Configuration
+
+CogniStore's runtime config schema (`SDKConfig`, in `packages/shared/src/types/config.ts`) groups settings into three sections:
+
+| Section | Field | Default | Env override |
+|---|---|---|---|
+| `database` | `path` | `~/.cognistore/knowledge.db` | `SQLITE_PATH` |
+| `ollama` | `host` | `http://localhost:11434` | `OLLAMA_HOST` |
+| `ollama` | `model` | `nomic-embed-text` | `OLLAMA_MODEL` |
+| `ollama` | `dimensions` | `256` | `EMBEDDING_DIMENSIONS` |
+| `aiStack` | `enableSbOrchestration` | `false` | `COGNISTORE_ENABLE_SB_ORCHESTRATION` |
+| `aiStack` | `secondBrainPath` | _unset_ | `COGNISTORE_SECOND_BRAIN_PATH` |
+| `aiStack` | `contextEngineRepos` | `[]` | `COGNISTORE_CONTEXT_ENGINE_REPOS` (comma- or semicolon-separated list) |
+
+### `aiStack` — AI Knowledge Stack POC (opt-in)
+
+Added by the `ai-stack-poc-cognistore` openspec change. Wires CogniStore into a three-layer stack:
+
+1. **Second Brain** (canonical source of truth — git-backed markdown DRs/specs at `secondBrainPath`)
+2. **CogniStore** (this app — runtime mirror, ephemeral session memory)
+3. **Context Engine** (per-repo `.ai/` scaffold for code-aware retrieval; one entry per repo in `contextEngineRepos`)
+
+`enableSbOrchestration` is the master flag. **Default `false` — existing deployments see no behavior change.** When `true`:
+
+- The layer-precedence system knowledge entry is upserted (idempotent, see `packages/core/src/services/protocol-hierarchy.ts`).
+- Future SB-orchestration MCP tools (`secondBrain.*`, wave 3) and dashboard panels (`/second-brain`, `/context-engine`, wave 4+) become active.
+- The `UserPromptSubmit` hook injection includes layer-precedence guidance.
+
+Existing users are prompted exactly once on the first launch after upgrade ("Enable AI Knowledge Stack integration? Requires Second Brain checkout"); persisted via `~/.cognistore/.ai-stack-poc-migration.json`.
