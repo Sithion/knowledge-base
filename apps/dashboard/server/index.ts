@@ -1502,6 +1502,16 @@ Pass an array to addKnowledge to create multiple entries at once.
     return sdk.addKnowledge(request.body);
   });
 
+  // ─── /ipc/addKnowledge alias ─────────────────────────────────
+  // The Context Engine bundle's `summarize.py record` posts to
+  // `${COGNISTORE_IPC_URL:-http://localhost:7321/ipc/addKnowledge}` by default.
+  // Mirror /api/knowledge so the bridge works without per-repo config tweaks.
+  app.post<{ Body: CreateKnowledgeInput }>('/ipc/addKnowledge', async (request, reply) => {
+    const err = ensureReady(reply);
+    if (err) return err;
+    return sdk.addKnowledge(request.body);
+  });
+
   app.put<{ Params: { id: string }; Body: UpdateKnowledgeInput }>('/api/knowledge/:id', async (request, reply) => {
     const err = ensureReady(reply);
     if (err) return err;
