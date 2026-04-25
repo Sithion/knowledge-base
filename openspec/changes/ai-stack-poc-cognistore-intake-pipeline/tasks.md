@@ -2,27 +2,27 @@
 
 ## 1. Managed clone lifecycle
 
-- [ ] 1.1 Add `intakePipeline.workspaceDir` to `cognistore.config` (default `${appDataDir}/second-brain-workspace`) and `intakePipeline.secondBrainRepoUrl` (no default — required to enable intake). Add `intakePipeline.prCutBaseBranch` (default `develop`) for testability.
-- [ ] 1.2 Implement Rust helper `ensure_managed_clone(workspaceDir, repoUrl) -> Result<PathBuf>`:
+- [x] 1.1 Add `intakePipeline.workspaceDir` to `cognistore.config` (default `${appDataDir}/second-brain-workspace`) and `intakePipeline.secondBrainRepoUrl` (no default — required to enable intake). Add `intakePipeline.prCutBaseBranch` (default `develop`) for testability.
+- [x] 1.2 Implement Rust helper `ensure_managed_clone(workspaceDir, repoUrl) -> Result<PathBuf>`:
   - If dir does not exist → `git clone <repoUrl> <workspaceDir>` (use `git`, not `gh`, so cloning does not require `gh auth`; `gh` is only needed at PR-cut time)
   - If dir exists but not a git repo → error
   - If dir exists and is git repo → `git fetch origin develop`; warn-if-behind via UI banner
-- [ ] 1.3 Implement `prepare_intake_branch(workspaceDir, project) -> Result<{branch, baseSha}>`:
+- [x] 1.3 Implement `prepare_intake_branch(workspaceDir, project) -> Result<{branch, baseSha}>`:
   - `git checkout develop && git reset --hard origin/develop`
   - Capture `git rev-parse origin/develop` as `baseSha`
   - `git checkout -b sb-intake/${project}/${utc-iso-timestamp-no-colons}`
   - Returns `{branch, baseSha}`
-- [ ] 1.4 Implement `discard_intake_branch(workspaceDir, branch)`:
+- [x] 1.4 Implement `discard_intake_branch(workspaceDir, branch)`:
   - `git checkout develop && git branch -D <branch>`
 - [ ] 1.5 First-run safety: if managed clone has uncommitted changes, refuse all intake actions and surface a "Reset workspace" affordance that does `git stash drop && git reset --hard origin/develop`.
-- [ ] 1.6 Implement OS file lock on `${managedClone}/.cognistore-intake.lock` via `fs2` crate (`flock`/`LockFileEx`); acquire before any mutating op, release on process exit (OS reclamation handles crash). If lock not acquirable in 2s, surface "Another CogniStore instance is using the managed clone."
+- [x] 1.6 Implement OS file lock on `${managedClone}/.cognistore-intake.lock` via `fs2` crate (`flock`/`LockFileEx`); acquire before any mutating op, release on process exit (OS reclamation handles crash). If lock not acquirable in 2s, surface "Another CogniStore instance is using the managed clone."
 - [ ] 1.7 Implement `check_base_drift(workspaceDir, baseSha) -> Option<DriftInfo>` — fetches `origin/develop` and returns `Some({newSha, commitsAhead})` if `origin/develop` advanced. Called pre-Approve to gate the Approve button.
 
 ## 2. Project picker & inbox staging
 
-- [ ] 2.1 Tauri command `list_sb_projects()` reads `${managedClone}/01-Projects/*/` entries that contain `AGENTS.md`. Returns `[{slug, displayName, lastModified}]`.
+- [x] 2.1 Tauri command `list_sb_projects()` reads `${managedClone}/01-Projects/*/` entries that contain `AGENTS.md`. Returns `[{slug, displayName, lastModified}]`.
 - [ ] 2.2 React component `ProjectPicker` with searchable dropdown + "+ New Project" affordance.
-- [ ] 2.3 Tauri command `start_intake_session(project) -> { sessionId, stagingDir, intakeBranch }`:
+- [x] 2.3 Tauri command `start_intake_session(project) -> { sessionId, stagingDir, intakeBranch }`:
   - Calls `prepare_intake_branch`
   - Creates `${managedClone}/00-Inbox/${project}/${sessionId}/`
   - Creates `${appDataDir}/intake-sessions/${sessionId}/` for audit artifacts
@@ -43,8 +43,8 @@
 
 ## 4. Phase A — Intake & Analysis invocation
 
-- [ ] 4.1 Ship `cognistore/templates/intake-prompt.md` with placeholders for `{{project}}`, `{{stagingDir}}`, `{{intakeSessionId}}`, `{{managedClone}}`. **First line is `MODE: intake`** per headless-agent-contract. Prompt instructs the agent to follow standard `mojito:second-brain` intake flow on staged files, classify, extract requirements, update analysis, draft DRs, but **do not commit and do not push**.
-- [ ] 4.2 Tauri command `run_intake_phase_a(sessionId)` renders the prompt, spawns `copilot` with intake model + intake timeout, streams events, awaits exit.
+- [x] 4.1 Ship `cognistore/templates/intake-prompt.md` with placeholders for `{{project}}`, `{{stagingDir}}`, `{{intakeSessionId}}`, `{{managedClone}}`. **First line is `MODE: intake`** per headless-agent-contract. Prompt instructs the agent to follow standard `mojito:second-brain` intake flow on staged files, classify, extract requirements, update analysis, draft DRs, but **do not commit and do not push**.
+- [x] 4.2 Tauri command `run_intake_phase_a(sessionId)` renders the prompt, spawns `copilot` with intake model + intake timeout, streams events, awaits exit.
 - [ ] 4.3 On exit, run **post-run invariant audit** (`audit_phase_a(sessionId, baseSha)`):
   - `git rev-list ${baseSha}..HEAD` MUST be empty (no commits)
   - `git ls-remote origin ${branch}` MUST be empty (no remote ref)
@@ -52,7 +52,7 @@
   - On violation: surface a banner with one-click `git reset --soft ${baseSha}` recovery
 - [ ] 4.4 Compute `git diff ${baseSha}..HEAD` in managed clone; persist to `${appDataDir}/intake-sessions/${sessionId}/diff.patch`.
 - [ ] 4.5 For Refine iterations: snapshot working tree via `git stash create` before each iteration; record SHA in `metadata.refineCheckpoints[N]` for rollback.
-- [ ] 4.6 Emit Tauri event `intake-phase-a-complete` with payload `{sessionId, exitCode, diffPath, diffStat, invariantViolations}`.
+- [x] 4.6 Emit Tauri event `intake-phase-a-complete` with payload `{sessionId, exitCode, diffPath, diffStat, invariantViolations}`.
 
 ## 5. Diff review & three-action gate
 
@@ -66,18 +66,18 @@
 
 ## 6. Phase B — PR Cut invocation
 
-- [ ] 6.1 Ship `cognistore/templates/intake-pr-cut-prompt.md` with placeholders for `{{project}}`, `{{branch}}`, `{{filesChangedSummary}}`, `{{intakeSessionId}}`, `{{prCutBaseBranch}}`. **First line is `MODE: pr-cut`** per headless-agent-contract. Prompt instructs the cheap model to: stage all changes on the branch, commit with a templated message, push the branch, open a draft PR via `gh pr create --draft --base {{prCutBaseBranch}}`. Forbids any analysis work.
-- [ ] 6.2 Tauri command `run_intake_phase_b(sessionId)` spawns `copilot` with PR-cut model + PR-cut timeout.
+- [x] 6.1 Ship `cognistore/templates/intake-pr-cut-prompt.md` with placeholders for `{{project}}`, `{{branch}}`, `{{filesChangedSummary}}`, `{{intakeSessionId}}`, `{{prCutBaseBranch}}`. **First line is `MODE: pr-cut`** per headless-agent-contract. Prompt instructs the cheap model to: stage all changes on the branch, commit with a templated message, push the branch, open a draft PR via `gh pr create --draft --base {{prCutBaseBranch}}`. Forbids any analysis work.
+- [x] 6.2 Tauri command `run_intake_phase_b(sessionId)` spawns `copilot` with PR-cut model + PR-cut timeout.
 - [ ] 6.3 Post-run invariant audit `audit_phase_b(sessionId)`:
   - `git diff ${branch} origin/${branch} --name-only` MUST be empty (push happened)
   - The file set in `git diff ${baseSha}..HEAD --name-only` MUST equal the approved file set (warn if expanded; flag in audit log)
-- [ ] 6.4 Parse final agent output for the PR URL (`gh pr create` writes it to stdout); persist to audit log.
-- [ ] 6.5 Emit Tauri event `intake-phase-b-complete` with payload `{sessionId, prUrl, invariantViolations}`.
+- [x] 6.4 Parse final agent output for the PR URL (`gh pr create` writes it to stdout); persist to audit log.
+- [x] 6.5 Emit Tauri event `intake-phase-b-complete` with payload `{sessionId, prUrl, invariantViolations}`.
 - [ ] 6.6 UI shows a success card with the PR URL + "Open in GitHub" button + "Start another intake session" affordance.
 
 ## 7. First-run setup
 
-- [ ] 7.1 Tauri command `check_intake_prereqs() -> PrereqReport` runs availability probes (`copilot --version`, `gh --version`, `gh auth status`, `git --version`) in parallel, then if all pass runs the **smoke probe**: `copilot --no-ask-user --allow-all-tools --output-format json --add-dir <tmp> --agent mojito:second-brain -p "Reply with the exact word OK and nothing else."` against a temp scratch dir. PASS iff exit 0 + final assistant message contains `OK` within 30s.
+- [x] 7.1 Tauri command `check_intake_prereqs() -> PrereqReport` runs availability probes (`copilot --version`, `gh --version`, `gh auth status`, `git --version`) in parallel, then if all pass runs the **smoke probe**: `copilot --no-ask-user --allow-all-tools --output-format json --add-dir <tmp> --agent mojito:second-brain -p "Reply with the exact word OK and nothing else."` against a temp scratch dir. PASS iff exit 0 + final assistant message contains `OK` within 30s.
 - [ ] 7.2 React `SetupRequiredBanner` renders when any check fails; gates the Process Inbox button.
 - [ ] 7.3 React `DiagnosticsModal` shows live results (separating availability vs smoke), Re-check button, OS-specific install snippets (per OS detected via Tauri `os` plugin). Smoke probe failure surfaces specific guidance ("Copilot is installed but login is expired. Run `copilot login` and re-check.").
 - [ ] 7.4 Document install snippets for macOS/Windows/Linux in `cognistore/templates/intake-setup-guide.md` (rendered into the modal).
