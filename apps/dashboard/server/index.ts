@@ -1390,8 +1390,9 @@ Pass an array to addKnowledge to create multiple entries at once.
       };
     }
     try {
-      const { listProjects } = await import('@cognistore/mcp-server/dist/tools/secondBrain.js')
-        .catch(() => import('../../mcp-server/src/tools/secondBrain.js' as any));
+      const { listProjects } = (await import('../../mcp-server/src/tools/secondBrain.js' as any)) as {
+        listProjects: (args: { secondBrainPath: string; enableSbOrchestration: boolean }) => unknown;
+      };
       const result = (listProjects as any)({
         secondBrainPath: sbPath,
         enableSbOrchestration: true,
