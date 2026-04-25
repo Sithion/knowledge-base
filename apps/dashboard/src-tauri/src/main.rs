@@ -5,6 +5,9 @@ mod sidecar;
 mod tray;
 mod widget_config;
 mod widgets;
+// AI_STACK_POC:COPILOT_BRIDGE_MOD_BEGIN
+mod copilot_bridge;
+// AI_STACK_POC:COPILOT_BRIDGE_MOD_END
 
 use sidecar::SidecarState;
 use std::time::Duration;
@@ -116,8 +119,16 @@ fn main() {
             widgets::open_widget,
             widgets::close_widget,
             widgets::get_open_widgets,
+            // AI_STACK_POC:COPILOT_BRIDGE_HANDLERS_BEGIN
+            copilot_bridge::commands::get_copilot_models,
+            copilot_bridge::commands::spawn_copilot_session,
+            copilot_bridge::commands::abort_copilot_session,
+            // AI_STACK_POC:COPILOT_BRIDGE_HANDLERS_END
         ])
         .setup(|app| {
+            // AI_STACK_POC:COPILOT_BRIDGE_STATE_BEGIN
+            app.manage(copilot_bridge::registry::CopilotRegistry::default());
+            // AI_STACK_POC:COPILOT_BRIDGE_STATE_END
             if let Err(msg) = run_setup(app) {
                 eprintln!("Setup error: {}", msg);
                 if let Some(window) = app.get_webview_window("main") {
