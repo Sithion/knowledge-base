@@ -2,6 +2,7 @@ import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mc
 import { z } from 'zod';
 import { KnowledgeSDK } from '@cognistore/sdk';
 import { KnowledgeType } from '@cognistore/shared';
+import { stackInit, stackUpgrade, stackStatus } from './tools/stack.js';
 
 const knowledgeTypeValues = ['decision', 'pattern', 'fix', 'constraint', 'gotcha'] as const;
 const knowledgeStatusValues = ['draft', 'active', 'completed', 'archived'] as const;
@@ -441,6 +442,49 @@ export function createServer(sdk: KnowledgeSDK): McpServer {
       }
 
       return { content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }] };
+    }
+  );
+
+  // ─── Stack Tools (Context Engine bundle lifecycle) ──────────
+
+  server.tool(
+    'stackInit',
+    'Bootstrap the vendored Context Engine into a target repo: copies templates, runs venv setup, optionally pulls Second Brain–derived context. Idempotent — no-ops on already-bootstrapped repos.',
+    {
+      repoPath: z.string().describe('Absolute path to the target repository'),
+      sbProject: z.string().optional().describe('Second Brain project slug to mirror under .ai/context/sb-derived/'),
+      skipVenv: z.boolean().optional().describe('Skip venv setup (for environments without Python)'),
+    },
+    WRITE,
+    async ({ repoPath, sbProject, skipVenv }) => {
+      const result = await stackInit({ repoPath, sbProject, skipVenv });
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'stackUpgrade',
+    'Refresh vendored Context Engine files in a target repo. Overwrites scripts, .ai/index/, .ai/mcp/; preserves decisions.log, .last-build, .ai/context/sb-derived/.',
+    {
+      repoPath: z.string().describe('Absolute path to a previously-initialized repository'),
+    },
+    WRITE,
+    async ({ repoPath }) => {
+      const result = await stackUpgrade({ repoPath });
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    'stackStatus',
+    'Report installed Context Engine version vs vendored snapshot, last-build timestamp, and Second Brain derived-context presence.',
+    {
+      repoPath: z.string().describe('Absolute path to a repository to inspect'),
+    },
+    READ_ONLY,
+    async ({ repoPath }) => {
+      const result = await stackStatus({ repoPath });
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] };
     }
   );
 
