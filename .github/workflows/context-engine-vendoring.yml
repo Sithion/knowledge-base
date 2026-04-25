@@ -1,0 +1,41 @@
+name: Context Engine Vendoring
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'templates/context-engine/**'
+
+jobs:
+  version-bumped:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          fetch-depth: 0
+      - name: Verify VERSION updated alongside vendored changes
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "${BASE}"...HEAD -- 'templates/context-engine/' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No changes under templates/context-engine/ — nothing to verify."
+            exit 0
+          fi
+          echo "Files changed under templates/context-engine/:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qx 'templates/context-engine/VERSION'; then
+            echo "✓ templates/context-engine/VERSION was updated."
+            exit 0
+          fi
+          cat <<'EOF'
+          ::error::templates/context-engine/** changed but templates/context-engine/VERSION was not bumped.
+
+          The Context Engine bundle is vendored from ~/AcuityTech/ai-projects (canonical source).
+          Edit upstream first, then re-vendor with:
+
+              pnpm vendor:context-engine
+
+          That command rewrites templates/context-engine/ from the upstream snapshot and
+          updates VERSION. Commit the resulting changes together.
+          EOF
+          exit 1
