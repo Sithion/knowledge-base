@@ -1,0 +1,71 @@
+{
+  "version": "2026-04-25",
+  "models": [
+    {
+      "id": "auto",
+      "display_name": "Auto (Copilot routing)",
+      "tier": "auto",
+      "description": "Let GitHub Copilot route to the best available model."
+    },
+    {
+      "id": "claude-opus-4.7",
+      "display_name": "Claude Opus 4.7",
+      "tier": "premium",
+      "description": "Anthropic's frontier reasoning model. Highest quality, slowest, most expensive."
+    },
+    {
+      "id": "claude-opus-4.6",
+      "display_name": "Claude Opus 4.6",
+      "tier": "premium",
+      "description": "Previous-generation Claude Opus. Strong reasoning at slightly lower cost than 4.7."
+    },
+    {
+      "id": "claude-sonnet-4.6",
+      "display_name": "Claude Sonnet 4.6",
+      "tier": "standard",
+      "description": "Balanced Anthropic model. Recommended default for analytical intake work."
+    },
+    {
+      "id": "claude-sonnet-4.5",
+      "display_name": "Claude Sonnet 4.5",
+      "tier": "standard",
+      "description": "Previous-generation Claude Sonnet. Reliable mid-tier option."
+    },
+    {
+      "id": "gpt-5.4",
+      "display_name": "GPT-5.4",
+      "tier": "standard",
+      "description": "OpenAI's standard general-purpose model. Default for intake analysis."
+    },
+    {
+      "id": "gpt-5.3-codex",
+      "display_name": "GPT-5.3 Codex",
+      "tier": "standard",
+      "description": "Code-tuned GPT-5.3. Good for tool-heavy agent flows."
+    },
+    {
+      "id": "gpt-5.4-mini",
+      "display_name": "GPT-5.4 mini",
+      "tier": "fast",
+      "description": "Smaller, faster GPT-5.4 variant. Default for PR-cut phase."
+    },
+    {
+      "id": "gpt-5-mini",
+      "display_name": "GPT-5 mini",
+      "tier": "fast",
+      "description": "Earlier mini-class GPT-5 model. Cheap and fast."
+    },
+    {
+      "id": "gpt-4.1",
+      "display_name": "GPT-4.1",
+      "tier": "fast",
+      "description": "Legacy GPT-4 family. Very fast, lower quality than 5.x."
+    },
+    {
+      "id": "claude-haiku-4.5",
+      "display_name": "Claude Haiku 4.5",
+      "tier": "fast",
+      "description": "Smallest, fastest Anthropic model. Good for cheap PR-cut runs."
+    }
+  ]
+}
