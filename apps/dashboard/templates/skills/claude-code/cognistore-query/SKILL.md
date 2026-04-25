@@ -93,3 +93,17 @@ When `cognistore.config.aiStack.enableSbOrchestration` is `true`, treat these th
 **Conflict resolution:** prefer Second Brain DR/spec content over CogniStore entries when they disagree. This is a *convention*, not a hard rule — exercise judgment when staleness or scope mismatch is obvious. Mention which layer you trusted in your response when it materially affected the answer.
 
 When the flag is off (default), only Layer 2 is in scope and this section can be ignored.
+
+---
+
+## Context Engine deployment (POC)
+
+CogniStore exposes three MCP tools that bootstrap and maintain Context Engine on a target repo:
+
+- `mcp__cognistore__stackInit({ repoPath, sbProject? })` — copies the vendored `.ai/` scaffold and `scripts/` into the repo, runs `setup_context_engine.sh`, optionally pulls Second Brain–derived context. Idempotent on already-initialized repos.
+- `mcp__cognistore__stackUpgrade({ repoPath })` — refreshes vendored-owned files; preserves `decisions.log`, `.last-build`, and `.ai/context/sb-derived/`.
+- `mcp__cognistore__stackStatus({ repoPath })` — reports `installed`, `version`, `vendoredVersion`, `drift`, `lastBuild`, `sbDerivedPresent`.
+
+The `cognistore-query` skill ships a `context-engine-detect.sh` user-prompt hook that fires once per session at start. If CWD is a git repo with no `.ai/index/`, no `.ai/.no-context-engine` opt-out marker, no `CI` env var, and `cognistore.config.contextEnginePromptDisabled !== true`, it injects a system message asking you to prompt the user: "Initialize Context Engine here? [Y/n/never]". On `never`, write `.ai/.no-context-engine` so the prompt never fires again.
+
+See `docs/context-engine.md` for the full deployment guide and the re-vendoring workflow (`pnpm vendor:context-engine`).

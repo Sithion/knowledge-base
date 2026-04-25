@@ -39,18 +39,18 @@
 
 ## 3.5 Context Engine Bundle (Phase 1.5)
 
-- [ ] 3.5.1 Create `cognistore/templates/context-engine/` directory; vendor initial snapshot from `~/AcuityTech/ai-projects/` (`.ai/` scaffold + `scripts/bootstrap_real_repo.sh`, `scripts/setup_context_engine.sh`, `scripts/refresh_sb_context.sh`, `requirements-context.txt`)
-- [ ] 3.5.2 Write `templates/context-engine/VERSION` containing the upstream Context Engine git SHA at vendor time
-- [ ] 3.5.3 Implement `npm run vendor:context-engine` (`scripts/vendor-context-engine.js`) — copies from `CONTEXT_ENGINE_SOURCE` env var (default `~/AcuityTech/ai-projects`), updates `VERSION`, stages changes
-- [ ] 3.5.4 Add CI check: PRs modifying `templates/context-engine/**` without a `VERSION` change fail with a pointer to the re-vendor command
-- [ ] 3.5.5 Implement MCP tool `stack.init({ repoPath, sbProject? })` — copy templates, run venv setup via `child_process`, optional SB pull, return result; idempotent on already-bootstrapped repos
-- [ ] 3.5.6 Implement MCP tool `stack.upgrade({ repoPath })` — overwrite scripts/`.ai/index/`/`.ai/mcp/`/`.ai/skills/<context-engine>/` while preserving `decisions.log`, `.last-build`, `.ai/context/sb-derived/`
-- [ ] 3.5.7 Implement MCP tool `stack.status({ repoPath })` — read installed `VERSION`, compare to vendored, report drift + last build + sb-derived presence
-- [ ] 3.5.8 Implement `ContextEngineDetect` hook — fires once per session at start; respects `CI` env var, `.ai/.no-context-engine` opt-out marker, `cognistore.config.contextEnginePromptDisabled`; prompt "Initialize now? [Y/n/never]"; `never` writes opt-out marker
-- [ ] 3.5.9 Update `bootstrap_real_repo.sh` in Context Engine source repo to be a thin shim that invokes `cognistore stack init` if CogniStore is on PATH; fall back to current behavior otherwise (back-compat)
-- [ ] 3.5.10 Documentation: README section "Context Engine deployment" + skill-doc updates so agents know about `stack.init` / `stack.status`
-- [ ] 3.5.11 Test `stack.init` against a tmp repo end-to-end (clean → init → assert `.ai/index/` populated → run a recorded decision → assert it appeared in CogniStore)
-- [ ] 3.5.12 Test `stack.upgrade` preserves local content (write fixture `decisions.log`, bump vendored version, upgrade, assert log untouched)
+- [x] 3.5.1 Create `cognistore/templates/context-engine/` directory; vendor initial snapshot from `~/AcuityTech/ai-projects/` (`.ai/` scaffold + `scripts/bootstrap_real_repo.sh`, `scripts/setup_context_engine.sh`, `scripts/refresh_sb_context.sh`, `requirements-context.txt`)
+- [x] 3.5.2 Write `templates/context-engine/VERSION` containing the upstream Context Engine git SHA at vendor time
+- [x] 3.5.3 Implement `npm run vendor:context-engine` (`scripts/vendor-context-engine.js`) — copies from `CONTEXT_ENGINE_SOURCE` env var (default `~/AcuityTech/ai-projects`), updates `VERSION`, stages changes
+- [x] 3.5.4 Add CI check: PRs modifying `templates/context-engine/**` without a `VERSION` change fail with a pointer to the re-vendor command
+- [x] 3.5.5 Implement MCP tool `stack.init({ repoPath, sbProject? })` — copy templates, run venv setup via `child_process`, optional SB pull, return result; idempotent on already-bootstrapped repos
+- [x] 3.5.6 Implement MCP tool `stack.upgrade({ repoPath })` — overwrite scripts/`.ai/index/`/`.ai/mcp/`/`.ai/skills/<context-engine>/` while preserving `decisions.log`, `.last-build`, `.ai/context/sb-derived/`
+- [x] 3.5.7 Implement MCP tool `stack.status({ repoPath })` — read installed `VERSION`, compare to vendored, report drift + last build + sb-derived presence
+- [x] 3.5.8 Implement `ContextEngineDetect` hook — fires once per session at start; respects `CI` env var, `.ai/.no-context-engine` opt-out marker, `cognistore.config.contextEnginePromptDisabled`; prompt "Initialize now? [Y/n/never]"; `never` writes opt-out marker
+- [ ] 3.5.9 (DEFERRED — requires upstream commit in ai-projects/ai-tooling; tracked in docs/context-engine.md "Coordination Items") Update `bootstrap_real_repo.sh` in Context Engine source repo to be a thin shim that invokes `cognistore stack init` if CogniStore is on PATH; fall back to current behavior otherwise (back-compat)
+- [x] 3.5.10 Documentation: README section "Context Engine deployment" + skill-doc updates so agents know about `stack.init` / `stack.status`
+- [x] 3.5.11 Test `stack.init` against a tmp repo end-to-end (clean → init → assert `.ai/index/` populated → run a recorded decision → assert it appeared in CogniStore)
+- [x] 3.5.12 Test `stack.upgrade` preserves local content (write fixture `decisions.log`, bump vendored version, upgrade, assert log untouched)
 
 ## 4. Dashboard — Second Brain Panel (Phase 2)
 
