@@ -6,6 +6,11 @@
         "type": "command",
         "bash": "${COPILOT_SKILL_DIR}/hooks/user-prompt-check.sh",
         "timeoutSec": 5
+      },
+      {
+        "type": "command",
+        "bash": "${COPILOT_SKILL_DIR}/hooks/context-engine-detect.sh",
+        "timeoutSec": 5
       }
     ],
     "preToolUse": [

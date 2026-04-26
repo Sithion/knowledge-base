@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { MigrationBanner } from './MigrationBanner.js';
 
 declare const __APP_VERSION__: string;
 
@@ -24,6 +25,10 @@ const navItems: NavItem[] = [
     ],
   },
   ...(isTauri ? [{ key: 'widgets', path: '/widgets', icon: '🧩' }] : []),
+  { key: 'workspace', path: '/workspace', icon: '📥' },
+  { key: 'secondBrain', path: '/second-brain', icon: '🧠' },
+  { key: 'contextEngine', path: '/context-engine', icon: '🛠' },
+  { key: 'health', path: '/health', icon: '❤️' },
   { key: 'settings', path: '/settings', icon: '⚙' },
 ];
 
@@ -150,6 +155,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main style={{ flex: 1, overflow: 'auto', padding: 24, backgroundColor: 'var(--bg-main)' }}>
+        <MigrationBanner />
         {children}
       </main>
     </div>

@@ -10,6 +10,10 @@ import { WidgetsPage } from './pages/WidgetsPage.js';
 import { PlansPage } from './pages/PlansPage.js';
 import { SetupPage } from './pages/SetupPage.js';
 import { UpgradePage } from './pages/UpgradePage.js';
+import { HealthPage } from './pages/HealthPage.js';
+import { ProjectWorkspacePage } from './pages/ProjectWorkspacePage.js';
+import { SecondBrainPanelPage } from './pages/SecondBrainPanelPage.js';
+import { ContextEnginePanelPage } from './pages/ContextEnginePanelPage.js';
 import { api } from './api/client.js';
 import { UpdateChecker } from './components/UpdateChecker.js';
 
@@ -129,6 +133,10 @@ export function App() {
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/stats/plans" element={<PlanStatsPage />} />
           <Route path="/widgets" element={<WidgetsPage />} />
+          <Route path="/workspace" element={<ProjectWorkspacePage />} />
+          <Route path="/second-brain" element={<SecondBrainPanelPage />} />
+          <Route path="/context-engine" element={<ContextEnginePanelPage />} />
+          <Route path="/health" element={<HealthPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Layout>

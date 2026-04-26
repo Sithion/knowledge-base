@@ -1,0 +1,43 @@
+{
+  "generatedAt": "2026-04-25T19:09:49.496Z",
+  "source": "/Users/aarontharpe/AcuityTech/ai-projects/ai-tooling",
+  "vendoredOwned": [
+    "requirements-context.txt",
+    "AGENTS.md",
+    "summarize.config.toml.example",
+    "scripts/setup_context_engine.sh",
+    "scripts/bootstrap_real_repo.sh",
+    "scripts/refresh_sb_context.sh",
+    "scripts/verify_context_engine.sh",
+    "scripts/run_sample_task.sh",
+    ".ai/index/build_index.py",
+    ".ai/index/config.py",
+    ".ai/index/dependency_graph.py",
+    ".ai/index/retrieve.py",
+    ".ai/index/summarize.py",
+    ".ai/mcp/server.py",
+    ".ai/agents/role_policies.yaml",
+    ".ai/agents/routing.yaml",
+    ".ai/agents/llm_agents_map.yaml",
+    ".ai/agents/context_policy.md",
+    ".ai/context/architecture.md",
+    ".ai/context/coding_standards.md",
+    ".ai/context/domain_model.md",
+    ".ai/context/api_contracts.md",
+    ".ai/context/sb-derived.gitignore.template",
+    ".ai/summaries/repo_summary.md",
+    ".ai/summaries/module_template.md",
+    ".ai/memory/decisions.log",
+    ".ai/memory/bugs.log",
+    ".ai/memory/patterns.log"
+  ],
+  "userOwnedPatterns": [
+    ".ai/memory/decisions.log",
+    ".ai/index/.last-build",
+    ".ai/.last-build",
+    ".ai/.no-context-engine",
+    ".ai/.context-engine-version",
+    ".ai/sb-project-link",
+    ".ai/context/sb-derived/**"
+  ]
+}

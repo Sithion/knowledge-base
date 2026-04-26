@@ -8,6 +8,10 @@ import cors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import { KnowledgeSDK } from '@cognistore/sdk';
 import { ConfigManager } from '@cognistore/config';
+import {
+  buildLayerPrecedenceEntry,
+  LAYER_PRECEDENCE_TITLE,
+} from '@cognistore/core';
 import type {
   CreateKnowledgeInput,
   UpdateKnowledgeInput,
@@ -173,6 +177,104 @@ Pass an array to addKnowledge to create multiple entries at once.
       console.warn('Failed to seed system knowledge:', err instanceof Error ? err.message : String(err));
     }
   };
+
+  // ─── AI Stack POC: layer-precedence system entry + migration prompt ─────
+  // TODO(ai-stack-poc): gate sb-orchestration code on this flag in wave 3.
+  // The layer-precedence entry is upserted only when the user has opted in
+  // via `aiStack.enableSbOrchestration`. State for "did we already seed?" is
+  // tracked in a marker file so we can detect the flip transition.
+
+  const SB_ORCH_STATE_FILE = resolve(INSTALL_DIR, '.sb-orchestration-state.json');
+  const MIGRATION_PROMPT_FILE = resolve(INSTALL_DIR, '.ai-stack-poc-migration.json');
+
+  type SbOrchState = { lastKnownEnabled: boolean; seededAt?: string };
+  type MigrationState = {
+    prompted: boolean;
+    response: 'enabled' | 'declined' | 'deferred' | null;
+    respondedAt?: string;
+    secondBrainPath?: string;
+  };
+
+  const readJsonState = <T>(path: string, fallback: T): T => {
+    try {
+      if (!existsSync(path)) return fallback;
+      return JSON.parse(readFileSync(path, 'utf-8')) as T;
+    } catch {
+      return fallback;
+    }
+  };
+
+  const writeJsonState = (path: string, state: unknown): void => {
+    try {
+      mkdirSync(INSTALL_DIR, { recursive: true });
+      writeFileSync(path, JSON.stringify(state, null, 2));
+    } catch (err) {
+      log('warn', `Failed to write state ${path}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const isSbOrchestrationEnabled = (): boolean => {
+    // 1. Migration prompt opt-in: explicit user click in the banner / wizard
+    //    is the most recent expressed intent and must win over defaults.
+    try {
+      const mig = readJsonState<MigrationState>(MIGRATION_PROMPT_FILE, { prompted: false, response: null });
+      if (mig.response === 'enabled') return true;
+      if (mig.response === 'declined') return false;
+    } catch { /* ignore */ }
+    // 2. Env var override (legacy / CI).
+    const env = (process.env.COGNISTORE_ENABLE_SB_ORCHESTRATION || '').trim().toLowerCase();
+    if (env === '1' || env === 'true' || env === 'yes' || env === 'on') return true;
+    if (env === '0' || env === 'false' || env === 'no' || env === 'off') return false;
+    // 3. SDK config (future config file) as default.
+    try {
+      const cfg = (sdk as any).config?.aiStack;
+      if (cfg && typeof cfg.enableSbOrchestration === 'boolean') return cfg.enableSbOrchestration;
+    } catch { /* ignore */ }
+    return false;
+  };
+
+  const seedLayerPrecedenceKnowledge = async (): Promise<void> => {
+    if (!sdkReady) return;
+    if (!isSbOrchestrationEnabled()) return;
+
+    const prev = readJsonState<SbOrchState>(SB_ORCH_STATE_FILE, { lastKnownEnabled: false });
+
+    try {
+      const existing = (sdk as any).sqlite?.prepare?.(
+        "SELECT id FROM knowledge_entries WHERE type = 'system' AND title = ?"
+      )?.get(LAYER_PRECEDENCE_TITLE) as { id: string } | undefined;
+
+      const payload = buildLayerPrecedenceEntry();
+
+      if (existing) {
+        await sdk.updateKnowledge(existing.id, {
+          content: payload.content,
+          tags: payload.tags,
+        });
+      } else {
+        await sdk.addKnowledge({
+          title: payload.title,
+          content: payload.content,
+          tags: payload.tags,
+          type: payload.type as any,
+          scope: payload.scope,
+          source: payload.source,
+        });
+      }
+
+      writeJsonState(SB_ORCH_STATE_FILE, {
+        lastKnownEnabled: true,
+        seededAt: new Date().toISOString(),
+      } satisfies SbOrchState);
+
+      if (!prev.lastKnownEnabled) {
+        log('info', 'AI Stack POC: enableSbOrchestration flipped true — layer-precedence entry upserted');
+      }
+    } catch (err) {
+      log('warn', `Failed to seed layer-precedence entry: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
 
   // SDK initialization moved after app.listen() — see bottom of start()
 
@@ -704,7 +806,7 @@ Pass an array to addKnowledge to create multiple entries at once.
       const ok = await tryInitSDK();
       if (ok) {
         saveDeployedVersion();
-        await seedSystemKnowledge();
+        await seedSystemKnowledge(); await seedLayerPrecedenceKnowledge();
       }
       return { success: ok, sdkReady };
     } catch (error) {
@@ -726,6 +828,69 @@ Pass an array to addKnowledge to create multiple entries at once.
     };
   });
 
+  // ─── AI Stack POC: existing-user migration prompt ─────────────
+  // Prompted exactly once on the first launch after upgrade. Persistence
+  // lives in `~/.cognistore/.ai-stack-poc-migration.json` so the choice
+  // survives reinstalls and is not coupled to the DB schema.
+  // TODO(ai-stack-poc): wave 4 will wire a React modal that calls these endpoints
+  // on app boot when `shouldPrompt: true`.
+
+  app.get('/api/migration/ai-stack-poc/status', async () => {
+    const state = readJsonState<MigrationState>(MIGRATION_PROMPT_FILE, {
+      prompted: false,
+      response: null,
+    });
+    const isFirstInstall = getDeployedVersion() === null;
+    // Don't prompt on first install — that's the setup-wizard's job. Only
+    // existing users (who already have a deployed version) see the prompt.
+    const shouldPrompt = !state.prompted && !isFirstInstall;
+    return {
+      shouldPrompt,
+      prompted: state.prompted,
+      response: state.response,
+      respondedAt: state.respondedAt ?? null,
+      enableSbOrchestration: isSbOrchestrationEnabled(),
+      defaultSecondBrainPath: '',
+    };
+  });
+
+  app.post<{
+    Body: { decision?: 'enable' | 'decline' | 'defer'; response?: string; secondBrainPath?: string };
+  }>('/api/migration/ai-stack-poc/respond', async (request, reply) => {
+    // Accept the `decision` field (current UI) plus a legacy `response` field
+    // for backward compatibility with the original contract.
+    const body = request.body || ({} as any);
+    const raw = (body.decision ?? body.response ?? '').toString();
+    const map: Record<string, MigrationState['response']> = {
+      enable: 'enabled',
+      enabled: 'enabled',
+      decline: 'declined',
+      declined: 'declined',
+      'not-now': 'declined',
+      defer: 'deferred',
+      deferred: 'deferred',
+    };
+    const normalized = map[raw];
+    if (!normalized) {
+      reply.code(400);
+      return { error: 'decision must be "enable", "decline", or "defer"' };
+    }
+    const state: MigrationState = {
+      prompted: true,
+      response: normalized,
+      respondedAt: new Date().toISOString(),
+      ...(body.secondBrainPath ? { secondBrainPath: body.secondBrainPath } : {}),
+    };
+    writeJsonState(MIGRATION_PROMPT_FILE, state);
+    log('info', `AI Stack POC migration prompt responded: ${normalized}`);
+    // If enabling, eagerly seed the layer-precedence entry so the side-effect
+    // doesn't wait for the next upgrade run.
+    if (normalized === 'enabled') {
+      try { await seedLayerPrecedenceKnowledge(); } catch { /* best-effort */ }
+    }
+    return { ok: true, state };
+  });
+
   let upgradeRunning = false;
   app.post('/api/upgrade/run', async (request, reply) => {
     if (upgradeRunning) { reply.code(409); return { error: 'Upgrade already in progress' }; }
@@ -737,7 +902,7 @@ Pass an array to addKnowledge to create multiple entries at once.
       if (sdkReady) { await sdk.close(); sdkReady = false; }
       const ok = await tryInitSDK();
       results.push({ step: 'database', status: ok ? 'success' : 'error', message: ok ? 'Schema up to date' : 'SDK init failed' });
-      if (ok) await seedSystemKnowledge();
+      if (ok) await seedSystemKnowledge(); await seedLayerPrecedenceKnowledge();
     } catch (e: any) {
       results.push({ step: 'database', status: 'error', message: e.message });
     }
@@ -1214,6 +1379,194 @@ Pass an array to addKnowledge to create multiple entries at once.
     return { ...health, token: SIDECAR_TOKEN };
   });
 
+  // ─── Second Brain projects (intake-pipeline backend) ──────────────
+  //
+  // GET  /api/sb/projects             — list 01-Projects/* in the managed clone
+  // POST /api/sb/projects/scaffold    — validate slug + return next-step guidance
+  //
+  // Both routes fail-soft when `aiStack.enableSbOrchestration` is false.
+
+  const resolveManagedClonePath = (): string | null => {
+    try {
+      const cfg = (sdk as any).config?.aiStack;
+      const explicit = cfg?.intakePipeline?.managedClonePath || cfg?.secondBrainPath;
+      if (typeof explicit === 'string' && explicit.trim().length > 0) {
+        return explicit.startsWith('~/')
+          ? join(homedir(), explicit.slice(2))
+          : explicit;
+      }
+    } catch { /* ignore */ }
+    const env = (process.env.COGNISTORE_INTAKE_WORKSPACE_DIR || '').trim();
+    if (env) {
+      return env.startsWith('~/') ? join(homedir(), env.slice(2)) : env;
+    }
+    return join(INSTALL_DIR, 'second-brain-workspace');
+  };
+
+  app.get('/api/sb/projects', async (_request, reply) => {
+    if (!isSbOrchestrationEnabled()) {
+      reply.code(409);
+      return { disabled: true, reason: 'aiStack.enableSbOrchestration is false' };
+    }
+    const sbPath = resolveManagedClonePath();
+    if (!sbPath || !existsSync(sbPath)) {
+      reply.code(409);
+      return {
+        error: 'second_brain_not_configured',
+        details: `Managed Second Brain clone not found at ${sbPath ?? '<unset>'}. Run first-run setup.`,
+      };
+    }
+    try {
+      const { listProjects } = (await import('../../mcp-server/src/tools/secondBrain.js' as any)) as {
+        listProjects: (args: { secondBrainPath: string; enableSbOrchestration: boolean }) => unknown;
+      };
+      const result = (listProjects as any)({
+        secondBrainPath: sbPath,
+        enableSbOrchestration: true,
+      });
+      return result;
+    } catch (err) {
+      reply.code(500);
+      return {
+        error: 'list_projects_failed',
+        details: err instanceof Error ? err.message : String(err),
+      };
+    }
+  });
+
+  // GET /api/sb/projects/:slug/details — read analysis/decisions/specs
+  // markdown for the selected project so the panel can render them inline.
+  // Files are truncated at MAX_CONTENT_BYTES; binary/dotfiles/index files
+  // are skipped.
+  const PROJECT_DETAIL_MAX_BYTES = 256 * 1024;
+  type SectionId = 'analysis' | 'decisions' | 'specs' | 'sources' | 'root';
+  const SECTION_DIRS: Array<{ id: SectionId; label: string; dir: string | null; rootFiles?: string[] }> = [
+    { id: 'analysis', label: 'Analysis & Gaps', dir: '02-analysis' },
+    { id: 'decisions', label: 'Decision Records', dir: '03-decisions' },
+    { id: 'specs', label: 'Specs & Status', dir: '04-specs' },
+    { id: 'sources', label: 'Inbound Sources', dir: '01-sources' },
+    { id: 'root', label: 'Project Docs', dir: null, rootFiles: ['brain.md', 'README.md', 'AGENTS.md', 'CLAUDE.md', 'current-state-overview.md', 'status.md'] },
+  ];
+
+  app.get<{ Params: { slug: string } }>('/api/sb/projects/:slug/details', async (request, reply) => {
+    if (!isSbOrchestrationEnabled()) {
+      reply.code(409);
+      return { disabled: true, reason: 'aiStack.enableSbOrchestration is false' };
+    }
+    const slug = (request.params.slug || '').trim();
+    if (!/^[A-Za-z0-9._-]+$/.test(slug)) {
+      reply.code(400);
+      return { error: 'invalid_project_slug' };
+    }
+    const sbPath = resolveManagedClonePath();
+    if (!sbPath || !existsSync(sbPath)) {
+      reply.code(409);
+      return {
+        error: 'second_brain_not_configured',
+        details: `Managed Second Brain clone not found at ${sbPath ?? '<unset>'}.`,
+      };
+    }
+    const projectDir = join(sbPath, '01-Projects', slug);
+    if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) {
+      reply.code(404);
+      return { error: 'project_not_found', details: projectDir };
+    }
+
+    type FileEntry = { name: string; relPath: string; sizeBytes: number; mtimeMs: number; content: string; truncated: boolean };
+
+    const readMarkdown = (absPath: string, relPath: string): FileEntry | null => {
+      try {
+        const st = statSync(absPath);
+        if (!st.isFile()) return null;
+        const buf = readFileSync(absPath);
+        const truncated = buf.length > PROJECT_DETAIL_MAX_BYTES;
+        const content = truncated
+          ? buf.subarray(0, PROJECT_DETAIL_MAX_BYTES).toString('utf-8') + '\n\n…(truncated)…\n'
+          : buf.toString('utf-8');
+        return {
+          name: absPath.split('/').pop() || absPath,
+          relPath,
+          sizeBytes: st.size,
+          mtimeMs: st.mtimeMs,
+          content,
+          truncated,
+        };
+      } catch {
+        return null;
+      }
+    };
+
+    const isVisible = (name: string): boolean =>
+      !name.startsWith('.') && !name.startsWith('_') && /\.(md|markdown)$/i.test(name);
+
+    const sections = SECTION_DIRS.map((sec) => {
+      const files: FileEntry[] = [];
+      if (sec.dir) {
+        const dirPath = join(projectDir, sec.dir);
+        if (existsSync(dirPath) && statSync(dirPath).isDirectory()) {
+          for (const entry of readdirSync(dirPath).sort()) {
+            if (!isVisible(entry)) continue;
+            const fe = readMarkdown(join(dirPath, entry), `${sec.dir}/${entry}`);
+            if (fe) files.push(fe);
+          }
+        }
+      } else if (sec.rootFiles) {
+        for (const name of sec.rootFiles) {
+          const abs = join(projectDir, name);
+          if (existsSync(abs)) {
+            const fe = readMarkdown(abs, name);
+            if (fe) files.push(fe);
+          }
+        }
+      }
+      return { id: sec.id, label: sec.label, dir: sec.dir, files };
+    });
+
+    return {
+      project: slug,
+      path: projectDir,
+      sections,
+    };
+  });
+
+  app.post<{ Body: { name?: string } }>('/api/sb/projects/scaffold', async (request, reply) => {
+    if (!isSbOrchestrationEnabled()) {
+      reply.code(409);
+      return { disabled: true, reason: 'aiStack.enableSbOrchestration is false' };
+    }
+    const name = (request.body?.name || '').trim();
+    if (!/^[a-z0-9-]+$/.test(name)) {
+      reply.code(400);
+      return {
+        error: 'invalid_project_slug',
+        details: 'Project slug must match ^[a-z0-9-]+$ (lowercase, digits, hyphens).',
+      };
+    }
+    const sbPath = resolveManagedClonePath();
+    if (!sbPath || !existsSync(sbPath)) {
+      reply.code(409);
+      return {
+        error: 'second_brain_not_configured',
+        details: `Managed Second Brain clone not found at ${sbPath ?? '<unset>'}.`,
+      };
+    }
+    const projectDir = join(sbPath, '01-Projects', name);
+    if (existsSync(projectDir)) {
+      reply.code(409);
+      return { error: 'project_exists', details: `${projectDir} already exists` };
+    }
+    // The actual scaffolding happens client-side via the `run_intake` Tauri
+    // command in scaffold mode (see W6). Return the validated context so the
+    // UI can dispatch the IPC call without round-tripping to the server.
+    return {
+      ok: true,
+      project: name,
+      managedClonePath: sbPath,
+      nextStep: 'invoke run_intake with prompt=scaffold-project',
+    };
+  });
+
+
   // ─── Knowledge CRUD ────────────────────────────────────────────
 
   app.get('/api/stats', async (_request, reply) => {
@@ -1359,6 +1712,16 @@ Pass an array to addKnowledge to create multiple entries at once.
   });
 
   app.post<{ Body: CreateKnowledgeInput }>('/api/knowledge', async (request, reply) => {
+    const err = ensureReady(reply);
+    if (err) return err;
+    return sdk.addKnowledge(request.body);
+  });
+
+  // ─── /ipc/addKnowledge alias ─────────────────────────────────
+  // The Context Engine bundle's `summarize.py record` posts to
+  // `${COGNISTORE_IPC_URL:-http://localhost:7321/ipc/addKnowledge}` by default.
+  // Mirror /api/knowledge so the bridge works without per-repo config tweaks.
+  app.post<{ Body: CreateKnowledgeInput }>('/ipc/addKnowledge', async (request, reply) => {
     const err = ensureReady(reply);
     if (err) return err;
     return sdk.addKnowledge(request.body);
@@ -1662,14 +2025,14 @@ Pass an array to addKnowledge to create multiple entries at once.
     const initOk = await tryInitSDK();
     if (initOk) {
       log('info', 'SDK initialized successfully');
-      await seedSystemKnowledge();
+      await seedSystemKnowledge(); await seedLayerPrecedenceKnowledge();
     } else {
       log('warn', `SDK initialization failed (degraded mode): ${sdkError}`);
       retryInterval = setInterval(async () => {
         const ok = await tryInitSDK();
         if (ok) {
           log('info', 'SDK initialized (recovered from degraded mode)');
-          await seedSystemKnowledge();
+          await seedSystemKnowledge(); await seedLayerPrecedenceKnowledge();
         }
       }, 10000);
     }
