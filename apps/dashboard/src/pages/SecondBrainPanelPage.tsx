@@ -10,7 +10,7 @@
  * When the orchestration gate is off, renders a stack-disabled card.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { SbProject } from '../intake/types.js';
@@ -281,9 +281,15 @@ interface DetailsViewProps {
 function ProjectDetailsView({ project, details, loading, error, openFile, onOpenFile, onClose }: DetailsViewProps) {
   const allFiles = details?.sections.flatMap((s) => s.files.map((f) => ({ ...f, sectionId: s.id, sectionLabel: s.label }))) ?? [];
   const current = allFiles.find((f) => f.relPath === openFile) ?? null;
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [project.name]);
 
   return (
     <div
+      ref={containerRef}
       style={{
         padding: 16,
         borderRadius: 10,
