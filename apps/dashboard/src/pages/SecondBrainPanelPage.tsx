@@ -33,7 +33,7 @@ interface ProjectFile {
 }
 
 interface ProjectSection {
-  id: 'analysis' | 'decisions' | 'specs' | 'root';
+  id: 'analysis' | 'decisions' | 'specs' | 'sources' | 'root';
   label: string;
   dir: string | null;
   files: ProjectFile[];
@@ -282,10 +282,37 @@ function ProjectDetailsView({ project, details, loading, error, openFile, onOpen
   const allFiles = details?.sections.flatMap((s) => s.files.map((f) => ({ ...f, sectionId: s.id, sectionLabel: s.label }))) ?? [];
   const current = allFiles.find((f) => f.relPath === openFile) ?? null;
   const containerRef = useRef<HTMLDivElement>(null);
+  const fileIndex = new Map(allFiles.map((f) => [f.relPath, f]));
 
   useEffect(() => {
-    containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    (containerRef.current as unknown as { scrollIntoView?: (opts: { behavior: string; block: string }) => void } | null)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   }, [project.name]);
+
+  // Parse frontmatter + body. Looks for `sources:` and `source:` fields
+  // that may be comma-separated, JSON-style array, or YAML list lines.
+  const parsed = current ? parseFrontmatter(current.content) : null;
+  const sourceLinks = parsed ? extractSources(parsed.frontmatter) : [];
+
+  // Resolve a relative href written inside the file (e.g. `../04-specs/foo.md`)
+  // against the current file's relPath. Returns the canonical relPath if the
+  // target exists in this project's loaded file set, otherwise null.
+  const resolveLink = (href: string): string | null => {
+    if (!current) return null;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//') || href.startsWith('#')) {
+      return null;
+    }
+    const fromDir = current.relPath.split('/').slice(0, -1);
+    const segments = [...fromDir, ...href.split('/')];
+    const stack: string[] = [];
+    for (const seg of segments) {
+      if (!seg || seg === '.') continue;
+      if (seg === '..') stack.pop();
+      else stack.push(seg);
+    }
+    const candidate = stack.join('/');
+    if (fileIndex.has(candidate)) return candidate;
+    return null;
+  };
 
   return (
     <div
@@ -454,8 +481,130 @@ function ProjectDetailsView({ project, details, loading, error, openFile, onOpen
                     {current.truncated && ' · truncated'}
                   </span>
                 </div>
+                {sourceLinks.length > 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: 6,
+                      marginBottom: 12,
+                      paddingBottom: 8,
+                      borderBottom: '1px dashed var(--border)',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 10,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.06em',
+                        color: 'var(--text-secondary)',
+                        alignSelf: 'center',
+                        marginRight: 4,
+                      }}
+                    >
+                      Sources:
+                    </span>
+                    {sourceLinks.map((src) => {
+                      const resolved = resolveLink(src);
+                      const isExternal = /^https?:/i.test(src);
+                      const label = src.split('/').pop() || src;
+                      if (resolved) {
+                        return (
+                          <button
+                            key={src}
+                            onClick={() => onOpenFile(resolved)}
+                            style={{
+                              padding: '2px 10px',
+                              borderRadius: 12,
+                              border: '1px solid var(--accent)',
+                              background: 'rgba(99, 102, 241, 0.08)',
+                              color: 'var(--accent)',
+                              cursor: 'pointer',
+                              fontSize: 11,
+                              fontFamily: 'inherit',
+                            }}
+                            title={resolved}
+                          >
+                            {label}
+                          </button>
+                        );
+                      }
+                      if (isExternal) {
+                        return (
+                          <a
+                            key={src}
+                            href={src}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            style={{
+                              padding: '2px 10px',
+                              borderRadius: 12,
+                              border: '1px solid var(--border)',
+                              color: 'var(--text-secondary)',
+                              fontSize: 11,
+                              textDecoration: 'none',
+                            }}
+                          >
+                            ↗ {label}
+                          </a>
+                        );
+                      }
+                      return (
+                        <span
+                          key={src}
+                          title="Source not found in this project"
+                          style={{
+                            padding: '2px 10px',
+                            borderRadius: 12,
+                            border: '1px dashed var(--border)',
+                            color: 'var(--text-secondary)',
+                            fontSize: 11,
+                            opacity: 0.6,
+                          }}
+                        >
+                          {label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
                 <div className="sb-markdown">
-                  <Markdown remarkPlugins={[remarkGfm]}>{current.content}</Markdown>
+                  <Markdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({ href, children, ...rest }) => {
+                        const target = href ? resolveLink(href) : null;
+                        if (target) {
+                          return (
+                            <a
+                              href={`#${target}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                onOpenFile(target);
+                              }}
+                              style={{ color: 'var(--accent)', textDecoration: 'underline' }}
+                              {...rest}
+                            >
+                              {children}
+                            </a>
+                          );
+                        }
+                        return (
+                          <a
+                            href={href}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            style={{ color: 'var(--accent)' }}
+                            {...rest}
+                          >
+                            {children}
+                          </a>
+                        );
+                      },
+                    }}
+                  >
+                    {parsed?.body ?? current.content}
+                  </Markdown>
                 </div>
               </>
             ) : (
@@ -468,4 +617,86 @@ function ProjectDetailsView({ project, details, loading, error, openFile, onOpen
       )}
     </div>
   );
+}
+
+/**
+ * Minimal YAML-frontmatter parser. Recognises a leading `---` block at the
+ * top of a markdown file and returns its key/value entries plus the body.
+ *
+ * Convention for forward traceability: decision records and analysis docs
+ * may declare a `sources:` field listing the upstream artifacts that
+ * produced the decision/analysis. Accepted shapes:
+ *
+ *   sources:
+ *     - 01-sources/comms-2026-02-19.md
+ *     - 01-sources/api-spec.md
+ *
+ *   sources: [01-sources/foo.md, 01-sources/bar.md]
+ *
+ *   sources: 01-sources/foo.md, https://wiki/example
+ *
+ * The renderer also intercepts inline `[link](path.md)` references in the
+ * body that resolve to known files inside the project, so most existing
+ * decision records (which use a `## Related` section) become navigable
+ * with no schema change.
+ */
+function parseFrontmatter(content: string): { frontmatter: Record<string, string[]>; body: string } {
+  const trimmed = content.replace(/^\uFEFF/, '');
+  if (!trimmed.startsWith('---\n') && !trimmed.startsWith('---\r\n')) {
+    return { frontmatter: {}, body: content };
+  }
+  const after = trimmed.slice(4);
+  const closeIdx = after.search(/\n---\s*(\n|$)/);
+  if (closeIdx < 0) return { frontmatter: {}, body: content };
+  const block = after.slice(0, closeIdx);
+  const body = after.slice(closeIdx).replace(/^\n---\s*\n?/, '');
+  const fm: Record<string, string[]> = {};
+  const lines = block.split(/\r?\n/);
+  let currentKey: string | null = null;
+  for (const raw of lines) {
+    const line = raw.replace(/\s+$/, '');
+    if (!line.trim()) continue;
+    const listMatch = line.match(/^\s+-\s+(.*)$/);
+    if (listMatch && currentKey) {
+      fm[currentKey].push(stripQuotes(listMatch[1]));
+      continue;
+    }
+    const kv = line.match(/^([A-Za-z0-9_-]+)\s*:\s*(.*)$/);
+    if (!kv) continue;
+    const key = kv[1].trim();
+    const value = kv[2].trim();
+    if (!value) {
+      fm[key] = [];
+      currentKey = key;
+      continue;
+    }
+    currentKey = null;
+    if (value.startsWith('[') && value.endsWith(']')) {
+      const inner = value.slice(1, -1);
+      fm[key] = inner.split(',').map((s) => stripQuotes(s.trim())).filter(Boolean);
+    } else if (value.includes(',')) {
+      fm[key] = value.split(',').map((s) => stripQuotes(s.trim())).filter(Boolean);
+    } else {
+      fm[key] = [stripQuotes(value)];
+    }
+  }
+  return { frontmatter: fm, body };
+}
+
+function stripQuotes(s: string): string {
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    return s.slice(1, -1);
+  }
+  return s;
+}
+
+function extractSources(fm: Record<string, string[]>): string[] {
+  const keys = ['sources', 'source', 'derived_from', 'derivedFrom'];
+  const out: string[] = [];
+  for (const key of keys) {
+    const vals = fm[key];
+    if (!vals) continue;
+    for (const v of vals) if (v) out.push(v);
+  }
+  return out;
 }

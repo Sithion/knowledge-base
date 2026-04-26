@@ -1439,11 +1439,12 @@ Pass an array to addKnowledge to create multiple entries at once.
   // Files are truncated at MAX_CONTENT_BYTES; binary/dotfiles/index files
   // are skipped.
   const PROJECT_DETAIL_MAX_BYTES = 256 * 1024;
-  type SectionId = 'analysis' | 'decisions' | 'specs' | 'root';
+  type SectionId = 'analysis' | 'decisions' | 'specs' | 'sources' | 'root';
   const SECTION_DIRS: Array<{ id: SectionId; label: string; dir: string | null; rootFiles?: string[] }> = [
     { id: 'analysis', label: 'Analysis & Gaps', dir: '02-analysis' },
     { id: 'decisions', label: 'Decision Records', dir: '03-decisions' },
     { id: 'specs', label: 'Specs & Status', dir: '04-specs' },
+    { id: 'sources', label: 'Inbound Sources', dir: '01-sources' },
     { id: 'root', label: 'Project Docs', dir: null, rootFiles: ['brain.md', 'README.md', 'AGENTS.md', 'CLAUDE.md', 'current-state-overview.md', 'status.md'] },
   ];
 
