@@ -344,6 +344,20 @@ impl SbFreshnessService {
             script_path: script.display().to_string(),
         });
 
+        // The sync script reads `_graph.json` produced by
+        // `_tools/graph/build-graph.js`. If the graph file is missing
+        // (first run, or after a fresh pull) we run the builder first
+        // so `--apply`/dry-run paths both succeed end-to-end.
+        let graph_file = path.join("_graph.json");
+        let graph_builder = path.join("_tools/graph/build-graph.js");
+        if !graph_file.exists() && graph_builder.exists() {
+            let _ = Command::new("node")
+                .arg(&graph_builder)
+                .current_dir(&path)
+                .output()
+                .await;
+        }
+
         let output = Command::new("node")
             .arg(&script)
             .current_dir(&path)

@@ -51,10 +51,8 @@ function GateBanner({ enabled }: { enabled: boolean }) {
       }}
     >
       <strong>AI Stack orchestration is disabled.</strong> The intake
-      pipeline is hidden until you enable it. Open <em>Health</em> →
-      <em> Setup intake pipeline</em>, or set{' '}
-      <code>aiStack.enableSbOrchestration</code> in your CogniStore config
-      (or env <code>COGNISTORE_ENABLE_SB_ORCHESTRATION=1</code>).
+      pipeline is hidden until you enable it. Open the <em>Health</em> tab
+      and click <em>Setup intake pipeline</em> to get started.
     </div>
   );
 }

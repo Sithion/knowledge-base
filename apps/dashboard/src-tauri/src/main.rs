@@ -61,6 +61,7 @@ fn run_setup(app: &mut tauri::App) -> Result<(), String> {
     let sqlite_path = home.join(".cognistore").join("knowledge.db");
 
     // 4. Find available port
+    sidecar::reap_orphan_sidecars();
     let port = sidecar::find_available_port(3210);
 
     // 5. Spawn sidecar (returns child process + identity token)
@@ -140,6 +141,7 @@ fn main() {
             sb_clone::commands::sb_clone_ensure,
             sb_clone::commands::sb_clone_status,
             sb_clone::commands::sb_clone_cleanup,
+            sb_clone::commands::sb_clone_save_remote_url,
             intake::commands::run_intake,
             intake::commands::run_pr_cut,
             intake::commands::intake_first_run_setup,
@@ -168,6 +170,41 @@ fn main() {
                     matches!(v.as_str(), "1" | "true" | "yes" | "on")
                 })
                 .unwrap_or(false);
+            // Also honor the migration-banner choice persisted at
+            // ~/.cognistore/.ai-stack-poc-migration.json — if the user
+            // accepted in the dashboard banner, surface enable here too
+            // so freshness/clone managers reflect that choice on next launch.
+            let enabled_from_migration = dirs::home_dir()
+                .map(|h| h.join(".cognistore").join(".ai-stack-poc-migration.json"))
+                .and_then(|p| std::fs::read_to_string(&p).ok())
+                .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+                .and_then(|v| v.get("response").and_then(|r| r.as_str().map(String::from)))
+                .map(|r| r == "enabled")
+                .unwrap_or(false);
+            let enabled_env = enabled_env || enabled_from_migration;
+
+            // Compute the managed-clone workspace path early so the freshness
+            // service can default to it (single source of truth for "where is
+            // the Second Brain on disk"). The managed clone is CogniStore's
+            // own, NEVER a personal checkout the user may have elsewhere.
+            let workspace_dir_env = std::env::var("COGNISTORE_INTAKE_WORKSPACE_DIR").ok();
+            let app_data_dir = app
+                .path()
+                .app_data_dir()
+                .ok()
+                .or_else(|| dirs::home_dir().map(|h| h.join(".cognistore")))
+                .unwrap_or_else(|| std::path::PathBuf::from("."));
+            let workspace_dir = workspace_dir_env
+                .clone()
+                .map(|s| {
+                    if let Some(rest) = s.strip_prefix("~/") {
+                        dirs::home_dir().map(|h| h.join(rest)).unwrap_or_else(|| s.into())
+                    } else {
+                        std::path::PathBuf::from(s)
+                    }
+                })
+                .unwrap_or_else(|| app_data_dir.join("second-brain-workspace"));
+
             let sb_path = sb_path_env
                 .as_ref()
                 .map(|s| {
@@ -177,12 +214,9 @@ fn main() {
                         s.into()
                     }
                 })
-                .or_else(|| {
-                    // Default suggested path from the migration prompt.
-                    dirs::home_dir().map(|h| h.join("AcuityTech").join("Second Brain"))
-                });
+                .unwrap_or_else(|| workspace_dir.clone());
             let freshness_cfg = sb_freshness::service::FreshnessConfig {
-                second_brain_path: sb_path,
+                second_brain_path: Some(sb_path),
                 enable_sb_orchestration: enabled_env,
                 branch: std::env::var("COGNISTORE_SB_BRANCH")
                     .unwrap_or_else(|_| "develop".to_string()),
@@ -211,30 +245,27 @@ fn main() {
             // Both no-op when `enableSbOrchestration` is false (the gate is
             // already enforced by the freshness service above; we mirror it
             // here for the parallel managed-clone surface).
-            let workspace_dir_env = std::env::var("COGNISTORE_INTAKE_WORKSPACE_DIR").ok();
-            let app_data_dir = app
-                .path()
-                .app_data_dir()
-                .ok()
-                .or_else(|| dirs::home_dir().map(|h| h.join(".cognistore")))
-                .unwrap_or_else(|| std::path::PathBuf::from("."));
-            let workspace_dir = workspace_dir_env
-                .map(|s| {
-                    if let Some(rest) = s.strip_prefix("~/") {
-                        dirs::home_dir().map(|h| h.join(rest)).unwrap_or_else(|| s.into())
-                    } else {
-                        std::path::PathBuf::from(s)
-                    }
-                })
-                .unwrap_or_else(|| app_data_dir.join("second-brain-workspace"));
+            // workspace_dir + app_data_dir already computed above; reuse them.
+            // Resolve remote URL: env var first, then a small persistent
+            // config file the user populates from the first-run wizard.
+            // We intentionally do NOT auto-discover from personal clones —
+            // the managed clone is CogniStore's own, separate from any
+            // personal Second Brain checkout the user may already have.
             let remote_url_env = std::env::var("COGNISTORE_SECOND_BRAIN_REMOTE")
                 .ok()
                 .filter(|s| !s.trim().is_empty());
+            let remote_url = remote_url_env.or_else(|| {
+                dirs::home_dir()
+                    .map(|h| h.join(".cognistore").join("sb-remote-url.txt"))
+                    .and_then(|p| std::fs::read_to_string(&p).ok())
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+            });
 
             let clone_cfg = sb_clone::CloneConfig {
                 enable_sb_orchestration: enabled_env,
                 workspace_dir: workspace_dir.clone(),
-                remote_url: remote_url_env,
+                remote_url,
                 default_branch: std::env::var("COGNISTORE_SB_BRANCH")
                     .unwrap_or_else(|_| "develop".to_string()),
             };
@@ -341,6 +372,14 @@ fn main() {
             if let tauri::RunEvent::ExitRequested { api, .. } = &event {
                 // Keep running in background when main window is hidden
                 api.prevent_exit();
+            }
+            if let tauri::RunEvent::Exit = &event {
+                // App is actually terminating — kill the sidecar so its
+                // port isn't held by an orphaned Node process the next
+                // time the app launches.
+                if let Some(state) = app.try_state::<SidecarState>() {
+                    state.kill();
+                }
             }
         });
 }

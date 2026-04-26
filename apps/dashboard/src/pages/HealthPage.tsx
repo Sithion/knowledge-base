@@ -175,8 +175,8 @@ export function HealthPage() {
             AI Stack POC orchestration: {status?.enabled ? 'enabled' : 'disabled'}
           </div>
           <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-            Set <code>aiStack.enableSbOrchestration: true</code> (or env{' '}
-            <code>COGNISTORE_ENABLE_SB_ORCHESTRATION=1</code>) to enable Second Brain integration.
+            Click <em>Setup intake pipeline</em> below (or accept the AI
+            Stack POC banner at the top) to enable Second Brain integration.
           </div>
         </div>
       </div>

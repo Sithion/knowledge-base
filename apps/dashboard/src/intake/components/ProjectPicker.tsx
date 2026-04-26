@@ -105,8 +105,8 @@ export function ProjectPicker({ value, onChange }: Props) {
           color: 'var(--text-secondary)',
         }}
       >
-        AI Stack orchestration is disabled. Enable{' '}
-        <code>aiStack.enableSbOrchestration</code> to use the intake pipeline.
+        AI Stack orchestration is disabled. Enable it from the Health tab
+        to use the intake pipeline.
       </div>
     );
   }

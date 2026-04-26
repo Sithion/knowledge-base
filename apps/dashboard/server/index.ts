@@ -190,7 +190,7 @@ Pass an array to addKnowledge to create multiple entries at once.
   type SbOrchState = { lastKnownEnabled: boolean; seededAt?: string };
   type MigrationState = {
     prompted: boolean;
-    response: 'enable' | 'not-now' | null;
+    response: 'enabled' | 'declined' | 'deferred' | null;
     respondedAt?: string;
     secondBrainPath?: string;
   };
@@ -214,14 +214,20 @@ Pass an array to addKnowledge to create multiple entries at once.
   };
 
   const isSbOrchestrationEnabled = (): boolean => {
-    // Resolve via SDK's configured flag (env override + future config file).
-    // Until config file persistence lands, env var COGNISTORE_ENABLE_SB_ORCHESTRATION is the source.
+    // 1. SDK config (future config file) wins.
     try {
       const cfg = (sdk as any).config?.aiStack;
       if (cfg && typeof cfg.enableSbOrchestration === 'boolean') return cfg.enableSbOrchestration;
     } catch { /* ignore */ }
+    // 2. Env var override (legacy / CI).
     const env = (process.env.COGNISTORE_ENABLE_SB_ORCHESTRATION || '').trim().toLowerCase();
-    return env === '1' || env === 'true' || env === 'yes' || env === 'on';
+    if (env === '1' || env === 'true' || env === 'yes' || env === 'on') return true;
+    // 3. Migration prompt opt-in: if user clicked "Enable" in the banner, treat as enabled.
+    try {
+      const mig = readJsonState<MigrationState>(MIGRATION_PROMPT_FILE, { prompted: false, response: null });
+      if (mig.response === 'enabled') return true;
+    } catch { /* ignore */ }
+    return false;
   };
 
   const seedLayerPrecedenceKnowledge = async (): Promise<void> => {
@@ -841,26 +847,44 @@ Pass an array to addKnowledge to create multiple entries at once.
       response: state.response,
       respondedAt: state.respondedAt ?? null,
       enableSbOrchestration: isSbOrchestrationEnabled(),
-      defaultSecondBrainPath: join(homedir(), 'AcuityTech', 'Second Brain'),
+      defaultSecondBrainPath: '',
     };
   });
 
   app.post<{
-    Body: { response: 'enable' | 'not-now'; secondBrainPath?: string };
+    Body: { decision?: 'enable' | 'decline' | 'defer'; response?: string; secondBrainPath?: string };
   }>('/api/migration/ai-stack-poc/respond', async (request, reply) => {
-    const { response, secondBrainPath } = request.body || ({} as any);
-    if (response !== 'enable' && response !== 'not-now') {
+    // Accept the `decision` field (current UI) plus a legacy `response` field
+    // for backward compatibility with the original contract.
+    const body = request.body || ({} as any);
+    const raw = (body.decision ?? body.response ?? '').toString();
+    const map: Record<string, MigrationState['response']> = {
+      enable: 'enabled',
+      enabled: 'enabled',
+      decline: 'declined',
+      declined: 'declined',
+      'not-now': 'declined',
+      defer: 'deferred',
+      deferred: 'deferred',
+    };
+    const normalized = map[raw];
+    if (!normalized) {
       reply.code(400);
-      return { error: 'response must be "enable" or "not-now"' };
+      return { error: 'decision must be "enable", "decline", or "defer"' };
     }
     const state: MigrationState = {
       prompted: true,
-      response,
+      response: normalized,
       respondedAt: new Date().toISOString(),
-      ...(secondBrainPath ? { secondBrainPath } : {}),
+      ...(body.secondBrainPath ? { secondBrainPath: body.secondBrainPath } : {}),
     };
     writeJsonState(MIGRATION_PROMPT_FILE, state);
-    log('info', `AI Stack POC migration prompt responded: ${response}`);
+    log('info', `AI Stack POC migration prompt responded: ${normalized}`);
+    // If enabling, eagerly seed the layer-precedence entry so the side-effect
+    // doesn't wait for the next upgrade run.
+    if (normalized === 'enabled') {
+      try { await seedLayerPrecedenceKnowledge(); } catch { /* best-effort */ }
+    }
     return { ok: true, state };
   });
 

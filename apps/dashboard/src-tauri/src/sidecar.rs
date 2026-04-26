@@ -260,3 +260,39 @@ pub fn find_available_port(preferred: u16) -> u16 {
     }
     preferred
 }
+
+/// Kill any orphaned CogniStore sidecar Node processes that are still
+/// holding our port range. This handles the case where a previous
+/// app instance was force-killed (terminal close, kill -9, dev rebuild)
+/// and its child Node process was reparented to init instead of
+/// reaped — leaving the port bound and forcing the next launch to
+/// drift up to 3211, 3212, etc.
+///
+/// Safe to call at startup before [`find_available_port`].
+pub fn reap_orphan_sidecars() {
+    #[cfg(unix)]
+    {
+        use std::process::Command;
+        // Find PIDs of node processes running our sidecar bundle.
+        // We match on the full command path "dist-server/index.js"
+        // which is unique to our sidecar.
+        let Ok(out) = Command::new("pgrep").args(["-f", "dist-server/index.js"]).output() else {
+            return;
+        };
+        if !out.status.success() {
+            return;
+        }
+        let self_pid = std::process::id();
+        for line in String::from_utf8_lossy(&out.stdout).lines() {
+            let Ok(pid) = line.trim().parse::<u32>() else { continue };
+            if pid == self_pid {
+                continue;
+            }
+            // SIGKILL — we don't care about graceful shutdown for an
+            // already-orphaned process.
+            let _ = Command::new("kill").args(["-9", &pid.to_string()]).output();
+            eprintln!("[sidecar] reaped orphan node sidecar pid={}", pid);
+        }
+    }
+}
+

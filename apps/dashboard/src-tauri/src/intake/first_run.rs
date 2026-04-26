@@ -58,11 +58,10 @@ pub async fn run_first_run_setup(clone_manager: &ManagedCloneManager) -> FirstRu
     // Run all probes in parallel.
     let clone_status = clone_manager.get_clone_status();
     let copilot_version = probe_command("copilot", &["--version"]);
-    let copilot_auth = probe_command("copilot", &["auth", "status"]);
     let gh_version = probe_command("gh", &["--version"]);
 
-    let (clone, copilot_ver, copilot_auth_res, gh_ver) =
-        tokio::join!(clone_status, copilot_version, copilot_auth, gh_version);
+    let (clone, copilot_ver, gh_ver) =
+        tokio::join!(clone_status, copilot_version, gh_version);
 
     let mut steps = Vec::new();
     let mut blocking = Vec::new();
@@ -90,7 +89,7 @@ pub async fn run_first_run_setup(clone_manager: &ManagedCloneManager) -> FirstRu
         }),
         remediation: if !sb_clone_ready {
             Some(
-                "Configure `aiStack.secondBrainRemote` in CogniStore settings, then run **Set up workspace** to clone the Second Brain.".into(),
+                "Click **Set / change remote URL…** below, paste the Git URL of your Second Brain repository, and press **Save & clone**. CogniStore manages its own clone separate from any personal checkout.".into(),
             )
         } else {
             None
@@ -119,9 +118,16 @@ pub async fn run_first_run_setup(clone_manager: &ManagedCloneManager) -> FirstRu
     }
     steps.push(copilot_step);
 
-    // copilot auth — only meaningful if copilot is present.
+    // copilot auth — the CLI provides no non-interactive auth-status probe
+    // (only `copilot login` exists, which is interactive). We use a heuristic:
+    // if the copilot config file exists and has been initialized, we assume
+    // the user has logged in at least once. Real auth failures will surface
+    // at first intake run with a clear error.
     let copilot_authed = if copilot_present {
-        matches!(copilot_auth_res, ProbeOutcome::Ok { .. })
+        copilot_config_initialized().await
+            || std::env::var("COPILOT_GITHUB_TOKEN").is_ok()
+            || std::env::var("GH_TOKEN").is_ok()
+            || std::env::var("GITHUB_TOKEN").is_ok()
     } else {
         false
     };
@@ -135,9 +141,15 @@ pub async fn run_first_run_setup(clone_manager: &ManagedCloneManager) -> FirstRu
         } else {
             StepStatus::Fail
         },
-        detail: copilot_auth_res.detail(),
+        detail: Some(if !copilot_present {
+            "skipped — copilot CLI not present".into()
+        } else if copilot_authed {
+            "config file present (auth verified at first use)".into()
+        } else {
+            "no config file found at ~/.copilot/config.json and no token env var set".into()
+        }),
         remediation: if copilot_present && !copilot_authed {
-            Some("Run `copilot auth login` in a terminal, then click **Re-check**.".into())
+            Some("Run `copilot login` in a terminal (it opens a browser), then click **Re-check**.".into())
         } else {
             None
         },
@@ -190,6 +202,21 @@ impl ProbeOutcome {
             ProbeOutcome::NotFound => Some("not found on PATH".to_string()),
             ProbeOutcome::Timeout => Some("probe timed out".to_string()),
         }
+    }
+}
+
+/// Best-effort heuristic: treat copilot as authenticated if its config
+/// file exists at `~/.copilot/config.json`. The CLI writes this on first
+/// launch, so the presence of `firstLaunchAt` is a strong signal the user
+/// has interacted with the CLI at least once.
+async fn copilot_config_initialized() -> bool {
+    let Some(home) = dirs::home_dir() else {
+        return false;
+    };
+    let cfg = home.join(".copilot").join("config.json");
+    match tokio::fs::read_to_string(&cfg).await {
+        Ok(s) => s.contains("firstLaunchAt"),
+        Err(_) => false,
     }
 }
 

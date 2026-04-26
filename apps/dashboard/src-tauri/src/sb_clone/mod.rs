@@ -20,7 +20,8 @@ pub mod events;
 pub mod manager;
 
 pub use commands::{
-    sb_clone_cleanup, sb_clone_ensure, sb_clone_status, ManagedCloneState,
+    sb_clone_cleanup, sb_clone_ensure, sb_clone_save_remote_url, sb_clone_status,
+    ManagedCloneState,
 };
 pub use events::{CloneEvent, CloneFailureKind};
 pub use manager::{CloneConfig, CloneStatus, ManagedCloneManager};

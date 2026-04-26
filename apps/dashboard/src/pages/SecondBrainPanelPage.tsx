@@ -70,10 +70,9 @@ export function SecondBrainPanelPage() {
             fontSize: 13,
           }}
         >
-          AI Stack orchestration is disabled.{' '}
-          <code>aiStack.enableSbOrchestration</code> is off, so the Second
-          Brain panel cannot enumerate projects. Toggle it on in your
-          CogniStore config to unlock this view.
+          AI Stack orchestration is disabled, so the Second Brain panel
+          cannot enumerate projects. Enable it from the Health tab to
+          unlock this view.
         </div>
       </div>
     );

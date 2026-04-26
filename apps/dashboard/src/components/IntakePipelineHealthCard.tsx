@@ -147,7 +147,7 @@ export function IntakePipelineHealthCard({ enabled }: { enabled: boolean }) {
 
       {!enabled && (
         <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-          Enable <code>aiStack.enableSbOrchestration</code> to surface intake-pipeline state.
+          Enable AI Stack orchestration to surface intake-pipeline state.
         </div>
       )}
 
@@ -165,6 +165,50 @@ export function IntakePipelineHealthCard({ enabled }: { enabled: boolean }) {
               }}
             >
               {error}
+            </div>
+          )}
+
+          {/* Prominent CTA when prerequisites are missing. */}
+          {report && (!report.copilotPresent || !report.copilotAuthed) && (
+            <div
+              data-testid="intake-deps-missing-cta"
+              style={{
+                padding: 12,
+                borderRadius: 8,
+                border: '1px solid var(--warning, #f59e0b)',
+                background: 'rgba(245, 158, 11, 0.08)',
+                marginBottom: 12,
+                fontSize: 13,
+                display: 'flex',
+                gap: 10,
+                alignItems: 'center',
+              }}
+            >
+              <span style={{ fontSize: 18 }}>⚠️</span>
+              <div style={{ flex: 1 }}>
+                <strong>Prerequisites missing.</strong>{' '}
+                {!report.copilotPresent
+                  ? 'GitHub Copilot CLI is not installed.'
+                  : !report.copilotAuthed
+                    ? 'GitHub Copilot CLI is installed but not authenticated.'
+                    : ''}{' '}
+                Click <em>Setup intake pipeline</em> above to fix.
+              </div>
+              <button
+                onClick={() => setWizardOpen(true)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: 'var(--accent)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                Open setup
+              </button>
             </div>
           )}
 
