@@ -214,18 +214,21 @@ Pass an array to addKnowledge to create multiple entries at once.
   };
 
   const isSbOrchestrationEnabled = (): boolean => {
-    // 1. SDK config (future config file) wins.
+    // 1. Migration prompt opt-in: explicit user click in the banner / wizard
+    //    is the most recent expressed intent and must win over defaults.
     try {
-      const cfg = (sdk as any).config?.aiStack;
-      if (cfg && typeof cfg.enableSbOrchestration === 'boolean') return cfg.enableSbOrchestration;
+      const mig = readJsonState<MigrationState>(MIGRATION_PROMPT_FILE, { prompted: false, response: null });
+      if (mig.response === 'enabled') return true;
+      if (mig.response === 'declined') return false;
     } catch { /* ignore */ }
     // 2. Env var override (legacy / CI).
     const env = (process.env.COGNISTORE_ENABLE_SB_ORCHESTRATION || '').trim().toLowerCase();
     if (env === '1' || env === 'true' || env === 'yes' || env === 'on') return true;
-    // 3. Migration prompt opt-in: if user clicked "Enable" in the banner, treat as enabled.
+    if (env === '0' || env === 'false' || env === 'no' || env === 'off') return false;
+    // 3. SDK config (future config file) as default.
     try {
-      const mig = readJsonState<MigrationState>(MIGRATION_PROMPT_FILE, { prompted: false, response: null });
-      if (mig.response === 'enabled') return true;
+      const cfg = (sdk as any).config?.aiStack;
+      if (cfg && typeof cfg.enableSbOrchestration === 'boolean') return cfg.enableSbOrchestration;
     } catch { /* ignore */ }
     return false;
   };
@@ -1429,6 +1432,100 @@ Pass an array to addKnowledge to create multiple entries at once.
         details: err instanceof Error ? err.message : String(err),
       };
     }
+  });
+
+  // GET /api/sb/projects/:slug/details — read analysis/decisions/specs
+  // markdown for the selected project so the panel can render them inline.
+  // Files are truncated at MAX_CONTENT_BYTES; binary/dotfiles/index files
+  // are skipped.
+  const PROJECT_DETAIL_MAX_BYTES = 256 * 1024;
+  type SectionId = 'analysis' | 'decisions' | 'specs' | 'root';
+  const SECTION_DIRS: Array<{ id: SectionId; label: string; dir: string | null; rootFiles?: string[] }> = [
+    { id: 'analysis', label: 'Analysis & Gaps', dir: '02-analysis' },
+    { id: 'decisions', label: 'Decision Records', dir: '03-decisions' },
+    { id: 'specs', label: 'Specs & Status', dir: '04-specs' },
+    { id: 'root', label: 'Project Docs', dir: null, rootFiles: ['brain.md', 'README.md', 'AGENTS.md', 'CLAUDE.md', 'current-state-overview.md', 'status.md'] },
+  ];
+
+  app.get<{ Params: { slug: string } }>('/api/sb/projects/:slug/details', async (request, reply) => {
+    if (!isSbOrchestrationEnabled()) {
+      reply.code(409);
+      return { disabled: true, reason: 'aiStack.enableSbOrchestration is false' };
+    }
+    const slug = (request.params.slug || '').trim();
+    if (!/^[A-Za-z0-9._-]+$/.test(slug)) {
+      reply.code(400);
+      return { error: 'invalid_project_slug' };
+    }
+    const sbPath = resolveManagedClonePath();
+    if (!sbPath || !existsSync(sbPath)) {
+      reply.code(409);
+      return {
+        error: 'second_brain_not_configured',
+        details: `Managed Second Brain clone not found at ${sbPath ?? '<unset>'}.`,
+      };
+    }
+    const projectDir = join(sbPath, '01-Projects', slug);
+    if (!existsSync(projectDir) || !statSync(projectDir).isDirectory()) {
+      reply.code(404);
+      return { error: 'project_not_found', details: projectDir };
+    }
+
+    type FileEntry = { name: string; relPath: string; sizeBytes: number; mtimeMs: number; content: string; truncated: boolean };
+
+    const readMarkdown = (absPath: string, relPath: string): FileEntry | null => {
+      try {
+        const st = statSync(absPath);
+        if (!st.isFile()) return null;
+        const buf = readFileSync(absPath);
+        const truncated = buf.length > PROJECT_DETAIL_MAX_BYTES;
+        const content = truncated
+          ? buf.subarray(0, PROJECT_DETAIL_MAX_BYTES).toString('utf-8') + '\n\n…(truncated)…\n'
+          : buf.toString('utf-8');
+        return {
+          name: absPath.split('/').pop() || absPath,
+          relPath,
+          sizeBytes: st.size,
+          mtimeMs: st.mtimeMs,
+          content,
+          truncated,
+        };
+      } catch {
+        return null;
+      }
+    };
+
+    const isVisible = (name: string): boolean =>
+      !name.startsWith('.') && !name.startsWith('_') && /\.(md|markdown)$/i.test(name);
+
+    const sections = SECTION_DIRS.map((sec) => {
+      const files: FileEntry[] = [];
+      if (sec.dir) {
+        const dirPath = join(projectDir, sec.dir);
+        if (existsSync(dirPath) && statSync(dirPath).isDirectory()) {
+          for (const entry of readdirSync(dirPath).sort()) {
+            if (!isVisible(entry)) continue;
+            const fe = readMarkdown(join(dirPath, entry), `${sec.dir}/${entry}`);
+            if (fe) files.push(fe);
+          }
+        }
+      } else if (sec.rootFiles) {
+        for (const name of sec.rootFiles) {
+          const abs = join(projectDir, name);
+          if (existsSync(abs)) {
+            const fe = readMarkdown(abs, name);
+            if (fe) files.push(fe);
+          }
+        }
+      }
+      return { id: sec.id, label: sec.label, dir: sec.dir, files };
+    });
+
+    return {
+      project: slug,
+      path: projectDir,
+      sections,
+    };
   });
 
   app.post<{ Body: { name?: string } }>('/api/sb/projects/scaffold', async (request, reply) => {

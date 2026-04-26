@@ -186,14 +186,15 @@ pub fn spawn_node(
     resource_dir: &PathBuf,
     sqlite_path: &PathBuf,
     port: u16,
+    workspace_dir: Option<&PathBuf>,
 ) -> Result<(Child, String), String> {
     let dist_path = resource_dir.join("dist");
     let node_modules_path = resource_dir.join("node_modules");
     let templates_path = resource_dir.join("templates");
     let token = generate_token();
 
-    let child = Command::new(node_bin)
-        .arg(script_path)
+    let mut cmd = Command::new(node_bin);
+    cmd.arg(script_path)
         .env("SQLITE_PATH", sqlite_path.to_string_lossy().to_string())
         .env("OLLAMA_HOST", "http://localhost:11434")
         .env("OLLAMA_MODEL", env::var("OLLAMA_MODEL").unwrap_or_else(|_| "nomic-embed-text".into()))
@@ -205,7 +206,13 @@ pub fn spawn_node(
         .env("NODE_PATH", node_modules_path.to_string_lossy().to_string())
         .env("SIDECAR_TOKEN", &token)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    if let Some(ws) = workspace_dir {
+        cmd.env("COGNISTORE_INTAKE_WORKSPACE_DIR", ws.to_string_lossy().to_string());
+    }
+
+    let child = cmd
         .spawn()
         .map_err(|e| format!("Failed to start server: {}", e))?;
 

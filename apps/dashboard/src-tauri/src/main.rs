@@ -17,6 +17,7 @@ mod sb_clone;
 // AI_STACK_POC:INTAKE_MOD_END
 
 use sidecar::SidecarState;
+use std::path::PathBuf;
 use std::time::Duration;
 use tauri::{Emitter, Manager};
 use widget_config::WidgetPositions;
@@ -60,6 +61,27 @@ fn run_setup(app: &mut tauri::App) -> Result<(), String> {
     let home = dirs::home_dir().ok_or_else(|| "Cannot resolve home directory".to_string())?;
     let sqlite_path = home.join(".cognistore").join("knowledge.db");
 
+    // 3b. Compute managed Second Brain workspace dir so the sidecar can
+    //     resolve `/api/sb/projects` against the same path the Rust side
+    //     clones into. Mirrors the resolution in the .setup() closure.
+    let workspace_dir_for_sidecar: Option<PathBuf> = {
+        let env_override = std::env::var("COGNISTORE_INTAKE_WORKSPACE_DIR").ok();
+        let app_data = app
+            .path()
+            .app_data_dir()
+            .ok()
+            .or_else(|| dirs::home_dir().map(|h| h.join(".cognistore")));
+        env_override
+            .map(|s| {
+                if let Some(stripped) = s.strip_prefix("~/") {
+                    home.join(stripped)
+                } else {
+                    PathBuf::from(s)
+                }
+            })
+            .or_else(|| app_data.map(|d| d.join("second-brain-workspace")))
+    };
+
     // 4. Find available port
     sidecar::reap_orphan_sidecars();
     let port = sidecar::find_available_port(3210);
@@ -71,6 +93,7 @@ fn run_setup(app: &mut tauri::App) -> Result<(), String> {
         &resource_dir,
         &sqlite_path,
         port,
+        workspace_dir_for_sidecar.as_ref(),
     )?;
 
     app.manage(SidecarState::new(child));
